@@ -316,7 +316,7 @@ draw_text_layout :: (using layout : *Text_Layout, color_ranges : []Color_Range)
 		}
 		if i == rects.count - 1 then break;
 
-		codepoint := codepoint_at (buffer, i);
+		codepoint := buffer_get_codepoint (buffer_id, i);
 		if codepoint ==
 		{
 		case #char "\n";

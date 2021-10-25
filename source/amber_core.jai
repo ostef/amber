@@ -1,4 +1,6 @@
-panic :: inline (fmt := "", args : ..Any, location := #caller_location)
+ENABLE_ASSERTS :: !RELEASE;
+
+always_panic :: inline (fmt := "", args : ..Any, location := #caller_location)
 {
 	// Prevent assert ()->...->assert ()->...->assert ()->...->assert () infinite loop (format_string might assert for example)
 	if context.handling_assertion_failure then return;
@@ -7,7 +9,7 @@ panic :: inline (fmt := "", args : ..Any, location := #caller_location)
 	context.handling_assertion_failure = false;
 }
 
-assert :: inline (assertion : bool, fmt := "", args : ..Any, location := #caller_location)
+always_assert :: inline (assertion : bool, fmt := "", args : ..Any, location := #caller_location)
 {
 	if !assertion
 	{
@@ -16,6 +18,33 @@ assert :: inline (assertion : bool, fmt := "", args : ..Any, location := #caller
 		context.handling_assertion_failure = true;
 		context.assertion_failed (location, fstring (temp_allocator, fmt, ..args));
 		context.handling_assertion_failure = false;
+	}
+}
+
+#if ENABLE_ASSERTS
+{
+	panic :: (fmt := "", args : ..Any, location := #caller_location) #expand
+	{
+		always_panic (fmt, ..args, location);
+	}
+
+	// @Note (stefan): We take a Code instead of a bool so we choose whether or not the expression gets
+	// evaluated ourselves. The expression we want to assert might take a long time to execute, so we
+	// need to be able to not evaluate the expression when assertions are disabled, or we won't get much
+	// performance boost in release builds.
+	assert :: (assertion_expr : Code, fmt := "", args : ..Any, location := #caller_location) #expand
+	{
+		always_assert (#insert assertion_expr, fmt, ..args, location);
+	}
+}
+else
+{
+	panic :: inline (fmt := "", args : ..Any, location := #caller_location) #expand
+	{
+	}
+
+	assert :: inline (assertion_expr : Code, fmt := "", args : ..Any, location := #caller_location) #expand
+	{
 	}
 }
 

@@ -169,7 +169,7 @@ add_buffer :: () -> *Buffer #must
 {
 	buffer, index := insert_into_slot_array (*buffers);
 	buffer.id = cast (Buffer_ID) (index + 1);
-	init_buffer (buffer, 10000);
+	buffer_init (buffer.id, 10000);
 	
 	return buffer;
 }
@@ -192,7 +192,7 @@ add_split :: () -> *Split #must
 	return split;
 }
 
-get_buffer :: inline (id : Buffer_ID) -> *Buffer #must
+get_buffer :: inline (id : Buffer_ID) -> *Buffer #must #dump
 {
 	assert (buffer_exists (id), "Invalid buffer id (%).", id);
 	
@@ -232,25 +232,21 @@ main :: ()
 		platform_open_error_box ("Could not load font '%'.", FONT_NAME);
 		return;
 	}
-	buffer, buffer_index := insert_into_slot_array (*buffers);
-	buffer.id = xx (buffer_index + 1);
+	buffer := add_buffer ();
 	buffer.language_id = 1;
-	init_buffer (buffer, 10000);
-	//if __command_line_arguments.count > 1
+	str, ok := platform_read_entire_file ("some_file.txt", temp_allocator);
+	if ok
 	{
-		str, ok := platform_read_entire_file ("some_file.txt", temp_allocator);
-		if ok
-		{
-			start := platform_get_time ();
-			for i : 0..str.count - 1
-				insert_at_cursor (buffer, xx str[i], WRITE_HEAD);
-			end := platform_get_time ();
-			println ("Filling buffer took % milliseconds.", (end - start) * 1000);
-			start = end;
-			move_cursor_to_beginning (buffer, WRITE_HEAD);
-			end = platform_get_time ();
-			println ("Moving the cursor took % milliseconds.", (end - start) * 1000);
-		}
+		start := platform_get_time ();
+		for i : 0..str.count - 1
+			buffer_insert_at_cursor (buffer.id, xx str[i], WRITE_HEAD);
+		end := platform_get_time ();
+		println ("Filling buffer took % milliseconds.", (end - start) * 1000);
+
+		start = platform_get_time ();
+		buffer_move_cursor_to_beginning (buffer.id, WRITE_HEAD);
+		end = platform_get_time ();
+		println ("Moving the cursor took % milliseconds.", (end - start) * 1000);
 	}
 	layout, layout_index := insert_into_slot_array (*text_layouts);
 	layout.id = xx (layout_index + 1);
@@ -297,7 +293,7 @@ main :: ()
 			if event.kind ==
 			{
 			case .TEXT_INPUT;
-				insert_at_cursor (buffer, event.codepoint, ALL_CURSORS);
+				buffer_insert_at_cursor (buffer.id, event.codepoint, ALL_CURSORS);
 				modified = true;
 				scroll_to_cursor = true;
 				
@@ -314,48 +310,48 @@ main :: ()
 						split_merge_right (active_split_id);
 					
 				case .ESCAPE;
-					clear_cursors (buffer);
-					clear_selection (buffer);
+					buffer_clear_cursors (buffer.id);
+					buffer_clear_selection (buffer.id);
 				
 				case .RETURN;
-					insert_at_cursor (buffer, #char "\n", ALL_CURSORS);
+					buffer_insert_at_cursor (buffer.id, #char "\n", ALL_CURSORS);
 					modified = true;
 					scroll_to_cursor = true;
 				
 				case .BACKSPACE;
 					if event.mods == .CONTROL
-						skip_word_backward (buffer, true, ALL_CURSORS, select = true);
-					modified = backspace_selection (buffer, ALL_CURSORS);
-					merge_duplicate_cursors (buffer);
+						buffer_skip_word_backward (buffer.id, true, ALL_CURSORS, select = true);
+					modified = buffer_backspace_selection (buffer.id, ALL_CURSORS);
+					buffer_merge_duplicate_cursors (buffer.id);
 					scroll_to_cursor = true;
 				
 				case .DELETE;
 					if event.mods == .CONTROL
-						skip_word_forward (buffer, true, ALL_CURSORS, select = true);
-					modified = delete_selection (buffer, ALL_CURSORS);
-					merge_duplicate_cursors (buffer);
+						buffer_skip_word_forward (buffer.id, true, ALL_CURSORS, select = true);
+					modified = buffer_delete_selection (buffer.id, ALL_CURSORS);
+					buffer_merge_duplicate_cursors (buffer.id);
 					scroll_to_cursor = true;
 				
 				case .LEFT;
 					if flagged (event.mods, .CONTROL) && !flagged (event.mods, .ALT)
-						skip_word_backward (buffer, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+						buffer_skip_word_backward (buffer.id, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
 					else
-						move_cursor_backward (buffer, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-					merge_duplicate_cursors (buffer);
+						buffer_move_cursor_backward (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+					buffer_merge_duplicate_cursors (buffer.id);
 					scroll_to_cursor = true;
 				
 				case .RIGHT;
 					if remove_flag (event.mods, .SHIFT) == .CONTROL
-						skip_word_forward (buffer, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+						buffer_skip_word_forward (buffer.id, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
 					else
-						move_cursor_forward (buffer, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-					merge_duplicate_cursors (buffer);
+						buffer_move_cursor_forward (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+					buffer_merge_duplicate_cursors (buffer.id);
 					scroll_to_cursor = true;
 				
 				case .UP;
 					if event.mods == Mods.SHIFT | .ALT
 					{
-						add_cursor_on_previous_line (buffer, ALL_CURSORS);
+						buffer_add_cursor_on_previous_line (buffer.id, ALL_CURSORS);
 						scroll_to_cursor = true;
 					}
 					else if event.mods == Mods.CONTROL
@@ -365,15 +361,15 @@ main :: ()
 					}
 					else
 					{
-						move_cursor_to_previous_line (buffer, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-						merge_duplicate_cursors (buffer);
+						buffer_move_cursor_to_previous_line (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+						buffer_merge_duplicate_cursors (buffer.id);
 						scroll_to_cursor = true;
 					}
 					
 				case .DOWN;
 					if event.mods == Mods.SHIFT | .ALT
 					{
-						add_cursor_on_next_line (buffer, ALL_CURSORS);
+						buffer_add_cursor_on_next_line (buffer.id, ALL_CURSORS);
 						scroll_to_cursor = true;
 					}
 					else if event.mods == Mods.CONTROL
@@ -383,8 +379,8 @@ main :: ()
 					}
 					else
 					{
-						move_cursor_to_next_line (buffer, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-						merge_duplicate_cursors (buffer);
+						buffer_move_cursor_to_next_line (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+						buffer_merge_duplicate_cursors (buffer.id);
 						scroll_to_cursor = true;
 					}
 
@@ -398,10 +394,10 @@ main :: ()
 					{
 						for 1..30
 						{
-							if !move_cursor_to_previous_line (buffer, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
+							if !buffer_move_cursor_to_previous_line (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
 								break;
 						}
-						merge_duplicate_cursors (buffer);
+						buffer_merge_duplicate_cursors (buffer.id);
 						scroll_to_cursor = true;
 					}
 				
@@ -415,10 +411,10 @@ main :: ()
 					{
 						for 1..30
 						{
-							if !move_cursor_to_next_line (buffer, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
+							if !buffer_move_cursor_to_next_line (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
 								break;
 						}
-						merge_duplicate_cursors (buffer);
+						buffer_merge_duplicate_cursors (buffer.id);
 						scroll_to_cursor = true;
 					}
 				}
@@ -435,13 +431,13 @@ main :: ()
 					if event.mods == Mods.ALT
 					{
 						offset := get_closest_character (layout, event.mouse_position);
-						add_cursor_at_offset (buffer, offset);
+						buffer_add_cursor_at_offset (buffer.id, offset);
 					}
 					else
 					{
 						offset := get_closest_character (layout, platform_get_mouse_position ());
-						clear_cursors (buffer);
-						move_cursor_to_offset (buffer, offset, WRITE_HEAD);
+						buffer_clear_cursors (buffer.id);
+						buffer_move_cursor_to_offset (buffer.id, offset, WRITE_HEAD);
 						is_dragging_cursor = true;
 					}
 					scroll_to_cursor = true;
@@ -462,8 +458,8 @@ main :: ()
 			if is_dragging_cursor
 			{
 				offset := get_closest_character (layout, platform_get_mouse_position ());
-				clear_cursors (buffer);
-				move_cursor_to_offset (buffer, offset, WRITE_HEAD, select = true);
+				buffer_clear_cursors (buffer.id);
+				buffer_move_cursor_to_offset (buffer.id, offset, WRITE_HEAD, select = true);
 				scroll_to_cursor = true;
 			}
 			else if is_dragging_scrollbar
