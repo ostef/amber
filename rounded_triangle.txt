@@ -1,0 +1,105 @@
+a := p0;
+b := p1;
+c := p2;
+ab := normalized (b - a);
+ac := normalized (c - a);
+ba := -ab;
+bc := normalized (c - b);
+cb := -bc;
+ca := -ac;
+a_theta := angle (ab, ac);
+b_theta := angle (bc, ba);
+c_theta := angle (ca, cb);
+a += normalized (ab + ac) * corner_radius / sin (a_theta * 0.5);
+b += normalized (ba + bc) * corner_radius / sin (b_theta * 0.5);
+c += normalized (cb + ca) * corner_radius / sin (c_theta * 0.5);
+
+uv_radius := (corner_radius / length (p1 - p0)) * length (uv1 - uv0);
+uv_a := uv0;
+uv_b := uv1;
+uv_c := uv2;
+uv_ab := normalized (uv_b - uv_a);
+uv_ac := normalized (uv_c - uv_a);
+uv_ba := -uv_ab;
+uv_bc := normalized (uv_c - uv_b);
+uv_cb := -uv_bc;
+uv_ca := -uv_ac;
+uv_a_theta := angle (uv_ab, uv_ac);
+uv_b_theta := angle (uv_bc, uv_ba);
+uv_c_theta := angle (uv_ca, uv_cb);
+uv_a -= normalized (uv_ab + uv_ac) * uv_radius / sin (uv_a_theta * 0.5);
+uv_b -= normalized (uv_ba + uv_bc) * uv_radius / sin (uv_b_theta * 0.5);
+uv_c -= normalized (uv_cb + uv_ca) * uv_radius / sin (uv_c_theta * 0.5);
+
+theta0 := -angle (Vec2f.{ 1, 0 }, ac) - PI / 2;
+theta0_len := -2 * PI + a_theta + PI;
+theta1 := -angle (Vec2f.{ 1, 0 }, ba) - PI / 2;
+theta1_len := -2 * PI + b_theta + PI;
+theta2 := -angle (Vec2f.{ 1, 0 }, cb) - PI / 2;
+theta2_len := -2 * PI + c_theta + PI;
+
+draw_triangle (a, b, c, color, 0, uv0 = uv_a, uv1 = uv_b, uv2 = uv_c);
+// Corners
+if flagged (round_corners, .FIRST)
+	draw_semi_circle (a, corner_radius, theta0, theta0_len, color, uv_center = uv_a, uv_radius = uv_radius);
+if flagged (round_corners, .FIRST)
+	draw_semi_circle (b, corner_radius, theta1, theta1_len, color, uv_center = uv_b, uv_radius = uv_radius);
+if flagged (round_corners, .FIRST)
+	draw_semi_circle (c, corner_radius, theta2, theta2_len, color, uv_center = uv_c, uv_radius = uv_radius);
+// Border p0 to p1
+draw_triangle (
+	a + vec2f (ab.y, -ab.x) * corner_radius,
+	a,
+	b,
+	color,
+	uv0 = uv_a + vec2f (uv_ab.y, -uv_ab.x) * uv_radius,
+	uv1 = uv_a,
+	uv2 = uv_b
+);
+draw_triangle (
+	a + vec2f (ab.y, -ab.x) * corner_radius,
+	b + vec2f (-ba.y, ba.x) * corner_radius,
+	b,
+	color,
+	uv0 = uv_a + vec2f (uv_ab.y, -uv_ab.x) * uv_radius,
+	uv1 = uv_b + vec2f (-uv_ba.y, uv_ba.x) * uv_radius,
+	uv2 = uv_b
+);
+// Border p1 to p2
+draw_triangle (
+	b + vec2f (bc.y, -bc.x) * corner_radius,
+	b,
+	c,
+	color,
+	uv0 = uv_b + vec2f (uv_bc.y, -uv_bc.x) * uv_radius,
+	uv1 = uv_b,
+	uv2 = uv_c
+);
+draw_triangle (
+	b + vec2f (bc.y, -bc.x) * corner_radius,
+	c + vec2f (-cb.y, cb.x) * corner_radius,
+	c,
+	color,
+	uv0 = uv_b + vec2f (uv_bc.y, -uv_bc.x) * uv_radius,
+	uv1 = uv_c + vec2f (-uv_cb.y, uv_cb.x) * uv_radius,
+	uv2 = uv_c
+);
+// Border p2 to p0
+draw_triangle (
+	c + vec2f (ca.y, -ca.x) * corner_radius,
+	c,
+	a,
+	color,
+	uv0 = uv_c + vec2f (uv_ca.y, -uv_ca.x) * uv_radius,
+	uv1 = uv_c,
+	uv2 = uv_a
+);
+draw_triangle (
+	c + vec2f (ca.y, -ca.x) * corner_radius,
+	a + vec2f (-ac.y, ac.x) * corner_radius,
+	a,
+	color,
+	uv0 = uv_c + vec2f (uv_ca.y, -uv_ca.x) * uv_radius,
+	uv1 = uv_a + vec2f (-uv_ac.y, uv_ac.x) * uv_radius,
+	uv2 = uv_a
+);
