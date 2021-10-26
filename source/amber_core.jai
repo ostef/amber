@@ -134,7 +134,6 @@ is_inf :: (value : f32) -> bool #must
 	return false;
 }
 
-
 is_nan :: (value : f64) -> bool #must
 {
 	uf := <<cast (*u64) *value;

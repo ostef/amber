@@ -51,7 +51,7 @@ buffer_init :: (buffer_id : Buffer_ID, capacity : s64)
 	eol_sequence = .PLATFORM;
 }
 
-buffer_clear :: (buffer_id : Buffer_ID)
+buffer_clear :: inline (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
 	gap = allocated;
@@ -85,7 +85,7 @@ buffer_reset :: (buffer_id : Buffer_ID)
 	reset_array (*history.edit_buffer);
 }
 
-buffer_clear_history :: (buffer_id : Buffer_ID)
+buffer_clear_history :: inline (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
 	clear_array (*history.edits);
@@ -119,7 +119,7 @@ buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
 	gap       = new_gap;
 }
 
-buffer_get_count :: (buffer_id : Buffer_ID) -> s64 #must
+buffer_get_count :: inline (buffer_id : Buffer_ID) -> s64 #must
 {
 	using buffer := get_buffer (buffer_id);
 	
@@ -127,7 +127,7 @@ buffer_get_count :: (buffer_id : Buffer_ID) -> s64 #must
 }
 @Amber_API
 
-buffer_get_codepoint :: (buffer_id : Buffer_ID, index : s64) -> u32 #must
+buffer_get_codepoint :: inline (buffer_id : Buffer_ID, index : s64) -> u32 #must
 {
 	using buffer := get_buffer (buffer_id);
 	assert (index >= 0 && index < buffer_get_count (buffer_id), "Buffer index % is out of range [0;%).", index, buffer_get_count (buffer_id));
@@ -136,7 +136,7 @@ buffer_get_codepoint :: (buffer_id : Buffer_ID, index : s64) -> u32 #must
 }
 @Amber_API
 
-buffer_get_cursor :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> Buffer_Cursor #must
+buffer_get_cursor :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> Buffer_Cursor #must
 {
 	using buffer := get_buffer (buffer_id);
 	assert (cursor_id >= WRITE_HEAD && cursor_id <= xx other_cursors.count, "Invalid cursor id (expected [0;%], got %).", other_cursors.count, cursor_id);
@@ -147,7 +147,7 @@ buffer_get_cursor :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> Bu
 }
 @Amber_API
 
-buffer_get_cursor_ptr :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> *Buffer_Cursor #must
+buffer_get_cursor_ptr :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> *Buffer_Cursor #must
 {
 	using buffer := get_buffer (buffer_id);
 	assert (cursor_id >= WRITE_HEAD && cursor_id <= xx other_cursors.count, "Invalid cursor id (expected [0;%], got %).", other_cursors.count, cursor_id);
@@ -157,7 +157,7 @@ buffer_get_cursor_ptr :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -
 	return *other_cursors[cast (s64) cursor_id - 1];
 }
 
-buffer_cursor_is_at_bol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool #must
+buffer_cursor_is_at_bol :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool #must
 {
 	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
 	
@@ -165,7 +165,7 @@ buffer_cursor_is_at_bol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID)
 }
 @Amber_API
 
-buffer_cursor_is_at_eol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool #must
+buffer_cursor_is_at_eol :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool #must
 {
 	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
 	
@@ -292,7 +292,7 @@ buffer_move_cursor_to_offset :: (buffer_id : Buffer_ID, new_offset : s64, cursor
 }
 @Amber_API
 
-buffer_move_write_head_to_line_and_column :: (buffer_id : Buffer_ID, new_line : s64, new_column : s64, select := false) -> bool
+buffer_move_write_head_to_line_and_column :: inline (buffer_id : Buffer_ID, new_line : s64, new_column : s64, select := false) -> bool
 {
 	moved := buffer_move_write_head_to_line (buffer_id, new_line, select);
 	moved |= buffer_move_write_head_to_column (buffer_id, new_column, select);
@@ -357,7 +357,7 @@ buffer_move_cursor_to_eol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_I
 }
 @Amber_API
 
-buffer_move_write_head_to_column :: (buffer_id : Buffer_ID, column : s64, select := false) -> bool
+buffer_move_write_head_to_column :: inline (buffer_id : Buffer_ID, column : s64, select := false) -> bool
 {
 	using buffer := get_buffer (buffer_id);
 	moved := false;
@@ -438,7 +438,7 @@ buffer_move_cursor_to_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cu
 }
 @Amber_API
 
-buffer_move_write_head_to_line :: (buffer_id : Buffer_ID, line : s64, select := false) -> bool
+buffer_move_write_head_to_line :: inline (buffer_id : Buffer_ID, line : s64, select := false) -> bool
 {
 	using buffer := get_buffer (buffer_id);
 	moved := false;
@@ -600,7 +600,7 @@ buffer_skip_word_backward :: (buffer_id : Buffer_ID, stop_at_word_separators : b
 }
 @Amber_API
 
-buffer_clear_selection :: (buffer_id : Buffer_ID)
+buffer_clear_selection :: inline (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
 	for :cursors * buffer
@@ -608,7 +608,7 @@ buffer_clear_selection :: (buffer_id : Buffer_ID)
 }
 @Amber_API
 
-buffer_clear_cursors :: (buffer_id : Buffer_ID)
+buffer_clear_cursors :: inline (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
 	clear_array (*other_cursors);
@@ -779,7 +779,7 @@ buffer_add_cursor_on_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cur
 }
 @Amber_API
 
-buffer_remove_cursor :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID)
+buffer_remove_cursor :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID)
 {
 	using buffer := get_buffer (buffer_id);
 	assert (cursor_id > 0 && cursor_id < xx other_cursors.count,

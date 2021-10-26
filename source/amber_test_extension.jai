@@ -12,7 +12,7 @@ init_extension :: (id : Extension_ID, using amber : *Amber_Hooks) -> bool
 	language.name = "foo";
 	language.process_buffer = foo_process_buffer;
 	on_input = handle_input_event;
-
+	
 	return language_register (language);
 }
 
@@ -29,9 +29,7 @@ handle_input_event :: (using amber : *Amber_Hooks, event : Input_Event) -> bool
 		if event.key_code == .H && event.mods == .CONTROL
 		{
 			for i : 0.."Hello Sailor!".count - 1
-			{
-				buffer_insert_at_cursor (cast (Buffer_ID) 1, "Hello Sailor!"[i], ALL_CURSORS);
-			}
+				buffer_insert_at_cursor (split_get_active_buffer (get_active_split ()), "Hello Sailor!"[i], ALL_CURSORS);
 			
 			return true;
 		}

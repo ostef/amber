@@ -215,6 +215,8 @@ draw_init :: ()
 		glBindVertexArray (0);
 		glBindBuffer (GL_ARRAY_BUFFER, 0);
 	}
+
+	draw_context.clear_color = RGBA_BLACK;
 }
 
 draw_begin :: ()

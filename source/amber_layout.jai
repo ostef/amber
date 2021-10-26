@@ -26,18 +26,22 @@ Color_Range :: struct
 	color : RGBA;
 }
 
-init_text_layout :: (layout : *Text_Layout, capacity : s64)
+text_layout_init :: (layout_id : Text_Layout_ID, capacity : s64)
 {
-	init_array (*layout.rects, capacity, heap_allocator);
-	init_array (*layout.wrapped_lines, capacity / 100, heap_allocator);
+	using layout := get_text_layout (layout_id);
+	init_array (*rects, capacity, heap_allocator);
+	init_array (*wrapped_lines, capacity / 100, heap_allocator);
 }
 
-base_line :: (using layout : *Text_Layout) -> s64 #must
+text_layout_get_base_line :: (layout_id : Text_Layout_ID) -> s64 #must
 {
+	using layout := get_text_layout (layout_id);
+	
 	return clamp (cast (s64) visual_scroll.y, 0, wrapped_lines.count - 1);
 }
+@Amber_API
 
-layout_text :: (using layout : *Text_Layout)
+text_layout_compute :: (layout_id : Text_Layout_ID)
 {
 	wrap_line :: () #expand
 	{
@@ -47,12 +51,13 @@ layout_text :: (using layout : *Text_Layout)
 		`pen.y += `page.ascent - `page.descent;
 	}
 
+	using layout := get_text_layout (layout_id);
+	buffer := get_buffer (buffer_id);
+	font   := get_font (font_id);
 	clear_array (*wrapped_lines);
 	clear_array (*rects);
 	
-	buffer := get_buffer (buffer_id);
-	font   := get_font (font_id);
-	page   := load_page (font, font_height);
+	page := load_page (font, font_height);
 	line : Line;
 	pen  : Vec2f;
 	extents = vec2f (0, 0);
@@ -109,8 +114,9 @@ layout_text :: (using layout : *Text_Layout)
 	extents.x = max (extents.x, pen.x);
 	extents.y = max (extents.y, pen.y);
 }
+@Amber_API
 
-draw_line_numbers :: (using layout : *Text_Layout, color : RGBA, highlight_color : RGBA)
+draw_line_numbers :: (layout_id : Text_Layout_ID, color : RGBA, highlight_color : RGBA)
 {
 	draw_justified_number :: (page : *Font_Page, position : Vec2f, n : s64, width : s64, color : RGBA)
 	{
@@ -145,6 +151,7 @@ draw_line_numbers :: (using layout : *Text_Layout, color : RGBA, highlight_color
 		}
 	}
 
+	using layout := get_text_layout (layout_id);
 	buffer := get_buffer (buffer_id);
 	font   := get_font (font_id);
 	page   := load_page (font, font_height);
@@ -176,7 +183,7 @@ draw_line_numbers :: (using layout : *Text_Layout, color : RGBA, highlight_color
 
 	position := vec2f (area.x1 - width + page.space_advance, area.y1 - visual_scroll.y * line_height);
 	current_line_index := -1;
-	line_range := get_visible_line_range (layout);
+	line_range := text_layout_get_visible_line_range (layout_id);
 	for line_index : line_range
 	{
 		line := wrapped_lines[line_index];
@@ -194,8 +201,9 @@ draw_line_numbers :: (using layout : *Text_Layout, color : RGBA, highlight_color
 	}
 }
 
-draw_selection :: (using layout : *Text_Layout, color : RGBA)
+draw_selection :: (layout_id : Text_Layout_ID, color : RGBA)
 {
+	using layout := get_text_layout (layout_id);
 	prev_clip := draw_set_clipping (true);
 	defer draw_set_clipping (prev_clip);
 	prev_clip_rect := draw_set_clip_rect (recti (area));
@@ -209,19 +217,19 @@ draw_selection :: (using layout : *Text_Layout, color : RGBA)
 	font   := get_font (font_id);
 	page   := load_page (font, font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
-	visible_lines := get_visible_line_range (layout);
+	visible_lines := text_layout_get_visible_line_range (layout_id);
 	for :cursors cur : buffer
 	{
 		if cur.selection == 0 then continue;
 		
 		for li : visible_lines
 		{
-			line_range := get_line_range (layout, li);
+			line_range := text_layout_get_line_range (layout_id, li);
 			selection_rect : Rectf;
 			was_selected := false;
 			for i : line_range
 			{
-				rect := get_rect (layout, i);
+				rect := text_layout_get_rect (layout_id, i);
 				is_selected := cur.selection > 0 && i >= cur.offset && i < cur.offset + cur.selection - 1 ||
 							   cur.selection < 0 && i >= cur.offset + cur.selection && i < cur.offset;
 				defer was_selected = is_selected;
@@ -246,8 +254,9 @@ draw_selection :: (using layout : *Text_Layout, color : RGBA)
 	}
 }
 
-draw_line_highlight :: (using layout : *Text_Layout, color : RGBA)
+draw_line_highlight :: (layout_id : Text_Layout_ID, color : RGBA)
 {
+	using layout := get_text_layout (layout_id);
 	prev_clip := draw_set_clipping (true);
 	defer draw_set_clipping (prev_clip);
 	prev_clip_rect := draw_set_clip_rect (recti (area));
@@ -258,24 +267,26 @@ draw_line_highlight :: (using layout : *Text_Layout, color : RGBA)
 	defer draw_set_shader (prev_shader);
 
 	buffer := get_buffer (buffer_id);
-	rect := get_rect (layout, buffer.offset);
+	rect   := text_layout_get_rect (layout_id, buffer.offset);
 	rect.x1 = area.x1;
 	rect.x2 = area.x2;
 	draw_rect (rect, color);
 }
 
-draw_text_layout :: inline (using layout : *Text_Layout, color : RGBA)
+draw_text_layout :: inline (layout_id : Text_Layout_ID, color : RGBA)
 {
+	using layout := get_text_layout (layout_id);
 	colors : [1]Color_Range;
 	colors[0].range = rangei (0, rects.count - 1);
 	colors[0].color = color;
-	draw_text_layout (layout, colors);
+	draw_text_layout (layout_id, colors);
 }
 
-draw_text_layout :: (using layout : *Text_Layout, color_ranges : []Color_Range)
+draw_text_layout :: (layout_id : Text_Layout_ID, color_ranges : []Color_Range)
 {
 	assert (color_ranges.count > 0, "Color range array is empty.");
 
+	using layout := get_text_layout (layout_id);
 	prev_clip := draw_set_clipping (true);
 	defer draw_set_clipping (prev_clip);
 	prev_clip_rect := draw_set_clip_rect (recti (area));
@@ -289,7 +300,7 @@ draw_text_layout :: (using layout : *Text_Layout, color_ranges : []Color_Range)
 	font   := get_font (font_id);
 	page   := load_page (font, font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
-	visible_range := get_visible_range (layout);
+	visible_range := text_layout_get_visible_range (layout_id);
 	color_index := 0;
 	for i : visible_range
 	{
@@ -308,7 +319,7 @@ draw_text_layout :: (using layout : *Text_Layout, color_ranges : []Color_Range)
 				draw_cursor = true;
 		}
 
-		rect := get_rect (layout, i);
+		rect := text_layout_get_rect (layout_id, i);
 		if draw_cursor
 		{
 			draw_set_texture (0);
@@ -343,24 +354,27 @@ draw_text_layout :: (using layout : *Text_Layout, color_ranges : []Color_Range)
 	}
 }
 
-get_rect :: inline (using layout : *Text_Layout, index : s64) -> Rectf #must
+text_layout_get_rect :: inline (layout_id : Text_Layout_ID, index : s64) -> Rectf #must
 {
+	using layout := get_text_layout (layout_id);
 	font := get_font (font_id);
 	page := load_page (font, font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
 	
 	return move (rects[index], area.x1 - visual_scroll.x * page.space_advance, area.y1 - visual_scroll.y * line_height);
 }
+@Amber_API
 
-get_visible_range :: (using layout : *Text_Layout) -> Rangei #must
+text_layout_get_visible_range :: (layout_id : Text_Layout_ID) -> Rangei #must
 {
+	using layout := get_text_layout (layout_id);
 	font := get_font (font_id);
 	page := load_page (font, font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
 	result : Rangei;
-	result.min = wrapped_lines[base_line (layout)].first_character;
+	result.min = wrapped_lines[text_layout_get_base_line (layout_id)].first_character;
 	result.max = rects.count - 1;
-	for i : base_line (layout)..wrapped_lines.count - 1
+	for i : text_layout_get_base_line (layout_id)..wrapped_lines.count - 1
 	{
 		if i * line_height - visual_scroll.y * line_height >= rect_height (area)
 		{
@@ -372,16 +386,18 @@ get_visible_range :: (using layout : *Text_Layout) -> Rangei #must
 	
 	return result;
 }
+@Amber_API
 
-get_visible_line_range :: (using layout : *Text_Layout) -> Rangei #must
+text_layout_get_visible_line_range :: (layout_id : Text_Layout_ID) -> Rangei #must
 {
+	using layout := get_text_layout (layout_id);
 	font := get_font (font_id);
 	page := load_page (font, font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
 	result : Rangei;
-	result.min = base_line (layout);
+	result.min = text_layout_get_base_line (layout_id);
 	result.max = wrapped_lines.count - 1;
-	for i : base_line (layout)..wrapped_lines.count - 1
+	for i : text_layout_get_base_line (layout_id)..wrapped_lines.count - 1
 	{
 		if i * line_height - visual_scroll.y * line_height >= rect_height (area)
 		{
@@ -393,18 +409,22 @@ get_visible_line_range :: (using layout : *Text_Layout) -> Rangei #must
 	
 	return result;
 }
+@Amber_API
 
-get_line_range :: inline (using layout : *Text_Layout, line_index : s64) -> Rangei #must
+text_layout_get_line_range :: inline (layout_id : Text_Layout_ID, line_index : s64) -> Rangei #must
 {
+	using layout := get_text_layout (layout_id);
 	result : Rangei;
 	result.min = wrapped_lines[line_index].first_character;
 	result.max = ifx line_index + 1 < wrapped_lines.count then wrapped_lines[line_index + 1].first_character - 1 else rects.count - 1;
 	
 	return result;
 }
+@Amber_API
 
-get_closest_character :: (using layout : *Text_Layout, position : Vec2f) -> s64 #must
+text_layout_get_closest_character :: (layout_id : Text_Layout_ID, position : Vec2f) -> s64 #must
 {
+	using layout := get_text_layout (layout_id);
 	font := get_font (font_id);
 	page := load_page (font, font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
@@ -414,16 +434,17 @@ get_closest_character :: (using layout : *Text_Layout, position : Vec2f) -> s64 
 	range : Rangei;
 	range.min = wrapped_lines[line_index].first_character;
 	range.max = ifx line_index == wrapped_lines.count - 1 then rects.count - 1 else wrapped_lines[line_index + 1].first_character - 1;
-	if position.x <= get_rect (layout, range.min).x1
+	if position.x <= text_layout_get_rect (layout_id, range.min).x1
 		return range.min;
-	else if position.x >= get_rect (layout, range.max).x2
+	else if position.x >= text_layout_get_rect (layout_id, range.max).x2
 		return range.max;
 	for i : range
 	{
-		rect := get_rect (layout, i);
+		rect := text_layout_get_rect (layout_id, i);
 		if contains (rect, position)
 			return i;
 	}
 	
 	return range.max;
 }
+@Amber_API

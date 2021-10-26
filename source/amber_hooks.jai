@@ -10,6 +10,7 @@ Amber_Hooks :: struct
 	buffer_clear_history : (Buffer_ID);
 	buffer_clear_redo_history : (Buffer_ID);
 	buffer_clear_selection : (Buffer_ID);
+	buffer_close : (Buffer_ID);
 	buffer_cursor_is_at_bol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_cursor_is_at_eol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_delete_selection : (Buffer_ID, Buffer_Cursor_ID) -> bool;
@@ -31,7 +32,7 @@ Amber_Hooks :: struct
 	buffer_move_write_head_to_column : (Buffer_ID, s64, bool) -> bool;
 	buffer_move_write_head_to_line_and_column : (Buffer_ID, s64, s64, bool) -> bool;
 	buffer_move_write_head_to_line : (Buffer_ID, s64, bool) -> bool;
-	buffer_open : (Split_ID) -> Buffer_ID;
+	buffer_open : (Split_ID, string) -> Buffer_ID;
 	buffer_remove_cursor : (Buffer_ID, Buffer_Cursor_ID);
 	buffer_set_text_layout : (Buffer_ID, Text_Layout_ID);
 	buffer_skip_word_backward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
@@ -112,13 +113,25 @@ Amber_Hooks :: struct
 	platform_sleep_milliseconds : (s64);
 	platform_write_file : (*void, *void, s64) -> (s64, bool);
 	platform_write_to_file : (string, string) -> (s64, bool);
+	split_create_above : (Split_ID) -> Split_ID;
+	split_create_below : (Split_ID) -> Split_ID;
+	split_create_left : (Split_ID) -> Split_ID;
+	split_create_right : (Split_ID) -> Split_ID;
 	split_exists : (Split_ID) -> bool;
 	split_get_active_buffer : (Split_ID) -> Buffer_ID;
 	split_get_area : (Split_ID) -> Rect (T = f32);
 	split_get_buffer_count : (Split_ID) -> s64;
 	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
+	split_merge_above : (Split_ID);
+	split_merge_below : (Split_ID);
 	split_merge_left : (Split_ID);
 	split_merge_right : (Split_ID);
-	split_vertically : (Split_ID) -> Split_ID;
+	text_layout_compute : (Text_Layout_ID);
 	text_layout_exists : (Text_Layout_ID) -> bool;
+	text_layout_get_base_line : (Text_Layout_ID) -> s64;
+	text_layout_get_closest_character : (Text_Layout_ID, Vec2 (T = f32)) -> s64;
+	text_layout_get_line_range : (Text_Layout_ID, s64) -> Range (T = s64);
+	text_layout_get_rect : (Text_Layout_ID, s64) -> Rect (T = f32);
+	text_layout_get_visible_line_range : (Text_Layout_ID) -> Range (T = s64);
+	text_layout_get_visible_range : (Text_Layout_ID) -> Range (T = s64);
 }

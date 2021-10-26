@@ -42,25 +42,25 @@ get_active_split :: () -> Split_ID #must
 }
 @Amber_API
 
-buffer_exists :: (id : Buffer_ID) -> bool #must
+buffer_exists :: inline (id : Buffer_ID) -> bool #must
 {
 	return id > 0 && id <= xx buffers.max_occupied && buffers.slots[cast (s64) id - 1].occupied;
 }
 @Amber_API
 
-text_layout_exists :: (id : Text_Layout_ID) -> bool #must
+text_layout_exists :: inline (id : Text_Layout_ID) -> bool #must
 {
 	return id > 0 && id <= xx text_layouts.max_occupied && text_layouts.slots[cast (s64) id - 1].occupied;
 }
 @Amber_API
 
-split_exists :: (id : Split_ID) -> bool #must
+split_exists :: inline (id : Split_ID) -> bool #must
 {
 	return id > 0 && id <= xx splits.max_occupied && splits.slots[cast (s64) id - 1].occupied;
 }
 @Amber_API
 
-split_get_area :: (split_id : Split_ID) -> Rectf #must
+split_get_area :: inline (split_id : Split_ID) -> Rectf #must
 {
 	split := get_split (split_id);
 	
@@ -68,7 +68,7 @@ split_get_area :: (split_id : Split_ID) -> Rectf #must
 }
 @Amber_API
 
-split_get_buffer_count :: (split_id : Split_ID) -> s64 #must
+split_get_buffer_count :: inline (split_id : Split_ID) -> s64 #must
 {
 	split := get_split (split_id);
 	
@@ -76,7 +76,7 @@ split_get_buffer_count :: (split_id : Split_ID) -> s64 #must
 }
 @Amber_API
 
-split_get_buffer :: (split_id : Split_ID, index : s64) -> Buffer_ID #must
+split_get_buffer :: inline (split_id : Split_ID, index : s64) -> Buffer_ID #must
 {
 	split := get_split (split_id);
 	assert (index >= 0 && index < split.buffer_ids.count, "Invalid buffer index (expected [0;%), got %).", split.buffer_ids.count, index);
@@ -85,7 +85,7 @@ split_get_buffer :: (split_id : Split_ID, index : s64) -> Buffer_ID #must
 }
 @Amber_API
 
-split_get_active_buffer :: (split_id : Split_ID) -> Buffer_ID #must
+split_get_active_buffer :: inline (split_id : Split_ID) -> Buffer_ID #must
 {
 	split := get_split (split_id);
 	
@@ -93,7 +93,19 @@ split_get_active_buffer :: (split_id : Split_ID) -> Buffer_ID #must
 }
 @Amber_API
 
-split_vertically :: (split_id : Split_ID) -> Split_ID
+split_create_left :: inline (split_id : Split_ID) -> Split_ID
+{
+	split := get_split (split_id);
+	split.area = set_width (split.area, rect_width (split.area) * 0.5);
+	new_split := add_split ();
+	new_split.area = split.area;
+	split.area = move (split.area, rect_width (split.area), 0);
+	
+	return new_split.id;
+}
+@Amber_API
+
+split_create_right :: inline (split_id : Split_ID) -> Split_ID
 {
 	split := get_split (split_id);
 	split.area = set_width (split.area, rect_width (split.area) * 0.5);
@@ -104,12 +116,35 @@ split_vertically :: (split_id : Split_ID) -> Split_ID
 }
 @Amber_API
 
-split_merge_left :: (split_id : Split_ID)
+split_create_above :: inline (split_id : Split_ID) -> Split_ID
+{
+	split := get_split (split_id);
+	split.area = set_height (split.area, rect_height (split.area) * 0.5);
+	new_split := add_split ();
+	new_split.area = split.area;
+	split.area = move (split.area, 0, rect_height (split.area));
+	
+	return new_split.id;
+}
+@Amber_API
+
+split_create_below :: inline (split_id : Split_ID) -> Split_ID
+{
+	split := get_split (split_id);
+	split.area = set_height (split.area, rect_height (split.area) * 0.5);
+	new_split := add_split ();
+	new_split.area = move (split.area, 0, rect_height (split.area));
+	
+	return new_split.id;
+}
+@Amber_API
+
+split_merge_left :: inline (split_id : Split_ID)
 {
 	split := get_split (split_id);
 	for * splits
 	{
-		if it.area.x2 == split.area.x1
+		if it.area.x2 == split.area.x1 && it.area.y1 == split.area.y1 && it.area.y2 == split.area.y2
 		{
 			split.area.x1 = it.area.x1;
 			reset_array (*it.buffer_ids);
@@ -121,12 +156,12 @@ split_merge_left :: (split_id : Split_ID)
 }
 @Amber_API
 
-split_merge_right :: (split_id : Split_ID)
+split_merge_right :: inline (split_id : Split_ID)
 {
 	split := get_split (split_id);
 	for * splits
 	{
-		if it.area.x1 == split.area.x2
+		if it.area.x1 == split.area.x2 && it.area.y1 == split.area.y1 && it.area.y2 == split.area.y2
 		{
 			split.area.x2 = it.area.x2;
 			reset_array (*it.buffer_ids);
@@ -138,7 +173,41 @@ split_merge_right :: (split_id : Split_ID)
 }
 @Amber_API
 
-buffer_open :: (split_id : Split_ID) -> Buffer_ID
+split_merge_above :: inline (split_id : Split_ID)
+{
+	split := get_split (split_id);
+	for * splits
+	{
+		if it.area.y2 == split.area.y1 && it.area.x1 == split.area.x1 && it.area.x2 == split.area.x2
+		{
+			split.area.y1 = it.area.y1;
+			reset_array (*it.buffer_ids);
+			remove it;
+			
+			break;
+		}
+	}
+}
+@Amber_API
+
+split_merge_below :: inline (split_id : Split_ID)
+{
+	split := get_split (split_id);
+	for * splits
+	{
+		if it.area.y1 == split.area.y2 && it.area.x1 == split.area.x1 && it.area.x2 == split.area.x2
+		{
+			split.area.y2 = it.area.y2;
+			reset_array (*it.buffer_ids);
+			remove it;
+			
+			break;
+		}
+	}
+}
+@Amber_API
+
+buffer_open :: inline (split_id : Split_ID, filename : string) -> Buffer_ID
 {
 	split : *Split;
 	if splits.count == 0
@@ -147,8 +216,21 @@ buffer_open :: (split_id : Split_ID) -> Buffer_ID
 		split = get_split (split_id);
 	buffer := add_buffer ();
 	buffer.split_id = split.id;
+	str, ok := platform_read_entire_file (filename, temp_allocator);
+	utf8_str := utf8 (str);
+	if ok
+	{
+		buffer.filename = clone_string (filename, heap_allocator);
+		for utf8_str
+			buffer_insert_at_cursor (buffer.id, it, WRITE_HEAD);
+		buffer_move_cursor_to_beginning (buffer.id, WRITE_HEAD);
+	}
+
 	text_layout := add_text_layout ();
 	text_layout.split_id = split.id;
+	text_layout.font_id = 1;
+	text_layout.font_height = 16;
+	text_layout.area = split.area;
 	buffer_set_text_layout (buffer.id, text_layout.id);
 	push_into_array (*split.buffer_ids, buffer.id);
 	
@@ -156,7 +238,26 @@ buffer_open :: (split_id : Split_ID) -> Buffer_ID
 }
 @Amber_API
 
-buffer_set_text_layout :: (buffer_id : Buffer_ID, text_layout_id : Text_Layout_ID)
+buffer_close :: inline (buffer_id : Buffer_ID)
+{
+	buffer := get_buffer (buffer_id);
+	split  := get_split (buffer.split_id);
+	for split.buffer_ids
+	{
+		if it == buffer_id
+		{
+			remove it;
+			buffer_reset (buffer_id);
+			remove_from_slot_array (*buffers, xx buffer_id - 1);
+			
+			return;
+		}
+	}
+	panic ("Buffer with id % does not exist in split with id %.", buffer_id, split.id);
+}
+@Amber_API
+
+buffer_set_text_layout :: inline (buffer_id : Buffer_ID, text_layout_id : Text_Layout_ID)
 {
 	layout := get_text_layout (text_layout_id);
 	layout.buffer_id = buffer_id;
@@ -165,7 +266,7 @@ buffer_set_text_layout :: (buffer_id : Buffer_ID, text_layout_id : Text_Layout_I
 }
 @Amber_API
 
-add_buffer :: () -> *Buffer #must
+add_buffer :: inline () -> *Buffer #must
 {
 	buffer, index := insert_into_slot_array (*buffers);
 	buffer.id = cast (Buffer_ID) (index + 1);
@@ -174,16 +275,16 @@ add_buffer :: () -> *Buffer #must
 	return buffer;
 }
 
-add_text_layout :: () -> *Text_Layout #must
+add_text_layout :: inline () -> *Text_Layout #must
 {
 	layout, index := insert_into_slot_array (*text_layouts);
 	layout.id = cast (Text_Layout_ID) (index + 1);
-	init_text_layout (layout, 10000);
+	text_layout_init (layout.id, 10000);
 	
 	return layout;
 }
 
-add_split :: () -> *Split #must
+add_split :: inline () -> *Split #must
 {
 	split, index := insert_into_slot_array (*splits);
 	split.id = cast (Split_ID) (index + 1);
@@ -192,7 +293,7 @@ add_split :: () -> *Split #must
 	return split;
 }
 
-get_buffer :: inline (id : Buffer_ID) -> *Buffer #must #dump
+get_buffer :: inline (id : Buffer_ID) -> *Buffer #must
 {
 	assert (buffer_exists (id), "Invalid buffer id (%).", id);
 	
@@ -211,6 +312,15 @@ get_split :: inline (id : Split_ID) -> *Split #must
 	assert (split_exists (id), "Invalid split id (%).", id);
 	
 	return get_ptr (*splits, cast (s64) id - 1);
+}
+
+draw_split :: inline (split_id : Split_ID)
+{
+	active_buffer := get_buffer (split_get_active_buffer (split_id));
+	draw_line_numbers (active_buffer.text_layout_id, rgba (150, 150, 150), RGBA_WHITE);
+	draw_line_highlight (active_buffer.text_layout_id, rgba (255, 255, 255, 10));
+	draw_selection (active_buffer.text_layout_id, rgba (50, 100, 200));
+	draw_text_layout (active_buffer.text_layout_id, RGBA_WHITE);
 }
 
 main :: ()
@@ -232,41 +342,19 @@ main :: ()
 		platform_open_error_box ("Could not load font '%'.", FONT_NAME);
 		return;
 	}
-	buffer := add_buffer ();
-	buffer.language_id = 1;
-	str, ok := platform_read_entire_file ("some_file.txt", temp_allocator);
-	if ok
-	{
-		start := platform_get_time ();
-		for i : 0..str.count - 1
-			buffer_insert_at_cursor (buffer.id, xx str[i], WRITE_HEAD);
-		end := platform_get_time ();
-		println ("Filling buffer took % milliseconds.", (end - start) * 1000);
-
-		start = platform_get_time ();
-		buffer_move_cursor_to_beginning (buffer.id, WRITE_HEAD);
-		end = platform_get_time ();
-		println ("Moving the cursor took % milliseconds.", (end - start) * 1000);
-	}
-	layout, layout_index := insert_into_slot_array (*text_layouts);
-	layout.id = xx (layout_index + 1);
-	layout.buffer_id = buffer.id;
-	buffer.text_layout_id = layout.id;
-	layout.font_id = font_id;
-	layout.font_height = 16;
-	init_text_layout (layout, 10000);
 	viewport := platform_get_viewport_size ();
 	split := add_split ();
 	active_split_id = split.id;
+	buffer_id := buffer_open (active_split_id, "some_file.txt");
+	buffer := get_buffer (buffer_id);
+	layout := get_text_layout (buffer.text_layout_id);
 	
 	extensions_on_startup ();
 
-	cursor_index := 0;
-	draw_set_clear_color (rgba (0, 0, 0, 255));
 	running = true;
 	page := load_page (get_font (font_id), 16);
 	line_height := cast (f32) (page.ascent - page.descent);
-	is_dragging_cursor := false;
+	is_dragging_cursor    := false;
 	is_dragging_scrollbar := false;
 	scrollbar_drag_offset := 0.0;
 	scrollbar_rect : Rectf;
@@ -301,14 +389,6 @@ main :: ()
 			case .KEY_REPEAT;
 				if event.key_code ==
 				{
-				case .V;
-					if event.mods == .CONTROL
-						split_vertically (active_split_id);
-					else if event.mods == Mods.CONTROL | .SHIFT
-						split_merge_left (active_split_id);
-					else if event.mods == Mods.CONTROL | .ALT
-						split_merge_right (active_split_id);
-					
 				case .ESCAPE;
 					buffer_clear_cursors (buffer.id);
 					buffer_clear_selection (buffer.id);
@@ -430,12 +510,12 @@ main :: ()
 				{
 					if event.mods == Mods.ALT
 					{
-						offset := get_closest_character (layout, event.mouse_position);
+						offset := text_layout_get_closest_character (layout.id, event.mouse_position);
 						buffer_add_cursor_at_offset (buffer.id, offset);
 					}
 					else
 					{
-						offset := get_closest_character (layout, platform_get_mouse_position ());
+						offset := text_layout_get_closest_character (layout.id, platform_get_mouse_position ());
 						buffer_clear_cursors (buffer.id);
 						buffer_move_cursor_to_offset (buffer.id, offset, WRITE_HEAD);
 						is_dragging_cursor = true;
@@ -457,7 +537,7 @@ main :: ()
 		{
 			if is_dragging_cursor
 			{
-				offset := get_closest_character (layout, platform_get_mouse_position ());
+				offset := text_layout_get_closest_character (layout.id, platform_get_mouse_position ());
 				buffer_clear_cursors (buffer.id);
 				buffer_move_cursor_to_offset (buffer.id, offset, WRITE_HEAD, select = true);
 				scroll_to_cursor = true;
@@ -494,11 +574,11 @@ main :: ()
 		{
 			layout.area = area;
 			start := platform_get_time ();
-			layout_text (layout);
+			text_layout_compute (layout.id);
 			end := platform_get_time ();
 			println ("Laying out took % ms.", (end - start) * 1000);
 		}
-		cursor_rect := get_rect (layout, buffer.offset);
+		cursor_rect := text_layout_get_rect (layout.id, buffer.offset);
 		layout.scroll.x = clamp (layout.scroll.x, 0, max ((layout.extents.x - rect_width (layout.area)) / cast (f32) (page.space_advance) - 1, 0));
 		if scroll_to_cursor
 		{
@@ -522,10 +602,11 @@ main :: ()
 		
 		draw_begin ();
 		
-		draw_line_numbers (layout, rgba (150, 150, 150), RGBA_WHITE);
-		draw_line_highlight (layout, rgba (255, 255, 255, 10));
-		draw_selection (layout, rgba (50, 100, 200));
-		draw_text_layout (layout, RGBA_WHITE);
+		for splits
+		{
+			id := cast (Split_ID) (it_index + 1);
+			draw_split (id);
+		}
 		
 		max_visible := layout.extents.y - line_height + rect_height (layout.area);
 		visible_area := rect_height (layout.area) / max_visible;
