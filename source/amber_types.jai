@@ -75,7 +75,7 @@ Extension_Callbacks :: struct
 {
 	on_startup  : (*Amber_Hooks);
 	on_shutdown : (*Amber_Hooks);
-	on_input    : (*Amber_Hooks, Input_Event) -> bool;
+	on_input    : (*Amber_Hooks, Input_Event) -> Event_Result, bool;
 	on_update   : (*Amber_Hooks);
 }
 
@@ -127,6 +127,23 @@ Font_Info :: struct
 }
 
 // Input
+
+Event_Result :: struct
+{
+	buffer_modified  : bool;
+	scroll_to_cursor : bool;
+	show_scrollbar   : bool;
+}
+
+operator | :: inline (left : Event_Result, right : Event_Result) -> Event_Result #must
+{
+	result : Event_Result = ---;
+	result.buffer_modified  = left.buffer_modified  || right.buffer_modified;
+	result.scroll_to_cursor = left.scroll_to_cursor || right.scroll_to_cursor;
+	result.show_scrollbar   = left.show_scrollbar   || right.show_scrollbar;
+	
+	return result;
+}
 
 Input_Event :: struct
 {

@@ -1,4 +1,4 @@
-Amber_Hooks :: struct
+Amber_Hooks :: struct #type_info_none
 {
 	using callbacks : Extension_Callbacks;
 
@@ -18,6 +18,7 @@ Amber_Hooks :: struct
 	buffer_get_codepoint : (Buffer_ID, s64) -> u32;
 	buffer_get_count : (Buffer_ID) -> s64;
 	buffer_get_cursor : (Buffer_ID, Buffer_Cursor_ID) -> Buffer_Cursor;
+	buffer_get_text_layout : (Buffer_ID) -> Text_Layout_ID;
 	buffer_insert_at_cursor : (Buffer_ID, u32, Buffer_Cursor_ID);
 	buffer_merge_duplicate_cursors : (Buffer_ID);
 	buffer_move_cursor_backward : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
@@ -118,6 +119,7 @@ Amber_Hooks :: struct
 	split_create_left : (Split_ID) -> Split_ID;
 	split_create_right : (Split_ID) -> Split_ID;
 	split_exists : (Split_ID) -> bool;
+	split_get_active_buffer_index : (Split_ID) -> s64;
 	split_get_active_buffer : (Split_ID) -> Buffer_ID;
 	split_get_area : (Split_ID) -> Rect (T = f32);
 	split_get_buffer_count : (Split_ID) -> s64;
@@ -126,12 +128,31 @@ Amber_Hooks :: struct
 	split_merge_below : (Split_ID);
 	split_merge_left : (Split_ID);
 	split_merge_right : (Split_ID);
+	split_set_area : (Split_ID, Rect (T = f32));
+	text_layout_clear_colors : (Text_Layout_ID);
 	text_layout_compute : (Text_Layout_ID);
 	text_layout_exists : (Text_Layout_ID) -> bool;
+	text_layout_get_area : (Text_Layout_ID) -> Rect (T = f32);
 	text_layout_get_base_line : (Text_Layout_ID) -> s64;
+	text_layout_get_buffer : (Text_Layout_ID) -> Buffer_ID;
 	text_layout_get_closest_character : (Text_Layout_ID, Vec2 (T = f32)) -> s64;
+	text_layout_get_extents : (Text_Layout_ID) -> Vec2 (T = f32);
+	text_layout_get_font : (Text_Layout_ID) -> Font_ID;
+	text_layout_get_font_height : (Text_Layout_ID) -> u32;
 	text_layout_get_line_range : (Text_Layout_ID, s64) -> Range (T = s64);
 	text_layout_get_rect : (Text_Layout_ID, s64) -> Rect (T = f32);
+	text_layout_get_scroll : (Text_Layout_ID) -> Vec2 (T = f32);
+	text_layout_get_split : (Text_Layout_ID) -> Split_ID;
 	text_layout_get_visible_line_range : (Text_Layout_ID) -> Range (T = s64);
 	text_layout_get_visible_range : (Text_Layout_ID) -> Range (T = s64);
+	text_layout_get_visual_scroll : (Text_Layout_ID) -> Vec2 (T = f32);
+	text_layout_is_dirty : (Text_Layout_ID) -> bool;
+	text_layout_push_color : (Text_Layout_ID, Range (T = s64), RGBA);
+	text_layout_scroll_x : (Text_Layout_ID, f32);
+	text_layout_scroll_y : (Text_Layout_ID, f32);
+	text_layout_set_dirty : (Text_Layout_ID);
+	text_layout_set_font : (Text_Layout_ID, Font_ID);
+	text_layout_set_font_height : (Text_Layout_ID, u32);
+	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
+	text_layout_set_visual_scroll : (Text_Layout_ID, Vec2 (T = f32));
 }

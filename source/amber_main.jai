@@ -36,7 +36,7 @@ Split :: struct
 	active_buffer_index : s64;
 }
 
-get_active_split :: () -> Split_ID #must
+get_active_split :: inline () -> Split_ID #must
 {
 	return active_split_id;
 }
@@ -62,34 +62,66 @@ split_exists :: inline (id : Split_ID) -> bool #must
 
 split_get_area :: inline (split_id : Split_ID) -> Rectf #must
 {
-	split := get_split (split_id);
+	using split := get_split (split_id);
 	
-	return split.area;
+	return area;
+}
+@Amber_API
+
+split_set_area :: inline (split_id : Split_ID, new_area : Rectf)
+{
+	using split := get_split (split_id);
+	area = new_area;
+	for buffer_ids
+	{
+		buffer := get_buffer (it);
+		layout := get_text_layout (buffer.text_layout_id);
+		font := get_font (layout.font_id);
+		page := load_page (font, layout.font_height);
+		line_number_len := 0;
+		{
+			tmp := buffer.lines.count;
+			while tmp > 0
+			{
+				line_number_len += 1;
+				tmp /= 10;
+			}
+		}
+		layout.area = rectf (area.x1 + cast (f32) (line_number_len + 2) * page.space_advance, area.y1, area.x2, area.y2 - cast (f32) (page.ascent - page.descent));
+	}
 }
 @Amber_API
 
 split_get_buffer_count :: inline (split_id : Split_ID) -> s64 #must
 {
-	split := get_split (split_id);
+	using split := get_split (split_id);
 	
-	return split.buffer_ids.count;
+	return buffer_ids.count;
 }
 @Amber_API
 
 split_get_buffer :: inline (split_id : Split_ID, index : s64) -> Buffer_ID #must
 {
-	split := get_split (split_id);
-	assert (index >= 0 && index < split.buffer_ids.count, "Invalid buffer index (expected [0;%), got %).", split.buffer_ids.count, index);
+	using split := get_split (split_id);
+	assert (index >= 0 && index < buffer_ids.count, "Invalid buffer index (expected [0;%), got %).", buffer_ids.count, index);
 	
-	return split.buffer_ids[index];
+	return buffer_ids[index];
+}
+@Amber_API
+
+split_get_active_buffer_index :: inline (split_id : Split_ID) -> s64 #must
+{
+	using split := get_split (split_id);
+	
+	return active_buffer_index;
 }
 @Amber_API
 
 split_get_active_buffer :: inline (split_id : Split_ID) -> Buffer_ID #must
 {
-	split := get_split (split_id);
+	using split := get_split (split_id);
 	
-	return split.buffer_ids[split.active_buffer_index];
+	return buffer_ids[active_buffer_index];
 }
 @Amber_API
 
@@ -257,15 +289,6 @@ buffer_close :: inline (buffer_id : Buffer_ID)
 }
 @Amber_API
 
-buffer_set_text_layout :: inline (buffer_id : Buffer_ID, text_layout_id : Text_Layout_ID)
-{
-	layout := get_text_layout (text_layout_id);
-	layout.buffer_id = buffer_id;
-	buffer := get_buffer (buffer_id);
-	buffer.text_layout_id = text_layout_id;
-}
-@Amber_API
-
 add_buffer :: inline () -> *Buffer #must
 {
 	buffer, index := insert_into_slot_array (*buffers);
@@ -320,7 +343,112 @@ draw_split :: inline (split_id : Split_ID)
 	draw_line_numbers (active_buffer.text_layout_id, rgba (150, 150, 150), RGBA_WHITE);
 	draw_line_highlight (active_buffer.text_layout_id, rgba (255, 255, 255, 10));
 	draw_selection (active_buffer.text_layout_id, rgba (50, 100, 200));
-	draw_text_layout (active_buffer.text_layout_id, RGBA_WHITE);
+	draw_text_layout (active_buffer.text_layout_id);
+}
+
+handle_input_event :: inline (event : Input_Event) -> Event_Result #must
+{
+	active_buffer_id := split_get_active_buffer (get_active_split ());
+	active_layout_id := buffer_get_text_layout (active_buffer_id);
+	using result : Event_Result;
+	if event.kind ==
+	{
+	case .TEXT_INPUT;
+		buffer_insert_at_cursor (active_buffer_id, event.codepoint, ALL_CURSORS);
+		buffer_modified = true;
+		scroll_to_cursor = true;
+		
+	case .KEY_PRESS; #through;
+	case .KEY_REPEAT;
+		if event.key_code ==
+		{
+		case .ESCAPE;
+			buffer_clear_cursors (active_buffer_id);
+			buffer_clear_selection (active_buffer_id);
+		
+		case .RETURN;
+			buffer_insert_at_cursor (active_buffer_id, #char "\n", ALL_CURSORS);
+			buffer_modified = true;
+			scroll_to_cursor = true;
+		
+		case .BACKSPACE;
+			if event.mods == .CONTROL
+				buffer_skip_word_backward (active_buffer_id, true, ALL_CURSORS, select = true);
+			buffer_modified = buffer_backspace_selection (active_buffer_id, ALL_CURSORS);
+			buffer_merge_duplicate_cursors (active_buffer_id);
+			scroll_to_cursor = true;
+		
+		case .DELETE;
+			if event.mods == .CONTROL
+				buffer_skip_word_forward (active_buffer_id, true, ALL_CURSORS, select = true);
+			buffer_modified = buffer_delete_selection (active_buffer_id, ALL_CURSORS);
+			buffer_merge_duplicate_cursors (active_buffer_id);
+			scroll_to_cursor = true;
+		
+		case .LEFT; #through;
+		case .RIGHT;
+			right := event.key_code == .RIGHT;
+			skip_word := ifx right then buffer_skip_word_forward else buffer_skip_word_backward;
+			move_cursor := ifx right then buffer_move_cursor_forward else buffer_move_cursor_backward;
+			if flagged (event.mods, .CONTROL) && !flagged (event.mods, .ALT)
+				skip_word (active_buffer_id, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+			else
+				move_cursor (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+			buffer_merge_duplicate_cursors (active_buffer_id);
+			scroll_to_cursor = true;
+		
+		case .UP; #through;
+		case .DOWN;
+			down := event.key_code == .DOWN;
+			if event.mods == Mods.SHIFT | .ALT
+			{
+				add_cursor := ifx down then buffer_add_cursor_on_next_line else buffer_add_cursor_on_previous_line;
+				add_cursor (active_buffer_id, ALL_CURSORS);
+				scroll_to_cursor = true;
+			}
+			else if event.mods == Mods.CONTROL
+			{
+				text_layout_set_scroll (active_layout_id, text_layout_get_scroll (active_layout_id) + vec2f (0, cast (int) down * 2.0 - 1));
+				show_scrollbar = true;
+			}
+			else
+			{
+				move_cursor := ifx down then buffer_move_cursor_to_next_line else buffer_move_cursor_to_previous_line;
+				move_cursor (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+				buffer_merge_duplicate_cursors (active_buffer_id);
+				scroll_to_cursor = true;
+			}
+			
+		case .PAGE_UP; #through;
+		case .PAGE_DOWN;
+			down := event.key_code == .PAGE_DOWN;
+			if remove_flag (event.mods, .SHIFT) == .CONTROL
+			{
+				text_layout_set_scroll (active_layout_id, text_layout_get_scroll (active_layout_id) + vec2f (0, 30 * (cast (int) down * 2.0 - 1)));
+				show_scrollbar = true;
+			}
+			else
+			{
+				move_cursor := ifx down then buffer_move_cursor_to_next_line else buffer_move_cursor_to_previous_line;
+				for 1..30
+				{
+					if !move_cursor (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
+						break;
+				}
+				buffer_merge_duplicate_cursors (active_buffer_id);
+				scroll_to_cursor = true;
+			}
+		}
+		
+	case .MOUSE_WHEEL;
+		if contains (text_layout_get_area (active_layout_id), event.mouse_position)
+		{
+			text_layout_set_scroll (active_layout_id, text_layout_get_scroll (active_layout_id) - event.mouse_wheel);
+			show_scrollbar = true;
+		}
+	}
+	
+	return result;
 }
 
 main :: ()
@@ -348,12 +476,32 @@ main :: ()
 	buffer_id := buffer_open (active_split_id, "some_file.txt");
 	buffer := get_buffer (buffer_id);
 	layout := get_text_layout (buffer.text_layout_id);
+	page := load_page (get_font (layout.font_id), 16);
+	line_height := cast (f32) (page.ascent - page.descent);
+	language_process_buffer (buffer.id);
+	{
+		viewport := platform_get_viewport_size ();
+		line_number_len := 0;
+		{
+			tmp := buffer.lines.count;
+			while tmp > 0
+			{
+				line_number_len += 1;
+				tmp /= 10;
+			}
+		}
 	
+		area := rectf (cast (f32) (line_number_len + 2) * page.space_advance, 0, xx viewport.width, xx viewport.height - cast (f32) (page.ascent - page.descent));
+		if area != layout.area || text_layout_is_dirty (layout.id)
+		{
+			layout.area = area;
+			text_layout_compute (layout.id);
+		}
+	}
+
 	extensions_on_startup ();
 
 	running = true;
-	page := load_page (get_font (font_id), 16);
-	line_height := cast (f32) (page.ascent - page.descent);
 	is_dragging_cursor    := false;
 	is_dragging_scrollbar := false;
 	scrollbar_drag_offset := 0.0;
@@ -370,194 +518,74 @@ main :: ()
 		reset_temporary_storage ();
 		
 		platform_reset_input_state ();
-		modified := false;
-		show_scrollbar := false;
-		scroll_to_cursor := false;
 		event : Input_Event;
+		using event_result : Event_Result;
 		while platform_get_next_event (*event)
 		{
-			if extensions_on_input (event) then continue;
+			tmp_result, propagate := extensions_on_input (event);
+			event_result |= tmp_result;
+			if !propagate then continue;
+			tmp_result = handle_input_event (event);
+			event_result |= tmp_result;
+		}
 
-			if event.kind ==
-			{
-			case .TEXT_INPUT;
-				buffer_insert_at_cursor (buffer.id, event.codepoint, ALL_CURSORS);
-				modified = true;
-				scroll_to_cursor = true;
-				
-			case .KEY_PRESS; #through;
-			case .KEY_REPEAT;
-				if event.key_code ==
-				{
-				case .ESCAPE;
-					buffer_clear_cursors (buffer.id);
-					buffer_clear_selection (buffer.id);
-				
-				case .RETURN;
-					buffer_insert_at_cursor (buffer.id, #char "\n", ALL_CURSORS);
-					modified = true;
-					scroll_to_cursor = true;
-				
-				case .BACKSPACE;
-					if event.mods == .CONTROL
-						buffer_skip_word_backward (buffer.id, true, ALL_CURSORS, select = true);
-					modified = buffer_backspace_selection (buffer.id, ALL_CURSORS);
-					buffer_merge_duplicate_cursors (buffer.id);
-					scroll_to_cursor = true;
-				
-				case .DELETE;
-					if event.mods == .CONTROL
-						buffer_skip_word_forward (buffer.id, true, ALL_CURSORS, select = true);
-					modified = buffer_delete_selection (buffer.id, ALL_CURSORS);
-					buffer_merge_duplicate_cursors (buffer.id);
-					scroll_to_cursor = true;
-				
-				case .LEFT;
-					if flagged (event.mods, .CONTROL) && !flagged (event.mods, .ALT)
-						buffer_skip_word_backward (buffer.id, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-					else
-						buffer_move_cursor_backward (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-					buffer_merge_duplicate_cursors (buffer.id);
-					scroll_to_cursor = true;
-				
-				case .RIGHT;
-					if remove_flag (event.mods, .SHIFT) == .CONTROL
-						buffer_skip_word_forward (buffer.id, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-					else
-						buffer_move_cursor_forward (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-					buffer_merge_duplicate_cursors (buffer.id);
-					scroll_to_cursor = true;
-				
-				case .UP;
-					if event.mods == Mods.SHIFT | .ALT
-					{
-						buffer_add_cursor_on_previous_line (buffer.id, ALL_CURSORS);
-						scroll_to_cursor = true;
-					}
-					else if event.mods == Mods.CONTROL
-					{
-						layout.scroll.y -= 1;
-						show_scrollbar = true;
-					}
-					else
-					{
-						buffer_move_cursor_to_previous_line (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-						buffer_merge_duplicate_cursors (buffer.id);
-						scroll_to_cursor = true;
-					}
-					
-				case .DOWN;
-					if event.mods == Mods.SHIFT | .ALT
-					{
-						buffer_add_cursor_on_next_line (buffer.id, ALL_CURSORS);
-						scroll_to_cursor = true;
-					}
-					else if event.mods == Mods.CONTROL
-					{
-						layout.scroll.y += 1;
-						show_scrollbar = true;
-					}
-					else
-					{
-						buffer_move_cursor_to_next_line (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-						buffer_merge_duplicate_cursors (buffer.id);
-						scroll_to_cursor = true;
-					}
-
-				case .PAGE_UP;
-					if remove_flag (event.mods, .SHIFT) == .CONTROL
-					{
-						layout.scroll.y -= 30;
-						show_scrollbar = true;
-					}
-					else
-					{
-						for 1..30
-						{
-							if !buffer_move_cursor_to_previous_line (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
-								break;
-						}
-						buffer_merge_duplicate_cursors (buffer.id);
-						scroll_to_cursor = true;
-					}
-				
-				case .PAGE_DOWN;
-					if remove_flag (event.mods, .SHIFT) == .CONTROL
-					{
-						layout.scroll.y += 30;
-						show_scrollbar = true;
-					}
-					else
-					{
-						for 1..30
-						{
-							if !buffer_move_cursor_to_next_line (buffer.id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
-								break;
-						}
-						buffer_merge_duplicate_cursors (buffer.id);
-						scroll_to_cursor = true;
-					}
-				}
-
-			case .MOUSE_PRESS; #through;
-			case .MOUSE_REPEAT;
-				if event.mouse_button == .LEFT && contains (scrollbar_rect, event.mouse_position)
-				{
-					scrollbar_drag_offset = scrollbar_rect.y1 - event.mouse_position.y;
-					is_dragging_scrollbar = true;
-				}
-				else if event.mouse_button == .LEFT && contains (layout.area, event.mouse_position)
-				{
-					if event.mods == Mods.ALT
-					{
-						offset := text_layout_get_closest_character (layout.id, event.mouse_position);
-						buffer_add_cursor_at_offset (buffer.id, offset);
-					}
-					else
-					{
-						offset := text_layout_get_closest_character (layout.id, platform_get_mouse_position ());
-						buffer_clear_cursors (buffer.id);
-						buffer_move_cursor_to_offset (buffer.id, offset, WRITE_HEAD);
-						is_dragging_cursor = true;
-					}
-					scroll_to_cursor = true;
-				}
-				show_scrollbar = true;
-			
-			case .MOUSE_WHEEL;
-				if contains (layout.area, event.mouse_position)
-				{
-					layout.scroll -= event.mouse_wheel;
-					show_scrollbar = true;
-				}
-			}
+		if buffer_modified
+		{
+			text_layout_clear_colors (layout.id);
+			language_process_buffer (buffer.id);
+			text_layout_set_dirty (layout.id);
 		}
 		
-		if platform_get_mouse_button_state (.LEFT) == .DOWN
+		mouse_position := platform_get_mouse_position ();
+		if platform_get_mouse_button_state (.LEFT) == .PRESSED
+		{
+			if contains (scrollbar_rect, mouse_position)
+			{
+				scrollbar_drag_offset = scrollbar_rect.y1 - event.mouse_position.y;
+				is_dragging_scrollbar = true;
+			}
+			else if contains (text_layout_get_area (layout.id), mouse_position)
+			{
+				if event.mods == Mods.ALT
+				{
+					offset := text_layout_get_closest_character (layout.id, event.mouse_position);
+					buffer_add_cursor_at_offset (buffer.id, offset);
+				}
+				else
+				{
+					offset := text_layout_get_closest_character (layout.id, mouse_position);
+					buffer_clear_cursors (buffer.id);
+					buffer_move_cursor_to_offset (buffer.id, offset, WRITE_HEAD);
+					is_dragging_cursor = true;
+				}
+				scroll_to_cursor = true;
+			}
+			show_scrollbar = true;
+		}
+		else if platform_get_mouse_button_state (.LEFT) == .DOWN
 		{
 			if is_dragging_cursor
 			{
-				offset := text_layout_get_closest_character (layout.id, platform_get_mouse_position ());
+				offset := text_layout_get_closest_character (layout.id, mouse_position);
 				buffer_clear_cursors (buffer.id);
 				buffer_move_cursor_to_offset (buffer.id, offset, WRITE_HEAD, select = true);
 				scroll_to_cursor = true;
 			}
 			else if is_dragging_scrollbar
 			{
-				mouse_position := platform_get_mouse_position ();
 				scrollbar_rect = set_position (scrollbar_rect, vec2f (scrollbar_rect.x1, mouse_position.y + scrollbar_drag_offset));
 				scrolling_area := rect_height (layout.area) - rect_height (scrollbar_rect);
 				scroll_percent := scrollbar_rect.y1 / scrolling_area;
 				layout.scroll.y = round (scroll_percent * max (layout.extents.y / line_height - 1, 0));
 			}
 		}
-		else if platform_get_mouse_button_state (.LEFT) != .PRESSED
+		else
 		{
 			is_dragging_cursor = false;
 			is_dragging_scrollbar = false;
 		}
 		
-		wave := cos (cast (f32) platform_get_time () * 0.2) * 0.5 + 0.5;
+		viewport := platform_get_viewport_size ();
 		line_number_len := 0;
 		{
 			tmp := buffer.lines.count;
@@ -567,33 +595,30 @@ main :: ()
 				tmp /= 10;
 			}
 		}
-		viewport := platform_get_viewport_size ();
 		area := rectf (cast (f32) (line_number_len + 2) * page.space_advance, 0, xx viewport.width, xx viewport.height - cast (f32) (page.ascent - page.descent));
-		if modified then language_process_buffer (buffer.id);
-		if area != layout.area || modified
+		if area != layout.area || text_layout_is_dirty (layout.id)
 		{
 			layout.area = area;
-			start := platform_get_time ();
 			text_layout_compute (layout.id);
-			end := platform_get_time ();
-			println ("Laying out took % ms.", (end - start) * 1000);
 		}
-		cursor_rect := text_layout_get_rect (layout.id, buffer.offset);
-		layout.scroll.x = clamp (layout.scroll.x, 0, max ((layout.extents.x - rect_width (layout.area)) / cast (f32) (page.space_advance) - 1, 0));
+		
+		cursor_rect := text_layout_get_rect (layout.id, buffer_get_cursor (buffer.id, WRITE_HEAD).offset);
 		if scroll_to_cursor
 		{
-			if cursor_rect.y1 - CURSOR_MARGIN * line_height < layout.area.y1
+			area := text_layout_get_area (layout.id);
+			if cursor_rect.y1 < area.y1
 			{
-				layout.scroll.y += (cursor_rect.y1 - CURSOR_MARGIN * line_height - layout.area.y1) / line_height;
+				text_layout_scroll_y (layout.id, (cursor_rect.y1 - area.y1) / line_height);
 				show_scrollbar = true;
 			}
-			if cursor_rect.y2 + CURSOR_MARGIN * line_height > layout.area.y2
+			if cursor_rect.y2 > area.y2
 			{
-				layout.scroll.y += (cursor_rect.y2 + CURSOR_MARGIN * line_height - layout.area.y2) / line_height;
+				text_layout_scroll_y (layout.id, (cursor_rect.y2 - area.y2) / line_height);
 				show_scrollbar = true;
 			}
 		}
-		layout.scroll.y      = clamp (layout.scroll.y, 0, max (layout.extents.y / line_height - 1, 0));
+		layout.scroll.x = clamp (layout.scroll.x, 0, max ((layout.extents.x - rect_width (layout.area)) / cast (f32) (page.space_advance) - 1, 0));
+		layout.scroll.y = clamp (layout.scroll.y, 0, max (layout.extents.y / line_height - 1, 0));
 		layout.visual_scroll = lerp (layout.visual_scroll, vec2f (round (layout.scroll.x), round (layout.scroll.y)), 0.5);
 		scrollbar_show_time  = max (scrollbar_show_time - delta_time, 0);
 		if show_scrollbar then scrollbar_show_time = MAX_SCROLLBAR_SHOW_TIME;
@@ -640,13 +665,6 @@ main :: ()
 			RGBA_BLACK
 		);
 		
-		/*
-		for splits
-		{
-			draw_rect (truncate_all_sides (it.area, 1), RGBA_WHITE);
-		}
-		*/
-
 		draw_end ();
 		platform_swap_window_buffers ();
 		frame_end := platform_get_time ();

@@ -11,6 +11,7 @@ Text_Layout :: struct
 	buffer_id : Buffer_ID;
 	font_id : Font_ID;
 	font_height : u32;
+	is_dirty : bool;
 
 	area    : Rectf;
 	extents : Vec2f;
@@ -18,6 +19,16 @@ Text_Layout :: struct
 	visual_scroll : Vec2f;
 	rects         : [..]Rectf;
 	wrapped_lines : [..]Line;
+	colors : [..]Color_Range;
+
+	// @Note (stefan): Should these really be in Text_Layout ?
+	is_dragging_cursor    : bool;
+	is_dragging_scrollbar : bool;
+	scrollbar_drag_offset : f32;
+	scrollbar_rect : Rectf;
+	scrollbar_alpha : u8;
+	scrollbar_show_time : f32;
+	cursor_view_alpha : u8;
 }
 
 Color_Range :: struct
@@ -31,13 +42,157 @@ text_layout_init :: (layout_id : Text_Layout_ID, capacity : s64)
 	using layout := get_text_layout (layout_id);
 	init_array (*rects, capacity, heap_allocator);
 	init_array (*wrapped_lines, capacity / 100, heap_allocator);
+	init_array (*colors, capacity / 10, heap_allocator);
 }
 
-text_layout_get_base_line :: (layout_id : Text_Layout_ID) -> s64 #must
+text_layout_get_split :: inline (layout_id : Text_Layout_ID) -> Split_ID #must
+{
+	using layout := get_text_layout (layout_id);
+	
+	return split_id;
+}
+@Amber_API
+
+text_layout_get_buffer :: inline (layout_id : Text_Layout_ID) -> Buffer_ID #must
+{
+	using layout := get_text_layout (layout_id);
+	
+	return buffer_id;
+}
+@Amber_API
+
+text_layout_get_font :: inline (layout_id : Text_Layout_ID) -> Font_ID #must
+{
+	using layout := get_text_layout (layout_id);
+	
+	return font_id;
+}
+@Amber_API
+
+text_layout_set_font :: inline (layout_id : Text_Layout_ID, new_font_id : Font_ID)
+{
+	using layout := get_text_layout (layout_id);
+	is_dirty = true;
+	font_id = new_font_id;
+}
+@Amber_API
+
+text_layout_get_font_height :: inline (layout_id : Text_Layout_ID) -> u32 #must
+{
+	using layout := get_text_layout (layout_id);
+	
+	return font_height;
+}
+@Amber_API
+
+text_layout_set_font_height :: inline (layout_id : Text_Layout_ID, new_font_height : u32)
+{
+	using layout := get_text_layout (layout_id);
+	is_dirty = true;
+	font_height = new_font_height;
+}
+@Amber_API
+
+text_layout_is_dirty :: inline (layout_id : Text_Layout_ID) -> bool #must
+{
+	using layout := get_text_layout (layout_id);
+	
+	return is_dirty;
+}
+@Amber_API
+
+text_layout_set_dirty :: inline (layout_id : Text_Layout_ID)
+{
+	using layout := get_text_layout (layout_id);
+	is_dirty = true;
+}
+@Amber_API
+
+text_layout_get_area :: inline (layout_id : Text_Layout_ID) -> Rectf #must
+{
+	using layout := get_text_layout (layout_id);
+	
+	return area;
+}
+@Amber_API
+
+text_layout_get_extents :: inline (layout_id : Text_Layout_ID) -> Vec2f #must
+{
+	using layout := get_text_layout (layout_id);
+	
+	return extents;
+}
+@Amber_API
+
+text_layout_get_scroll :: inline (layout_id : Text_Layout_ID) -> Vec2f #must
+{
+	using layout := get_text_layout (layout_id);
+	
+	return scroll;
+}
+@Amber_API
+
+text_layout_set_scroll :: inline (layout_id : Text_Layout_ID, new_scroll : Vec2f)
+{
+	using layout := get_text_layout (layout_id);
+	
+	scroll = new_scroll;
+}
+@Amber_API
+
+text_layout_scroll_x :: inline (layout_id : Text_Layout_ID, add_scroll : f32)
+{
+	using layout := get_text_layout (layout_id);
+	
+	scroll.x += add_scroll;
+}
+@Amber_API
+
+text_layout_scroll_y :: inline (layout_id : Text_Layout_ID, add_scroll : f32)
+{
+	using layout := get_text_layout (layout_id);
+	
+	scroll.y += add_scroll;
+}
+@Amber_API
+
+text_layout_get_visual_scroll :: inline (layout_id : Text_Layout_ID) -> Vec2f #must
+{
+	using layout := get_text_layout (layout_id);
+	
+	return visual_scroll;
+}
+@Amber_API
+
+text_layout_set_visual_scroll :: inline (layout_id : Text_Layout_ID, new_scroll : Vec2f)
+{
+	using layout := get_text_layout (layout_id);
+	
+	visual_scroll = new_scroll;
+}
+@Amber_API
+
+text_layout_get_base_line :: inline (layout_id : Text_Layout_ID) -> s64 #must
 {
 	using layout := get_text_layout (layout_id);
 	
 	return clamp (cast (s64) visual_scroll.y, 0, wrapped_lines.count - 1);
+}
+@Amber_API
+
+text_layout_clear_colors :: inline (layout_id : Text_Layout_ID)
+{
+	using layout := get_text_layout (layout_id);
+	clear_array (*colors);
+}
+@Amber_API
+
+text_layout_push_color :: inline (layout_id : Text_Layout_ID, range : Rangei, color : RGBA)
+{
+	using layout := get_text_layout (layout_id);
+	ptr := push_into_array (*colors);
+	ptr.range = range;
+	ptr.color = color;
 }
 @Amber_API
 
@@ -113,6 +268,7 @@ text_layout_compute :: (layout_id : Text_Layout_ID)
 	pen.y += line_height;
 	extents.x = max (extents.x, pen.x);
 	extents.y = max (extents.y, pen.y);
+	is_dirty = false;
 }
 @Amber_API
 
@@ -273,19 +429,8 @@ draw_line_highlight :: (layout_id : Text_Layout_ID, color : RGBA)
 	draw_rect (rect, color);
 }
 
-draw_text_layout :: inline (layout_id : Text_Layout_ID, color : RGBA)
+draw_text_layout :: (layout_id : Text_Layout_ID)
 {
-	using layout := get_text_layout (layout_id);
-	colors : [1]Color_Range;
-	colors[0].range = rangei (0, rects.count - 1);
-	colors[0].color = color;
-	draw_text_layout (layout_id, colors);
-}
-
-draw_text_layout :: (layout_id : Text_Layout_ID, color_ranges : []Color_Range)
-{
-	assert (color_ranges.count > 0, "Color range array is empty.");
-
 	using layout := get_text_layout (layout_id);
 	prev_clip := draw_set_clipping (true);
 	defer draw_set_clipping (prev_clip);
@@ -304,13 +449,13 @@ draw_text_layout :: (layout_id : Text_Layout_ID, color_ranges : []Color_Range)
 	color_index := 0;
 	for i : visible_range
 	{
-		while color_index < color_ranges.count - 1
+		while color_index < colors.count - 1
 		{
-			if contains (color_ranges[color_index].range, i)
+			if contains (colors[color_index].range, i)
 				break;
 			color_index += 1;
 		}
-		color := color_ranges[color_index].color;
+		color := colors[color_index].color;
 		draw_cursor := false;
 		is_whitespace := false;
 		for :cursors cur : buffer

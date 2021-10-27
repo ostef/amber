@@ -109,16 +109,21 @@ extensions_on_shutdown :: inline ()
 	}
 }
 
-extensions_on_input :: inline (event : Input_Event) -> bool
+extensions_on_input :: inline (event : Input_Event) -> Event_Result, bool
 {
+	result : Event_Result;
 	for * extensions
 	{
 		if !it.loaded || !it.initialized then continue;
-		if it.hooks.on_input && it.hooks.on_input (*it.hooks, event)
-			return true;
+		if it.hooks.on_input
+		{
+			extension_result, propagate := it.hooks.on_input (*it.hooks, event);
+			result |= extension_result;
+			if !propagate then return result, false;
+		}
 	}
 	
-	return false;
+	return result, true;
 }
 
 extensions_on_update :: inline ()

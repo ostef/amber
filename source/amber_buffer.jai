@@ -119,6 +119,23 @@ buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
 	gap       = new_gap;
 }
 
+buffer_get_text_layout :: inline (buffer_id : Buffer_ID) -> Text_Layout_ID #must
+{
+	using buffer := get_buffer (buffer_id);
+	
+	return text_layout_id;
+}
+@Amber_API
+
+buffer_set_text_layout :: inline (buffer_id : Buffer_ID, text_layout_id : Text_Layout_ID)
+{
+	layout := get_text_layout (text_layout_id);
+	layout.buffer_id = buffer_id;
+	buffer := get_buffer (buffer_id);
+	buffer.text_layout_id = text_layout_id;
+}
+@Amber_API
+
 buffer_get_count :: inline (buffer_id : Buffer_ID) -> s64 #must
 {
 	using buffer := get_buffer (buffer_id);

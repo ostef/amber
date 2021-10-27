@@ -12,6 +12,7 @@ init_extension :: (id : Extension_ID, using amber : *Amber_Hooks) -> bool
 	language.name = "foo";
 	language.process_buffer = foo_process_buffer;
 	on_input = handle_input_event;
+	on_update = update;
 	
 	return language_register (language);
 }
@@ -22,20 +23,27 @@ terminate_extension :: (using amber : *Amber_Hooks)
 	println ("Goodbye Sailor!");
 }
 
-handle_input_event :: (using amber : *Amber_Hooks, event : Input_Event) -> bool
+handle_input_event :: (using amber : *Amber_Hooks, event : Input_Event) -> Event_Result, propagate : bool
 {
+	result : Event_Result;
 	if event.kind == .KEY_PRESS
 	{
 		if event.key_code == .H && event.mods == .CONTROL
 		{
 			for i : 0.."Hello Sailor!".count - 1
 				buffer_insert_at_cursor (split_get_active_buffer (get_active_split ()), "Hello Sailor!"[i], ALL_CURSORS);
+			result.buffer_modified  = true;
+			result.scroll_to_cursor = true;
 			
-			return true;
+			return result, false;
 		}
 	}
 	
-	return false;
+	return result, true;
+}
+
+update :: (using amber : *Amber_Hooks)
+{
 }
 
 foo_process_buffer :: (using amber : *Amber_Hooks, buffer_id : Buffer_ID)

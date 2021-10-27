@@ -112,7 +112,7 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 					}
 
 					builder := make_string_builder (5000, temp_allocator);
-					ln (*builder, "Amber_Hooks :: struct\n{");
+					ln (*builder, "Amber_Hooks :: struct #type_info_none\n{");
 					ln (*builder, "\tusing callbacks : Extension_Callbacks;");
 					nl (*builder);
 					
