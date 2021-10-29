@@ -15,7 +15,10 @@ command_register :: inline (command : Command) -> bool
 			return false;
 	}
 	pushed := push_into_array (*commands, command);
+	// @Note (stefan): We don't make assumptions about where the memory for name and
+	// combination comes from, so we allocate new memory for them.
 	pushed.name = clone_string (command.name, heap_allocator);
+	pushed.combination = clone_array (command.combination, heap_allocator);
 	
 	return true;
 }

@@ -49,12 +49,35 @@ Buffer_Edit :: struct
 	offset_in_edit_buffer : s64;
 }
 
+// Command
+
+Command :: struct
+{
+	Proc :: #type (*Amber_Hooks, []string);
+	
+	extension_id : Extension_ID;
+	name : string;
+	proc : Proc;
+	arg_count : s64;
+	first_optional_argument : s64;
+	combination : Key_Combination;
+}
+
+Key_Binding :: struct
+{
+	mods : Mods;
+	key_code : Key_Code;
+}
+
+Key_Combination :: []Key_Binding;
+
 // Language
 
 Language :: struct
 {
 	Process_Buffer_Proc :: #type (*Amber_Hooks, Buffer_ID);
 	
+	id : Language_ID;
 	extension_id : Extension_ID;
 	name : string;
 	associated_filenames  : []string;
