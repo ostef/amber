@@ -641,6 +641,16 @@ alloc_string :: inline (count : s64, allocator : Allocator, allocator_data := nu
 	return result;
 }
 
+clone_array :: inline (array : []$T, allocator : Allocator, allocator_data := null) -> []T #must
+{
+	result : []T = ---;
+	result.data = alloc (size_of (T) * array.count, allocator, allocator_data);
+	memcpy (result.data, array.data, size_of (T) * array.count);
+	result.count = array.count;
+	
+	return result;
+}
+
 // Array
 
 init_array :: inline (array : *[..]$T, capacity : s64, allocator : Allocator, allocator_data := null)
