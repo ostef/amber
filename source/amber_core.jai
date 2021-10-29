@@ -21,31 +21,20 @@ always_assert :: inline (assertion : bool, fmt := "", args : ..Any, location := 
 	}
 }
 
+panic :: (fmt := "", args : ..Any, location := #caller_location) #expand
+{
 #if ENABLE_ASSERTS
-{
-	panic :: (fmt := "", args : ..Any, location := #caller_location) #expand
-	{
-		always_panic (fmt, ..args, location);
-	}
-
-	// @Note (stefan): We take a Code instead of a bool so we choose whether or not the expression gets
-	// evaluated ourselves. The expression we want to assert might take a long time to execute, so we
-	// need to be able to not evaluate the expression when assertions are disabled, or we won't get much
-	// performance boost in release builds.
-	assert :: (assertion_expr : Code, fmt := "", args : ..Any, location := #caller_location) #expand
-	{
-		always_assert (#insert assertion_expr, fmt, ..args, location);
-	}
+	always_panic (fmt, ..args, location);
 }
-else
-{
-	panic :: inline (fmt := "", args : ..Any, location := #caller_location) #expand
-	{
-	}
 
-	assert :: inline (assertion_expr : Code, fmt := "", args : ..Any, location := #caller_location) #expand
-	{
-	}
+// @Note (stefan): We take a Code instead of a bool so we choose whether or not the expression gets
+// evaluated ourselves. The expression we want to assert might take a long time to execute, so we
+// need to be able to not evaluate the expression when assertions are disabled, or we won't get much
+// performance boost in release builds.
+assert :: (assertion_expr : Code, fmt := "", args : ..Any, location := #caller_location) #expand
+{
+#if ENABLE_ASSERTS
+	always_assert (#insert assertion_expr, fmt, ..args, location);
 }
 
 offset_of :: inline ($T : Type, $member : string) -> s64 #must
@@ -101,6 +90,25 @@ MAX_REPRESENTABLE_INT_AS_F32 :: 16777217;
 
 PI   :: 3.1415927;
 PI64 :: 3.141592653589793;
+
+count_digits :: inline (value : s64) -> s64 #must
+{
+	if value == 0 then return 1;
+	
+	count := 0;
+	if value < 0
+	{
+		count += 1;
+		value = -value;
+	}
+	while value
+	{
+		count += 1;
+		value /= 10;
+	}
+	
+	return count;
+}
 
 is_nan :: (value : f32) -> bool #must
 {
