@@ -169,6 +169,7 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_push_color : (Text_Layout_ID, Range (T = s64), RGBA);
 	text_layout_scroll_x : (Text_Layout_ID, f32);
 	text_layout_scroll_y : (Text_Layout_ID, f32);
+	text_layout_set_area : (Text_Layout_ID, Rect (T = f32));
 	text_layout_set_dirty : (Text_Layout_ID);
 	text_layout_set_font : (Text_Layout_ID, Font_ID);
 	text_layout_set_font_height : (Text_Layout_ID, u32);
