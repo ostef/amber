@@ -1,21 +1,10 @@
-Command :: struct
-{
-	Proc :: #type (*Amber_Hooks, []string);
-	
-	extension_id : Extension_ID;
-	name : string;
-	proc : Proc;
-	arg_count : s64;
-	first_optional_argument : s64;
-}
-
 #scope_file
 
 commands : [..]Command;
 
 #scope_export
 
-command_register :: (command : Command) -> bool
+command_register :: inline (command : Command) -> bool
 {
 	if !commands.allocator then commands.allocator = heap_allocator;
 	if !command.name || !command.proc
@@ -25,8 +14,22 @@ command_register :: (command : Command) -> bool
 		if it.name == command.name
 			return false;
 	}
-	push_into_array (*commands, command);
+	pushed := push_into_array (*commands, command);
+	pushed.name = clone_string (command.name, heap_allocator);
 	
 	return true;
+}
+@Amber_API
+
+command_unregister_for_extension :: (extension_id : Extension_ID)
+{
+	for * commands
+	{
+		if it.extension_id == extension_id
+		{
+			free (it.name, heap_allocator);
+			remove it;
+		}
+	}
 }
 @Amber_API

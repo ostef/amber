@@ -78,8 +78,11 @@ terminate_and_free_extensions :: ()
 {
 	for * extension : extensions
 	{
+		id := cast (Extension_ID) (it_index + 1);
 		if extension.loaded
 			extension.terminate (*extension.hooks);
+		language_unregister_for_extension (id);
+		command_unregister_for_extension (id);
 		platform_free_library (extension.lib);
 		extension.lib = null;
 		extension.init = null;
