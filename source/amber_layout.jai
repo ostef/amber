@@ -116,6 +116,15 @@ text_layout_set_font_height :: inline (layout_id : Text_Layout_ID, new_font_heig
 }
 @Amber_API
 
+text_layout_get_column_width :: inline (layout_id : Text_Layout_ID) -> f32 #must
+{
+	font := get_font (text_layout_get_font (layout_id));
+	page := load_page (font, text_layout_get_font_height (layout_id));
+	
+	return cast (f32) (page.space_advance);
+}
+@Amber_API
+
 text_layout_get_line_height :: inline (layout_id : Text_Layout_ID) -> f32 #must
 {
 	font := get_font (text_layout_get_font (layout_id));

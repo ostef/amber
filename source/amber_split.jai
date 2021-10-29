@@ -16,6 +16,8 @@ Split :: struct
 SCROLLBAR_WIDTH         :: 10.0;
 MIN_SCROLLBAR_HEIGHT    :: 25.0;
 MAX_SCROLLBAR_SHOW_TIME :: 3.0;
+TAB_WIDTH  :: 150.0;
+TAB_HEIGHT :: 30.0;
 
 add_split :: inline () -> *Split #must
 {
@@ -39,6 +41,13 @@ get_active_split :: inline () -> Split_ID #must
 }
 @Amber_API
 
+set_active_split :: inline (split_id : Split_ID)
+{
+	assert (split_exists (split_id), "Invalid split id (%).", split_id);
+	active_split_id = split_id;
+}
+@Amber_API
+
 split_exists :: inline (id : Split_ID) -> bool #must
 {
 	return id > 0 && id <= xx splits.max_occupied && splits.slots[cast (s64) id - 1].occupied;
@@ -59,18 +68,31 @@ split_set_area :: inline (split_id : Split_ID, new_area : Rectf)
 	area = new_area;
 	for buffer_id : opened_buffer_ids
 	{
-		layout := get_text_layout (buffer_get_text_layout (buffer_id));
-		font := get_font (layout.font_id);
-		page := load_page (font, layout.font_height);
+		layout_id := buffer_get_text_layout (buffer_id);
+		font := get_font (text_layout_get_font (layout_id));
+		page := load_page (font, text_layout_get_font_height (layout_id));
+		line_height := cast (f32) (page.ascent - page.descent);
 		line_number_len := count_digits (buffer_get_line_count (buffer_id));
-		layout.area = rectf (
-			area.x1 + cast (f32) (line_number_len + 2) * page.space_advance,
-			area.y1,
-			area.x2,
-			area.y2 - cast (f32) (page.ascent - page.descent)
-		);
-		layout.is_dirty = true;
+		text_layout_set_area (layout_id, split_get_text_layout_area (split_id));
 	}
+}
+@Amber_API
+
+split_get_text_layout_area :: inline (split_id : Split_ID) -> Rectf #must
+{
+	active_buffer_id := split_get_active_buffer (split_id);
+	active_layout_id := buffer_get_text_layout (active_buffer_id);
+	column_width := text_layout_get_column_width (active_layout_id);
+	line_height  := text_layout_get_line_height (active_layout_id);
+	area := split_get_area (split_id);
+	line_number_len := count_digits (buffer_get_line_count (active_buffer_id));
+	
+	return rectf (
+		area.x1 + cast (f32) (line_number_len + 2) * column_width,
+		area.y1 + TAB_HEIGHT,
+		area.x2,
+		area.y2 - line_height
+	);
 }
 @Amber_API
 
@@ -107,6 +129,12 @@ split_get_active_buffer :: inline (split_id : Split_ID) -> Buffer_ID #must
 }
 @Amber_API
 
+split_get_active_text_layout :: inline (split_id : Split_ID) -> Text_Layout_ID #must
+{
+	return buffer_get_text_layout (split_get_active_buffer (split_id));
+}
+@Amber_API
+
 split_create_first :: inline () -> Split_ID
 {
 	assert (splits.count == 0, "Trying to create the first split, but % splits already exist.", splits.count);
@@ -115,6 +143,7 @@ split_create_first :: inline () -> Split_ID
 	split := add_split ();
 	split.area = rectf (0, 0, xx viewport.width, xx viewport.height);
 	buffer_open (split.id, "", "");
+	set_active_split (split.id);
 	
 	return split.id;
 }
@@ -407,15 +436,7 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 	{
 		language_process_buffer (active_buffer_id);
 		line_number_len := count_digits (buffer_get_line_count (active_buffer_id));
-		text_layout_set_area (
-			active_layout_id,
-			rectf (
-				area.x1 + cast (f32) (line_number_len + 2) * page.space_advance,
-				area.y1,
-				area.x2,
-				area.y2 - line_height
-			)
-		);
+		text_layout_set_area (active_layout_id, split_get_text_layout_area (split_id));
 		text_layout_set_dirty (active_layout_id);
 	}
 	if text_layout_is_dirty (active_layout_id)
@@ -479,6 +500,10 @@ split_draw :: inline (split_id : Split_ID)
 	using split := get_split (split_id);
 	active_buffer_id := split_get_active_buffer (split_id);
 	active_layout_id := buffer_get_text_layout (active_buffer_id);
+
+	for buffer_id : opened_buffer_ids
+		draw_rect (xywhf (area.x1 + it_index * TAB_WIDTH, area.y1, TAB_WIDTH, TAB_HEIGHT), rgba (50, 50, 50, 255), 10.0, Rectangle_Corners.TOP_LEFT | .TOP_RIGHT);
+
 	draw_line_numbers (active_layout_id, rgba (150, 150, 150), RGBA_WHITE);
 	draw_line_highlight (active_layout_id, rgba (255, 255, 255, 10));
 	draw_selection (active_layout_id, rgba (50, 100, 200));
@@ -523,4 +548,7 @@ split_draw :: inline (split_id : Split_ID)
 		),
 		RGBA_BLACK
 	);
+
+	if split_id == get_active_split ()
+		draw_rect_outline (truncate_all_sides (area, 1.5), rgba (50, 100, 200, 128), 3, 5.0);
 }

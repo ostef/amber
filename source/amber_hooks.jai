@@ -67,6 +67,7 @@ Amber_Hooks :: struct #type_info_none
 	draw_get_viewport : () -> Rect (T = s32);
 	draw_line : (Vec2 (T = f32), Vec2 (T = f32), RGBA, f32);
 	draw_push_clip_rect : (Rect (T = s32)) -> Rect (T = s32);
+	draw_quad : (Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32), RGBA, Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32));
 	draw_rect : (Rect (T = f32), RGBA, f32, Rectangle_Corners, Rect (T = f32));
 	draw_rect_outline : (Rect (T = f32), RGBA, f32, f32, Rectangle_Corners, Rect (T = f32));
 	draw_reserve_vertices : (s64) -> *Vertex;
@@ -80,7 +81,6 @@ Amber_Hooks :: struct #type_info_none
 	draw_set_texture : (u32) -> u32;
 	draw_set_viewport : (Rect (T = s32)) -> Rect (T = s32);
 	draw_text : (Font_ID, u32, Vec2 (T = f32), string, RGBA);
-	draw_triangle_outline : (Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32), RGBA, f32);
 	draw_triangle : (Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32), RGBA, Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32));
 	font_exists : (Font_ID) -> bool;
 	font_load_from_file : (string) -> (bool, Font_ID);
@@ -128,6 +128,7 @@ Amber_Hooks :: struct #type_info_none
 	platform_sleep_milliseconds : (s64);
 	platform_write_file : (*void, *void, s64) -> (s64, bool);
 	platform_write_to_file : (string, string) -> (s64, bool);
+	set_active_split : (Split_ID);
 	split_create_above : (Split_ID) -> Split_ID;
 	split_create_below : (Split_ID) -> Split_ID;
 	split_create_first : () -> Split_ID;
@@ -136,10 +137,12 @@ Amber_Hooks :: struct #type_info_none
 	split_exists : (Split_ID) -> bool;
 	split_get_active_buffer_index : (Split_ID) -> s64;
 	split_get_active_buffer : (Split_ID) -> Buffer_ID;
+	split_get_active_text_layout : (Split_ID) -> Text_Layout_ID;
 	split_get_area : (Split_ID) -> Rect (T = f32);
 	split_get_buffer_count : (Split_ID) -> s64;
 	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
 	split_get_scrollbar_rect : (Split_ID) -> Rect (T = f32);
+	split_get_text_layout_area : (Split_ID) -> Rect (T = f32);
 	split_merge_above : (Split_ID);
 	split_merge_below : (Split_ID);
 	split_merge_left : (Split_ID);
@@ -152,6 +155,7 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_get_base_line : (Text_Layout_ID) -> s64;
 	text_layout_get_buffer : (Text_Layout_ID) -> Buffer_ID;
 	text_layout_get_closest_character : (Text_Layout_ID, Vec2 (T = f32)) -> s64;
+	text_layout_get_column_width : (Text_Layout_ID) -> f32;
 	text_layout_get_extents : (Text_Layout_ID) -> Vec2 (T = f32);
 	text_layout_get_font : (Text_Layout_ID) -> Font_ID;
 	text_layout_get_font_height : (Text_Layout_ID) -> u32;

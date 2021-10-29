@@ -473,6 +473,7 @@ draw_triangle :: (
 }
 @Amber_API
 
+/*
 draw_triangle_outline :: (
 	p0 : Vec2f,
 	p1 : Vec2f,
@@ -483,6 +484,42 @@ draw_triangle_outline :: (
 {
 	check_drawing ();
 
+}
+@Amber_API
+*/
+
+draw_quad :: inline (
+	p0 : Vec2f,
+	p1 : Vec2f,
+	p2 : Vec2f,
+	p3 : Vec2f,
+	color : RGBA,
+	uv0 := Vec2f.{ 0, 0 },
+	uv1 := Vec2f.{ 0, 1 },
+	uv2 := Vec2f.{ 1, 1 },
+	uv3 := Vec2f.{ 1, 0 }
+)
+{
+	check_drawing ();
+	
+	draw_triangle (
+		p1,
+		p0,
+		p3,
+		color,
+		uv0 = uv1,
+		uv1 = uv0,
+		uv2 = uv3
+	);
+	draw_triangle (
+		p1,
+		p3,
+		p2,
+		color,
+		uv0 = uv1,
+		uv1 = uv3,
+		uv2 = uv2
+	);
 }
 @Amber_API
 
@@ -697,8 +734,110 @@ draw_rect_outline :: (
 	uv_rect := Rectf.{ 0, 0, 1, 1 }
 )
 {
-	check_drawing ();
+	inner_rect := truncate_all_sides (rect, thickness * 0.5);
+	outer_rect := expand_all_sides (rect, thickness * 0.5);
+	uv_thickness  := thickness / rect_width (rect) * rect_width (uv_rect);
+	uv_radius     := (corner_radius / rect_width (rect)) * rect_width (uv_rect);
+	inner_uv_rect := truncate_all_sides (uv_rect, uv_thickness * 0.5);
+	outer_uv_rect := expand_all_sides (uv_rect, uv_thickness * 0.5);
+	inset := corner_radius - thickness;
+	uv_inset := uv_radius - uv_thickness;
 
+	// Draw corners
+	if flagged (round_corners, .TOP_LEFT)
+		draw_semi_circle_outline (
+			rect_top_left (inner_rect) + vec2f (inset, inset),
+			corner_radius,
+			PI / 2,
+			PI / 2,
+			color,
+			thickness,
+			uv_center = rect_top_left (inner_uv_rect),
+			uv_radius = uv_radius
+		);
+	
+	if flagged (round_corners, .TOP_RIGHT)
+		draw_semi_circle_outline (
+			rect_top_right (inner_rect) + vec2f (-inset, inset),
+			corner_radius,
+			0,
+			PI / 2,
+			color,
+			thickness,
+			uv_center = rect_top_right (inner_uv_rect),
+			uv_radius = uv_radius
+		);
+	if flagged (round_corners, .BOTTOM_LEFT)
+		draw_semi_circle_outline (
+			rect_bottom_left (inner_rect) + vec2f (inset, -inset),
+			corner_radius,
+			PI,
+			PI / 2,
+			color,
+			thickness,
+			uv_center = rect_bottom_left (inner_uv_rect),
+			uv_radius = uv_radius
+		);
+	if flagged (round_corners, .BOTTOM_RIGHT)
+		draw_semi_circle_outline (
+			rect_bottom_right (inner_rect) + vec2f (-inset, -inset),
+			corner_radius,
+			3 * PI / 2,
+			PI / 2,
+			color,
+			thickness,
+			uv_center = rect_bottom_right (inner_uv_rect),
+			uv_radius = uv_radius
+		);
+	
+	// Top
+	draw_quad (
+		vec2f (inner_rect.x1 + inset, inner_rect.y1),
+		vec2f (inner_rect.x1 + inset, outer_rect.y1),
+		vec2f (inner_rect.x2 - inset, outer_rect.y1),
+		vec2f (inner_rect.x2 - inset, inner_rect.y1),
+		color,
+		vec2f (inner_uv_rect.x1 + uv_inset, inner_uv_rect.y1),
+		vec2f (inner_uv_rect.x1 + uv_inset, outer_uv_rect.y1),
+		vec2f (inner_uv_rect.x2 - uv_inset, outer_uv_rect.y1),
+		vec2f (inner_uv_rect.x2 - uv_inset, inner_uv_rect.y1),
+	);
+	// Right
+	draw_quad (
+		vec2f (inner_rect.x2, inner_rect.y1 + inset),
+		vec2f (outer_rect.x2, inner_rect.y1 + inset),
+		vec2f (outer_rect.x2, inner_rect.y2 - inset),
+		vec2f (inner_rect.x2, inner_rect.y2 - inset),
+		color,
+		vec2f (inner_uv_rect.x2, inner_uv_rect.y1 + uv_inset),
+		vec2f (outer_uv_rect.x2, inner_uv_rect.y1 + uv_inset),
+		vec2f (outer_uv_rect.x2, inner_uv_rect.y2 - uv_inset),
+		vec2f (inner_uv_rect.x2, inner_uv_rect.y2 - uv_inset),
+	);
+	// Bottom
+	draw_quad (
+		vec2f (inner_rect.x1 + inset, outer_rect.y2),
+		vec2f (inner_rect.x1 + inset, inner_rect.y2),
+		vec2f (inner_rect.x2 - inset, inner_rect.y2),
+		vec2f (inner_rect.x2 - inset, outer_rect.y2),
+		color,
+		vec2f (inner_uv_rect.x1 + uv_inset, outer_uv_rect.y2),
+		vec2f (inner_uv_rect.x1 + uv_inset, inner_uv_rect.y2),
+		vec2f (inner_uv_rect.x2 - uv_inset, inner_uv_rect.y2),
+		vec2f (inner_uv_rect.x2 - uv_inset, outer_uv_rect.y2),
+	);
+	// Left
+	draw_quad (
+		vec2f (outer_rect.x1, inner_rect.y1 + inset),
+		vec2f (inner_rect.x1, inner_rect.y1 + inset),
+		vec2f (inner_rect.x1, inner_rect.y2 - inset),
+		vec2f (outer_rect.x1, inner_rect.y2 - inset),
+		color,
+		vec2f (outer_uv_rect.x1, inner_uv_rect.y1 + uv_inset),
+		vec2f (inner_uv_rect.x1, inner_uv_rect.y1 + uv_inset),
+		vec2f (inner_uv_rect.x1, inner_uv_rect.y2 - uv_inset),
+		vec2f (outer_uv_rect.x1, inner_uv_rect.y2 - uv_inset),
+	);
 }
 @Amber_API
 

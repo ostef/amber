@@ -62,13 +62,10 @@ buffer_exists :: inline (id : Buffer_ID) -> bool #must
 
 buffer_open :: inline (split_id : Split_ID, filename : string, name : string) -> Buffer_ID
 {
-	split : *Split;
-	if splits.count == 0
-		split = add_split ();
-	else
-		split = get_split (split_id);
+	split := get_split (split_id);
 	buffer := add_buffer ();
 	push_into_array (*split.opened_buffer_ids, buffer.id);
+	split.active_buffer_index = split.opened_buffer_ids.count - 1;
 	buffer.split_id = split.id;
 	if filename
 	{
@@ -92,12 +89,7 @@ buffer_open :: inline (split_id : Split_ID, filename : string, name : string) ->
 	language_process_buffer (buffer.id);
 	page := load_page (get_font (text_layout.font_id), text_layout.font_height);
 	line_number_len := count_digits (buffer.lines.count);
-	text_layout.area = rectf (
-		split.area.x1 + cast (f32) (line_number_len + 2) * page.space_advance,
-		split.area.y1,
-		split.area.x2,
-		split.area.y2 - cast (f32) (page.ascent - page.descent)
-	);
+	text_layout.area = split_get_text_layout_area (split.id);
 	text_layout_compute (text_layout.id);
 	
 	return buffer.id;
