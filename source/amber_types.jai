@@ -73,10 +73,8 @@ MAIN_PROGRAM : Extension_ID : 0;
 
 Extension_Callbacks :: struct
 {
-	on_startup  : (*Amber_Hooks);
-	on_shutdown : (*Amber_Hooks);
-	on_input    : (*Amber_Hooks, Input_Event) -> Event_Result, bool;
-	on_update   : (*Amber_Hooks);
+	on_event  : (*Amber_Hooks, Event) -> Event_Result, bool;
+	on_update : (*Amber_Hooks);
 }
 
 // Font
@@ -135,7 +133,7 @@ Event_Result :: struct
 	show_scrollbar   : bool;
 }
 
-operator | :: inline (left : Event_Result, right : Event_Result) -> Event_Result #must
+operator || :: inline (left : Event_Result, right : Event_Result) -> Event_Result #must
 {
 	result : Event_Result = ---;
 	result.buffer_modified  = left.buffer_modified  || right.buffer_modified;
@@ -145,7 +143,7 @@ operator | :: inline (left : Event_Result, right : Event_Result) -> Event_Result
 	return result;
 }
 
-Input_Event :: struct
+Event :: struct
 {
 	Kind :: enum
 	{
@@ -159,15 +157,30 @@ Input_Event :: struct
 		MOUSE_RELEASE :: 7;
 		MOUSE_WHEEL   :: 8;
 		TEXT_INPUT    :: 9;
+
+		WINDOW_CLOSE  :: 100;
+		WINDOW_MOVE   :: 101;
+		WINDOW_RESIZE :: 102;
 	}
 	
 	kind : Kind;
-	mods : Mods;
-	key_code : Key_Code;
-	mouse_position : Vec2f;
-	mouse_button   : Mouse_Button;
-	mouse_wheel    : Vec2f;
-	codepoint : u32;
+	union
+	{
+		using input_event : struct
+		{
+			mods : Mods;
+			key_code : Key_Code;
+			mouse_position : Vec2f;
+			mouse_button   : Mouse_Button;
+			mouse_wheel    : Vec2f;
+			codepoint : u32;
+		};
+		using window_event : struct
+		{
+			window_position : Vec2i;
+			viewport_size   : Vec2i;
+		};
+	};
 }
 
 Mouse_Button :: enum

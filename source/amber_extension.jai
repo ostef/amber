@@ -74,7 +74,7 @@ init_extensions :: ()
 	}
 }
 
-cleanup_extensions :: ()
+terminate_and_free_extensions :: ()
 {
 	for * extension : extensions
 	{
@@ -89,36 +89,16 @@ cleanup_extensions :: ()
 	}
 }
 
-extensions_on_startup :: inline ()
-{
-	for * extensions
-	{
-		if !it.loaded || !it.initialized then continue;
-		if it.hooks.on_startup
-			it.hooks.on_startup (*it.hooks);
-	}
-}
-
-extensions_on_shutdown :: inline ()
-{
-	for * extensions
-	{
-		if !it.loaded || !it.initialized then continue;
-		if it.hooks.on_shutdown
-			it.hooks.on_shutdown (*it.hooks);
-	}
-}
-
-extensions_on_input :: inline (event : Input_Event) -> Event_Result, bool
+extensions_on_event :: inline (event : Event) -> Event_Result, bool
 {
 	result : Event_Result;
 	for * extensions
 	{
 		if !it.loaded || !it.initialized then continue;
-		if it.hooks.on_input
+		if it.hooks.on_event
 		{
-			extension_result, propagate := it.hooks.on_input (*it.hooks, event);
-			result |= extension_result;
+			extension_result, propagate := it.hooks.on_event (*it.hooks, event);
+			result ||= extension_result;
 			if !propagate then return result, false;
 		}
 	}

@@ -420,7 +420,6 @@ platform_init_window_and_gl :: ()
 		lpszClassName = utf8_to_wide ("AMBER WINDOW CLASS", heap_allocator);
 		style       = CS_OWNDC | CS_DBLCLKS;
 		lpfnWndProc = xx window_proc;
-		hCursor     = win32_cursors.arrow;
 		// @Todo (stefan): Set window icon.
 		
 		RegisterClassExW (*window_class);
@@ -522,7 +521,7 @@ platform_init_window_and_gl :: ()
 	}
 }
 
-platform_get_next_event :: inline (out : *Input_Event) -> bool #must
+platform_get_next_event :: inline (out : *Event) -> bool #must
 {
 	msg : MSG;
 	initialize_item (*current_event);
@@ -802,7 +801,7 @@ is_repeat :: (lparam : LPARAM) -> bool #must
 	return (lparam >> 30) != 0;
 }
 
-current_event : Input_Event;
+current_event : Event;
 
 window_proc :: (hwnd : HANDLE, msg : u32, wparam : WPARAM, lparam : LPARAM) -> LRESULT #c_call
 {
@@ -812,14 +811,24 @@ window_proc :: (hwnd : HANDLE, msg : u32, wparam : WPARAM, lparam : LPARAM) -> L
 		if msg ==
 		{
 		case WM_CLOSE;
-			running = false;
+			current_event.kind = .WINDOW_CLOSE;
+		
+		case WM_MOVE;
+			current_event.kind = .WINDOW_MOVE;
+			current_event.window_position.x = xx LOWORD_L (lparam);
+			current_event.window_position.y = xx HIWORD_L (lparam);
+	
+		case WM_SIZE;
+			current_event.kind = .WINDOW_RESIZE;
+			current_event.viewport_size.x = xx LOWORD_L (lparam);
+			current_event.viewport_size.y = xx HIWORD_L (lparam);
 	
 		case WM_SYSKEYDOWN; #through;
 		case WM_SYSKEYUP; #through;
 		case WM_KEYDOWN; #through;
 		case WM_KEYUP;
 			if msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN
-				current_event.kind = ifx is_repeat (lparam) then Input_Event.Kind.KEY_REPEAT else Input_Event.Kind.KEY_PRESS;
+				current_event.kind = ifx is_repeat (lparam) then Event.Kind.KEY_REPEAT else Event.Kind.KEY_PRESS;
 			else
 				current_event.kind = .KEY_RELEASE;
 			current_event.mods = platform_get_mod_state ();
