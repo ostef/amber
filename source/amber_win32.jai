@@ -518,7 +518,10 @@ platform_init_window_and_gl :: ()
 		hglrc = wglCreateContext (hdc);
 		wglMakeCurrent (hdc, hglrc);
 		ShowWindow (hwnd, SW_SHOWDEFAULT);
+		SetFocus (hwnd);
 	}
+
+	platform_set_cursor (.ARROW);
 }
 
 platform_get_next_event :: inline (out : *Event) -> bool #must
@@ -1323,6 +1326,7 @@ DispatchMessageW :: (lpMsg : *MSG) -> LRESULT #foreign user32;
 GetWindowRect :: (hWnd : HANDLE, lpRect : *RECT) -> BOOL #foreign user32;
 GetClientRect :: (hWnd : HANDLE, lpRect : *RECT) -> BOOL #foreign user32;
 GetFocus :: () -> HANDLE #foreign user32;
+SetFocus :: (hWnd : HANDLE) -> HANDLE #foreign user32;
 MessageBoxW :: (hWnd : HANDLE, lpText : *u16, lpCaption : *u16, uType : u32) -> BOOL #foreign user32;
 GetCursorPos :: (lpPoint : *POINT) -> BOOL #foreign user32;
 ScreenToClient :: (hWnd : HANDLE, lpPoint : *POINT) -> BOOL #foreign user32;
