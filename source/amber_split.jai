@@ -249,9 +249,10 @@ split_get_scrollbar_rect :: (split_id : Split_ID) -> Rectf #must
 	line_height    := text_layout_get_line_height (active_layout_id);
 	layout_extents := text_layout_get_extents (active_layout_id);
 	layout_area    := text_layout_get_area (active_layout_id);
-	max_visible  := layout_extents.y - line_height + rect_height (layout_area);
+	max_scroll     := text_layout_get_max_scroll (active_layout_id);
+	max_visible    := layout_extents.y;
 	visible_area := rect_height (layout_area) / max_visible;
-	scroll_percent   := text_layout_get_visual_scroll (active_layout_id).y / max (layout_extents.y / line_height - 1, 0);
+	scroll_percent   := text_layout_get_visual_scroll (active_layout_id).y / max_scroll.y;
 	scrollbar_height := max (visible_area * rect_height (layout_area), MIN_SCROLLBAR_HEIGHT);
 	scrolling_area   := rect_height (layout_area) - scrollbar_height;
 	scrollbar_rect   := xywhf (layout_area.x2 - SCROLLBAR_WIDTH, layout_area.y1 + scrolling_area * scroll_percent, SCROLLBAR_WIDTH, scrollbar_height);
@@ -398,16 +399,28 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 	using split := get_split (split_id);
 	active_buffer_id := split_get_active_buffer (split_id);
 	active_layout_id := buffer_get_text_layout (active_buffer_id);
+	font := get_font (text_layout_get_font (active_layout_id));
+	page := load_page (font, text_layout_get_font_height (active_layout_id));
+	line_height := cast (f32) (page.ascent - page.descent);
 	
 	if event_result.buffer_modified
 	{
 		language_process_buffer (active_buffer_id);
+		line_number_len := count_digits (buffer_get_line_count (active_buffer_id));
+		text_layout_set_area (
+			active_layout_id,
+			rectf (
+				area.x1 + cast (f32) (line_number_len + 2) * page.space_advance,
+				area.y1,
+				area.x2,
+				area.y2 - line_height
+			)
+		);
 		text_layout_set_dirty (active_layout_id);
 	}
 	if text_layout_is_dirty (active_layout_id)
 		text_layout_compute (active_layout_id);
 	
-	line_height := text_layout_get_line_height (active_layout_id);
 	layout_area := text_layout_get_area (active_layout_id);
 	mouse_position := platform_get_mouse_position ();
 	// Select text with mouse and drag scrollbar
@@ -425,7 +438,7 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 			scrollbar_rect := split_get_scrollbar_rect (split_id);
 			scrollbar_rect = set_position (scrollbar_rect, vec2f (scrollbar_rect.x1, mouse_position.y + scrollbar_drag_offset));
 			scroll_percent := scrollbar_rect.y1 / (rect_height (text_layout_get_area (active_layout_id)) - rect_height (scrollbar_rect));
-			text_layout_set_scroll_y (active_layout_id, round (scroll_percent * max (text_layout_get_extents (active_layout_id).y / line_height - 1, 0)));
+			text_layout_set_scroll_y (active_layout_id, round (scroll_percent * text_layout_get_max_scroll (active_layout_id).y));
 		}
 	}
 	else if platform_get_mouse_button_state (.LEFT) != .PRESSED
@@ -457,7 +470,7 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 	// Set cursor graphics
 	if contains (layout_area, mouse_position) && !contains (split_get_scrollbar_rect (split_id), mouse_position)
 		platform_set_cursor (.IBEAM);
-	else
+	else if contains (split.area, mouse_position)
 		platform_set_cursor (.ARROW);
 }
 
@@ -490,9 +503,24 @@ split_draw :: inline (split_id : Split_ID)
 	else
 		split.cursor_view_alpha = lerp (split.cursor_view_alpha, 0, 0.3);
 	
-	max_visible  := layout_extents.y - line_height + rect_height (layout_area);
+	max_visible  := layout_extents.y;
 	cursor_view_position := (text_layout_get_relative_rect (active_layout_id, buffer_get_cursor (active_buffer_id, WRITE_HEAD).offset).y1 / max_visible) * rect_height (layout_area);
 	
 	draw_rect (scrollbar_rect, rgba (RGBA_WHITE, split.scrollbar_alpha), rect_width (scrollbar_rect) * 0.5);
 	draw_rect (xywhf (layout_area.x2 - SCROLLBAR_WIDTH, layout_area.y1 + cursor_view_position, SCROLLBAR_WIDTH, 2), rgba (RGBA_WHITE, split.cursor_view_alpha));
+
+	draw_rect (rectf (split.area.x1, split.area.y2 - line_height, split.area.x2, split.area.y2), RGBA_WHITE);
+	draw_text (
+		text_layout_get_font (active_layout_id),
+		text_layout_get_font_height (active_layout_id),
+		vec2f (split.area.x1, split.area.y2 - line_height),
+		fstring (
+			temp_allocator,
+			"Ln %, Col % ~ % line(s)",
+			buffer_get_line_index (active_buffer_id) + 1,
+			buffer_get_column_index (active_buffer_id) + 1,
+			buffer_get_line_count (active_buffer_id)
+		),
+		RGBA_BLACK
+	);
 }

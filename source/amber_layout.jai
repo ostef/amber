@@ -148,6 +148,14 @@ text_layout_get_area :: inline (layout_id : Text_Layout_ID) -> Rectf #must
 }
 @Amber_API
 
+text_layout_set_area :: inline (layout_id : Text_Layout_ID, new_area : Rectf)
+{
+	using layout := get_text_layout (layout_id);
+	area = new_area;
+	is_dirty = true;
+}
+@Amber_API
+
 text_layout_get_extents :: inline (layout_id : Text_Layout_ID) -> Vec2f #must
 {
 	using layout := get_text_layout (layout_id);
@@ -213,8 +221,8 @@ text_layout_get_max_scroll :: inline (layout_id : Text_Layout_ID) -> Vec2f #must
 	area    := text_layout_get_area (layout_id);
 	
 	return vec2f (
-		max ((extents.x - rect_width (area)) / cast (f32) page.space_advance - 1, 0),
-		max (extents.y / line_height - 1, 0)
+		max (ceil ((extents.x - rect_width (area)) / cast (f32) page.space_advance), 0),
+		max (ceil ((extents.y - rect_height (area)) / line_height), 0)
 	);
 }
 @Amber_API
