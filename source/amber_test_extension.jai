@@ -11,7 +11,7 @@ init_extension :: (id : Extension_ID, using amber : *Amber_Hooks) -> bool
 	language.extension_id = id;
 	language.name = "foo";
 	language.process_buffer = foo_process_buffer;
-	on_input = handle_input_event;
+	on_event  = handle_event;
 	on_update = update;
 	
 	return language_register (language);
@@ -23,7 +23,7 @@ terminate_extension :: (using amber : *Amber_Hooks)
 	println ("Goodbye Sailor!");
 }
 
-handle_input_event :: (using amber : *Amber_Hooks, event : Input_Event) -> Event_Result, propagate : bool
+handle_event :: (using amber : *Amber_Hooks, event : Event) -> Event_Result, propagate : bool
 {
 	result : Event_Result;
 	if event.kind == .KEY_PRESS
