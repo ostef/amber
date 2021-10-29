@@ -27,6 +27,9 @@ handle_event :: inline (event : Event) -> Event_Result #must
 	using result : Event_Result;
 	if event.kind ==
 	{
+	case .WINDOW_CLOSE;
+		running = false;
+		
 	case .WINDOW_RESIZE;
 		for * split : splits
 		{
@@ -39,6 +42,17 @@ handle_event :: inline (event : Event) -> Event_Result #must
 			split_set_area (split.id, new_area);
 		}
 		viewport_size = event.viewport_size;
+	
+	case .MOUSE_PRESS;
+		for splits
+		{
+			if contains (it.area, event.mouse_position)
+			{
+				active_split_id = it.id;
+				
+				break;
+			}
+		}
 	}
 	
 	return result;
@@ -46,8 +60,10 @@ handle_event :: inline (event : Event) -> Event_Result #must
 
 main :: ()
 {
+	FONT_NAME :: "fonts/jetbrainsmono/JetBrainsMono-Regular.ttf";
+	
 	platform_init_window_and_gl ();
-	viewport_size := platform_get_viewport_size ();
+	viewport_size = platform_get_viewport_size ();
 	draw_init ();
 	font_init ();
 	init_slot_array (*buffers, 20, heap_allocator);
@@ -55,22 +71,26 @@ main :: ()
 	init_slot_array (*splits, 10, heap_allocator);
 	load_extension ("user.dll");
 	init_extensions ();
+	font_load_from_file (FONT_NAME);
+	split_create_first ();
 	
 	running = true;
 	frame_start := platform_get_time ();
 	while running
 	{
 		previous_frame_start := frame_start;
+		frame_start = platform_get_time ();
 		delta_time := cast (f32) (frame_start - previous_frame_start);
 		reset_temporary_storage ();
 		event : Event;
 		event_result : Event_Result;
+		platform_reset_input_state ();
 		while platform_get_next_event (*event)
 		{
+			event_result ||= handle_event (event);
 			extensions_result, propagate := extensions_on_event (event);
 			event_result ||= extensions_result;
 			if !propagate then continue;
-			event_result ||= handle_event (event);
 			if active_split_id != NULL_SPLIT
 				event_result ||= split_handle_event (active_split_id, event);
 		}
