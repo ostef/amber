@@ -32,6 +32,44 @@ make_vec2 :: inline (x : $T, y : T) -> Vec2 (T) #must
 	return result;
 }
 
+clamp :: inline (vec : Vec2f, min : Vec2f, max : Vec2f) -> Vec2f #must
+{
+	result : Vec2f = ---;
+	result.x = clamp (vec.x, min.x, max.x);
+	result.y = clamp (vec.y, min.y, max.y);
+	
+	return result;
+}
+
+round :: inline (vec : Vec2f) -> Vec2f #must
+{
+	result : Vec2f = ---;
+	result.x = round (vec.x);
+	result.y = round (vec.y);
+	
+	return result;
+}
+
+/*
+floor :: inline (vec : $V/Vec2) -> V #must
+{
+	result : V = ---;
+	result.x = floor (vec.x);
+	result.y = floor (vec.y);
+	
+	return result;
+}
+
+ceil :: inline (vec : $V/Vec2) -> V #must
+{
+	result : V = ---;
+	result.x = ceil (vec.x);
+	result.y = ceil (vec.y);
+	
+	return result;
+}
+*/
+
 dot :: inline (left : $V/Vec2, right : V) -> V.T #must
 {
 	return left.x * right.x + left.y * right.y;
