@@ -10,7 +10,6 @@ Amber_Hooks :: struct #type_info_none
 	buffer_clear_history : (Buffer_ID);
 	buffer_clear_redo_history : (Buffer_ID);
 	buffer_clear_selection : (Buffer_ID);
-	buffer_close : (Buffer_ID);
 	buffer_cursor_is_at_bol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_cursor_is_at_eol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_delete_selection : (Buffer_ID, Buffer_Cursor_ID) -> bool;
@@ -28,6 +27,7 @@ Amber_Hooks :: struct #type_info_none
 	buffer_get_split : (Buffer_ID) -> Split_ID;
 	buffer_get_text_layout : (Buffer_ID) -> Text_Layout_ID;
 	buffer_insert_at_cursor : (Buffer_ID, u32, Buffer_Cursor_ID);
+	buffer_load_file : (Buffer_ID, string) -> bool;
 	buffer_merge_duplicate_cursors : (Buffer_ID);
 	buffer_move_cursor_backward : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_forward : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
@@ -41,9 +41,9 @@ Amber_Hooks :: struct #type_info_none
 	buffer_move_write_head_to_column : (Buffer_ID, s64, bool) -> bool;
 	buffer_move_write_head_to_line_and_column : (Buffer_ID, s64, s64, bool) -> bool;
 	buffer_move_write_head_to_line : (Buffer_ID, s64, bool) -> bool;
-	buffer_open : (Split_ID, string, string) -> Buffer_ID;
 	buffer_remove_cursor : (Buffer_ID, Buffer_Cursor_ID);
 	buffer_set_eol_sequence : (Buffer_ID, EOL_Sequence);
+	buffer_set_filename : (Buffer_ID, string);
 	buffer_set_language : (Buffer_ID, Language_ID) -> Language_ID;
 	buffer_set_name : (Buffer_ID, string);
 	buffer_set_text_layout : (Buffer_ID, Text_Layout_ID);
@@ -129,11 +129,8 @@ Amber_Hooks :: struct #type_info_none
 	platform_write_file : (*void, *void, s64) -> (s64, bool);
 	platform_write_to_file : (string, string) -> (s64, bool);
 	set_active_split : (Split_ID);
-	split_create_above : (Split_ID) -> Split_ID;
-	split_create_below : (Split_ID) -> Split_ID;
+	split_close_buffer : (Split_ID, s64);
 	split_create_first : () -> Split_ID;
-	split_create_left : (Split_ID) -> Split_ID;
-	split_create_right : (Split_ID) -> Split_ID;
 	split_exists : (Split_ID) -> bool;
 	split_get_active_buffer_index : (Split_ID) -> s64;
 	split_get_active_buffer : (Split_ID) -> Buffer_ID;
@@ -143,11 +140,9 @@ Amber_Hooks :: struct #type_info_none
 	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
 	split_get_scrollbar_rect : (Split_ID) -> Rect (T = f32);
 	split_get_text_layout_area : (Split_ID) -> Rect (T = f32);
-	split_merge_above : (Split_ID);
-	split_merge_below : (Split_ID);
-	split_merge_left : (Split_ID);
-	split_merge_right : (Split_ID);
+	split_open_buffer : (Split_ID) -> Buffer_ID;
 	split_set_area : (Split_ID, Rect (T = f32));
+	text_layout_clear : (Text_Layout_ID);
 	text_layout_clear_colors : (Text_Layout_ID);
 	text_layout_compute : (Text_Layout_ID);
 	text_layout_exists : (Text_Layout_ID) -> bool;
@@ -181,4 +176,5 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_set_scroll_y : (Text_Layout_ID, f32);
 	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_set_visual_scroll : (Text_Layout_ID, Vec2 (T = f32));
+	text_layout_update_area : (Text_Layout_ID);
 }

@@ -37,6 +37,12 @@ add_buffer :: inline () -> *Buffer #must
 	return buffer;
 }
 
+remove_buffer :: inline (buffer_id : Buffer_ID)
+{
+	buffer_reset (buffer_id);
+	remove_from_slot_array (*buffers, xx (buffer_id - 1));
+}
+
 get_buffer :: inline (id : Buffer_ID) -> *Buffer #must
 {
 	assert (buffer_exists (id), "Invalid buffer id (%).", id);
@@ -57,61 +63,6 @@ get_active_buffer :: inline () -> Buffer_ID #must
 buffer_exists :: inline (id : Buffer_ID) -> bool #must
 {
 	return id > 0 && id <= xx buffers.max_occupied && buffers.slots[cast (s64) id - 1].occupied;
-}
-@Amber_API
-
-buffer_open :: inline (split_id : Split_ID, filename : string, name : string) -> Buffer_ID
-{
-	split := get_split (split_id);
-	buffer := add_buffer ();
-	push_into_array (*split.opened_buffer_ids, buffer.id);
-	split.active_buffer_index = split.opened_buffer_ids.count - 1;
-	buffer.split_id = split.id;
-	if filename
-	{
-		str, ok := platform_read_entire_file (filename, temp_allocator);
-		utf8_str := utf8 (str);
-		if ok
-		{
-			buffer.filename = clone_string (filename, heap_allocator);
-			for utf8_str
-				buffer_insert_at_cursor (buffer.id, it, WRITE_HEAD);
-			buffer_move_cursor_to_beginning (buffer.id, WRITE_HEAD);
-		}
-	}
-	buffer.name = clone_string (name, heap_allocator);
-
-	text_layout := add_text_layout ();
-	text_layout.split_id = split.id;
-	text_layout.font_id = 1;
-	text_layout.font_height = 16;
-	buffer_set_text_layout (buffer.id, text_layout.id);
-	language_process_buffer (buffer.id);
-	page := load_page (get_font (text_layout.font_id), text_layout.font_height);
-	line_number_len := count_digits (buffer.lines.count);
-	text_layout.area = split_get_text_layout_area (split.id);
-	text_layout_compute (text_layout.id);
-	
-	return buffer.id;
-}
-@Amber_API
-
-buffer_close :: inline (buffer_id : Buffer_ID)
-{
-	buffer := get_buffer (buffer_id);
-	split  := get_split (buffer.split_id);
-	for split.opened_buffer_ids
-	{
-		if it == buffer_id
-		{
-			remove it;
-			buffer_reset (buffer_id);
-			remove_from_slot_array (*buffers, xx buffer_id - 1);
-			
-			return;
-		}
-	}
-	panic ("Buffer with id % does not exist in split with id %.", buffer_id, split.id);
 }
 @Amber_API
 
@@ -138,21 +89,6 @@ buffer_init :: (buffer_id : Buffer_ID, capacity : s64)
 	eol_sequence = .PLATFORM;
 }
 
-buffer_clear :: inline (buffer_id : Buffer_ID)
-{
-	using buffer := get_buffer (buffer_id);
-	gap = allocated;
-	offset       = 0;
-	selection    = 0;
-	line_index   = 0;
-	column_index = 0;
-	clear_array (*other_cursors);
-	buffer_clear_history (buffer_id);
-	clear_array (*lines);
-	push_into_array (*lines, 0);
-}
-@Amber_API
-
 buffer_reset :: (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
@@ -172,22 +108,6 @@ buffer_reset :: (buffer_id : Buffer_ID)
 	reset_array (*history.edit_buffer);
 }
 
-buffer_clear_history :: inline (buffer_id : Buffer_ID)
-{
-	using buffer := get_buffer (buffer_id);
-	clear_array (*history.edits);
-	history.index = 0;
-	clear_array (*history.edit_buffer);
-}
-@Amber_API
-
-buffer_clear_redo_history :: inline (buffer_id : Buffer_ID)
-{
-	using buffer := get_buffer (buffer_id);
-	history.edits.count = history.index;
-}
-@Amber_API
-
 buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
 {
 	using buffer := get_buffer (buffer_id);
@@ -205,6 +125,55 @@ buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
 	allocated = new_capacity;
 	gap       = new_gap;
 }
+
+buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
+{
+	str, ok := platform_read_entire_file (filename, temp_allocator);
+	if !ok then return false;
+	buffer_clear (buffer_id);
+	utf8_str := utf8 (str);
+	for utf8_str
+		buffer_insert_at_cursor (buffer_id, it, WRITE_HEAD);
+	buffer_set_filename (buffer_id, filename);
+	layout_id := buffer_get_text_layout (buffer_id);
+	language_process_buffer (buffer_id);
+	text_layout_update_area (layout_id);
+	text_layout_compute (layout_id);
+
+	return true;
+}
+@Amber_API
+
+buffer_clear :: inline (buffer_id : Buffer_ID)
+{
+	using buffer := get_buffer (buffer_id);
+	gap = allocated;
+	offset       = 0;
+	selection    = 0;
+	line_index   = 0;
+	column_index = 0;
+	clear_array (*other_cursors);
+	buffer_clear_history (buffer_id);
+	clear_array (*lines);
+	push_into_array (*lines, 0);
+}
+@Amber_API
+
+buffer_clear_history :: inline (buffer_id : Buffer_ID)
+{
+	using buffer := get_buffer (buffer_id);
+	clear_array (*history.edits);
+	history.index = 0;
+	clear_array (*history.edit_buffer);
+}
+@Amber_API
+
+buffer_clear_redo_history :: inline (buffer_id : Buffer_ID)
+{
+	using buffer := get_buffer (buffer_id);
+	history.edits.count = history.index;
+}
+@Amber_API
 
 buffer_get_split :: inline (buffer_id : Buffer_ID) -> Split_ID #must
 {
@@ -258,6 +227,14 @@ buffer_get_filename :: inline (buffer_id : Buffer_ID, allocator : Allocator, all
 }
 @Amber_API
 
+buffer_set_filename :: inline (buffer_id : Buffer_ID, new_filename : string)
+{
+	using buffer := get_buffer (buffer_id);
+	free (filename, heap_allocator);
+	filename = clone_string (new_filename, heap_allocator);
+}
+@Amber_API
+
 buffer_get_name :: inline (buffer_id : Buffer_ID, allocator : Allocator, allocator_data := null) -> string #must
 {
 	using buffer := get_buffer (buffer_id);
@@ -269,8 +246,7 @@ buffer_get_name :: inline (buffer_id : Buffer_ID, allocator : Allocator, allocat
 buffer_set_name :: inline (buffer_id : Buffer_ID, name : string)
 {
 	buffer := get_buffer (buffer_id);
-	if buffer.name
-		free (buffer.name, heap_allocator);
+	free (buffer.name, heap_allocator);
 	buffer.name = clone_string (name, heap_allocator);
 }
 @Amber_API

@@ -37,6 +37,12 @@ add_text_layout :: inline () -> *Text_Layout #must
 	return layout;
 }
 
+remove_text_layout :: inline (layout_id : Text_Layout_ID)
+{
+	text_layout_reset (layout_id);
+	remove_from_slot_array (*text_layouts, xx (layout_id - 1));
+}
+
 get_text_layout :: inline (id : Text_Layout_ID) -> *Text_Layout #must
 {
 	assert (text_layout_exists (id), "Invalid text layout id (%).", id);
@@ -60,13 +66,31 @@ text_layout_exists :: inline (id : Text_Layout_ID) -> bool #must
 }
 @Amber_API
 
-text_layout_init :: (layout_id : Text_Layout_ID, capacity : s64)
+text_layout_init :: inline (layout_id : Text_Layout_ID, capacity : s64)
 {
 	using layout := get_text_layout (layout_id);
 	init_array (*rects, capacity, heap_allocator);
 	init_array (*wrapped_lines, capacity / 100, heap_allocator);
 	init_array (*colors, capacity / 10, heap_allocator);
 }
+
+text_layout_reset :: inline (layout_id : Text_Layout_ID)
+{
+	using layout := get_text_layout (layout_id);
+	reset_array (*rects);
+	reset_array (*wrapped_lines);
+	reset_array (*colors);
+}
+
+text_layout_clear :: inline (layout_id : Text_Layout_ID)
+{
+	using layout := get_text_layout (layout_id);
+	clear_array (*rects);
+	clear_array (*wrapped_lines);
+	clear_array (*colors);
+	is_dirty = true;
+}
+@Amber_API
 
 text_layout_get_split :: inline (layout_id : Text_Layout_ID) -> Split_ID #must
 {
@@ -162,6 +186,12 @@ text_layout_set_area :: inline (layout_id : Text_Layout_ID, new_area : Rectf)
 	using layout := get_text_layout (layout_id);
 	area = new_area;
 	is_dirty = true;
+}
+@Amber_API
+
+text_layout_update_area :: inline (layout_id : Text_Layout_ID)
+{
+	text_layout_set_area (layout_id, split_get_text_layout_area (text_layout_get_split (layout_id)));
 }
 @Amber_API
 

@@ -23,9 +23,15 @@ add_split :: inline () -> *Split #must
 {
 	split, index := insert_into_slot_array (*splits);
 	split.id = cast (Split_ID) (index + 1);
-	init_array (*split.opened_buffer_ids, 10, heap_allocator);
+	split_init (split.id);
 	
 	return split;
+}
+
+remove_split :: inline (split_id : Split_ID)
+{
+	split_reset (split_id);
+	remove_from_slot_array (*splits, xx (split_id - 1));
 }
 
 get_split :: inline (id : Split_ID) -> *Split #must
@@ -54,6 +60,48 @@ split_exists :: inline (id : Split_ID) -> bool #must
 }
 @Amber_API
 
+split_init :: inline (split_id : Split_ID)
+{
+	using split := get_split (split_id);
+	init_array (*opened_buffer_ids, 20, heap_allocator);
+}
+
+split_reset :: inline (split_id : Split_ID)
+{
+	using split := get_split (split_id);
+	reset_array (*opened_buffer_ids);
+}
+
+split_open_buffer :: (split_id : Split_ID) -> Buffer_ID
+{
+	using split := get_split (split_id);
+	buffer := add_buffer ();
+	buffer.split_id = split_id;
+	push_into_array (*opened_buffer_ids, buffer.id);
+	active_buffer_index = opened_buffer_ids.count - 1;
+	layout := add_text_layout ();
+	layout.font_id = 1;	// @Temporary
+	layout.font_height = 16;	// @Temporary
+	layout.split_id = split_id;
+	buffer_set_text_layout (buffer.id, layout.id);
+	language_process_buffer (buffer.id);
+	text_layout_update_area (layout.id);
+	text_layout_compute (layout.id);
+	
+	return buffer.id;
+}
+@Amber_API
+
+split_close_buffer :: (split_id : Split_ID, buffer_index : s64)
+{
+	using split := get_split (split_id);
+	buffer_id := split_get_buffer (split_id, buffer_index);
+	remove_text_layout (buffer_get_text_layout (buffer_id));
+	remove_buffer (buffer_id);
+	sorted_remove_from_array (*opened_buffer_ids, buffer_index);
+}
+@Amber_API
+
 split_get_area :: inline (split_id : Split_ID) -> Rectf #must
 {
 	using split := get_split (split_id);
@@ -73,7 +121,7 @@ split_set_area :: inline (split_id : Split_ID, new_area : Rectf)
 		page := load_page (font, text_layout_get_font_height (layout_id));
 		line_height := cast (f32) (page.ascent - page.descent);
 		line_number_len := count_digits (buffer_get_line_count (buffer_id));
-		text_layout_set_area (layout_id, split_get_text_layout_area (split_id));
+		text_layout_update_area (layout_id);
 	}
 }
 @Amber_API
@@ -142,132 +190,10 @@ split_create_first :: inline () -> Split_ID
 	viewport := platform_get_viewport_size ();
 	split := add_split ();
 	split.area = rectf (0, 0, xx viewport.width, xx viewport.height);
-	buffer_open (split.id, "", "");
+	split_open_buffer (split.id);
 	set_active_split (split.id);
 	
 	return split.id;
-}
-@Amber_API
-
-split_create_left :: inline (split_id : Split_ID) -> Split_ID
-{
-	split := get_split (split_id);
-	split.area = set_width (split.area, rect_width (split.area) * 0.5);
-	new_split := add_split ();
-	new_split.area = split.area;
-	split.area = move (split.area, rect_width (split.area), 0);
-	
-	return new_split.id;
-}
-@Amber_API
-
-split_create_right :: inline (split_id : Split_ID) -> Split_ID
-{
-	split := get_split (split_id);
-	split.area = set_width (split.area, rect_width (split.area) * 0.5);
-	new_split := add_split ();
-	new_split.area = move (split.area, rect_width (split.area), 0);
-	
-	return new_split.id;
-}
-@Amber_API
-
-split_create_above :: inline (split_id : Split_ID) -> Split_ID
-{
-	split := get_split (split_id);
-	split.area = set_height (split.area, rect_height (split.area) * 0.5);
-	new_split := add_split ();
-	new_split.area = split.area;
-	split.area = move (split.area, 0, rect_height (split.area));
-	
-	return new_split.id;
-}
-@Amber_API
-
-split_create_below :: inline (split_id : Split_ID) -> Split_ID
-{
-	split := get_split (split_id);
-	split.area = set_height (split.area, rect_height (split.area) * 0.5);
-	new_split := add_split ();
-	new_split.area = move (split.area, 0, rect_height (split.area));
-	
-	return new_split.id;
-}
-@Amber_API
-
-split_merge_left :: inline (split_id : Split_ID)
-{
-	split := get_split (split_id);
-	for * splits
-	{
-		if it.area.x2 == split.area.x1 && it.area.y1 == split.area.y1 && it.area.y2 == split.area.y2
-		{
-			split.area.x1 = it.area.x1;
-			for buffer_id : it.opened_buffer_ids
-				push_into_array (*split.opened_buffer_ids, buffer_id);
-			reset_array (*it.opened_buffer_ids);
-			remove it;
-			
-			break;
-		}
-	}
-}
-@Amber_API
-
-split_merge_right :: inline (split_id : Split_ID)
-{
-	split := get_split (split_id);
-	for * splits
-	{
-		if it.area.x1 == split.area.x2 && it.area.y1 == split.area.y1 && it.area.y2 == split.area.y2
-		{
-			split.area.x2 = it.area.x2;
-			for buffer_id : it.opened_buffer_ids
-				push_into_array (*split.opened_buffer_ids, buffer_id);
-			reset_array (*it.opened_buffer_ids);
-			remove it;
-			
-			break;
-		}
-	}
-}
-@Amber_API
-
-split_merge_above :: inline (split_id : Split_ID)
-{
-	split := get_split (split_id);
-	for * splits
-	{
-		if it.area.y2 == split.area.y1 && it.area.x1 == split.area.x1 && it.area.x2 == split.area.x2
-		{
-			split.area.y1 = it.area.y1;
-			for buffer_id : it.opened_buffer_ids
-				push_into_array (*split.opened_buffer_ids, buffer_id);
-			reset_array (*it.opened_buffer_ids);
-			remove it;
-			
-			break;
-		}
-	}
-}
-@Amber_API
-
-split_merge_below :: inline (split_id : Split_ID)
-{
-	split := get_split (split_id);
-	for * splits
-	{
-		if it.area.y1 == split.area.y2 && it.area.x1 == split.area.x1 && it.area.x2 == split.area.x2
-		{
-			split.area.y2 = it.area.y2;
-			for buffer_id : it.opened_buffer_ids
-				push_into_array (*split.opened_buffer_ids, buffer_id);
-			reset_array (*it.opened_buffer_ids);
-			remove it;
-			
-			break;
-		}
-	}
 }
 @Amber_API
 
@@ -436,7 +362,7 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 	{
 		language_process_buffer (active_buffer_id);
 		line_number_len := count_digits (buffer_get_line_count (active_buffer_id));
-		text_layout_set_area (active_layout_id, split_get_text_layout_area (split_id));
+		text_layout_update_area (active_layout_id);
 		text_layout_set_dirty (active_layout_id);
 	}
 	if text_layout_is_dirty (active_layout_id)
@@ -458,7 +384,7 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 		{
 			scrollbar_rect := split_get_scrollbar_rect (split_id);
 			scrollbar_rect = set_position (scrollbar_rect, vec2f (scrollbar_rect.x1, mouse_position.y + scrollbar_drag_offset));
-			scroll_percent := scrollbar_rect.y1 / (rect_height (text_layout_get_area (active_layout_id)) - rect_height (scrollbar_rect));
+			scroll_percent := (scrollbar_rect.y1 - layout_area.y1) / (rect_height (layout_area) - rect_height (scrollbar_rect));
 			text_layout_set_scroll_y (active_layout_id, round (scroll_percent * text_layout_get_max_scroll (active_layout_id).y));
 		}
 	}
@@ -472,6 +398,7 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 	if scroll_to_cursor
 	{
 		cursor_rect := text_layout_get_rect (active_layout_id, buffer_get_cursor (active_buffer_id, WRITE_HEAD).offset);
+		// @Fix
 		if cursor_rect.y1 < layout_area.y1
 		{
 			text_layout_scroll_y (active_layout_id, (cursor_rect.y1 - layout_area.y1) / line_height);
@@ -495,7 +422,7 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 		platform_set_cursor (.ARROW);
 }
 
-split_draw :: inline (split_id : Split_ID)
+split_draw :: (split_id : Split_ID)
 {
 	using split := get_split (split_id);
 	active_buffer_id := split_get_active_buffer (split_id);

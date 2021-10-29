@@ -73,6 +73,8 @@ main :: ()
 	init_extensions ();
 	font_load_from_file (FONT_NAME);
 	split_create_first ();
+	buffer_load_file (get_active_buffer (), "amber_core.jai");
+	buffer_move_cursor_to_beginning (get_active_buffer (), WRITE_HEAD);
 	
 	running = true;
 	frame_start := platform_get_time ();
