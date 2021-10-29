@@ -10,6 +10,7 @@
 #load "amber_layout.jai";
 #load "amber_split.jai";
 #load "amber_language.jai";
+#load "amber_command.jai";
 #load "amber_extension.jai";
 
 CURSOR_ROUNDING :: 3.0;
@@ -78,6 +79,13 @@ main :: ()
 	split_create_first ();
 	buffer_load_file (get_active_buffer (), "amber_core.jai");
 	buffer_move_cursor_to_beginning (get_active_buffer (), WRITE_HEAD);
+	
+	for buffer : buffers
+	{
+		language_process_buffer (buffer.id);
+		text_layout_update_area (buffer_get_text_layout (buffer.id));
+		text_layout_compute (buffer_get_text_layout (buffer.id));
+	}
 	
 	running = true;
 	frame_start := platform_get_time ();
