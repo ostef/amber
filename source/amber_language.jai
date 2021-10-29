@@ -7,13 +7,34 @@ languages : Slot_Array (Language);
 get_language :: inline (language_id : Language_ID) -> *Language #must
 {
 	assert (language_exists (language_id), "Invalid language id (%).", language_id);
+	assert (language_id != PLAIN_TEXT, "PLAIN_TEXT is not a registered language, but a predefined id. Don't call get_language with it!");
 	
 	return *languages[cast (s64) language_id - 1];
 }
 
 language_exists :: inline (id : Language_ID) -> bool #must
 {
-	return id > 0 && id <= xx languages.max_occupied && languages.slots[cast (s64) id - 1].occupied;
+	return id == PLAIN_TEXT || id > 0 && id <= xx languages.max_occupied && languages.slots[cast (s64) id - 1].occupied;
+}
+@Amber_API
+
+language_detect :: inline (filepath : string) -> Language_ID
+{
+	filename  := filepath_get_filename (filepath);
+	extension := filepath_get_extension (filepath);
+	for lang : languages
+	{
+		for lang.associated_filenames
+		{
+			if filename == it then return lang.id;
+		}
+		for lang.associated_extensions
+		{
+			if extension == it then return lang.id;
+		}
+	}
+	
+	return PLAIN_TEXT;
 }
 @Amber_API
 
@@ -25,15 +46,17 @@ language_register :: inline (language : Language) -> bool, Language_ID
 	for languages
 	{
 		if it.name == language.name
-			return false, cast (Language_ID) it_index;
+			return false, cast (Language_ID) (it_index + 1);
 	}
 	inserted, index := insert_into_slot_array (*languages, language);
 	inserted.id = cast (Language_ID) (index + 1);
+	// @Note (stefan): We don't make assumptions about where the memory for the
+	// following members comes from, so we allocate new memory for them.
 	inserted.name = clone_string (language.name, heap_allocator);
 	inserted.associated_filenames  = clone_array (language.associated_filenames, heap_allocator);
 	inserted.associated_extensions = clone_array (language.associated_extensions, heap_allocator);
 	
-	return true, cast (Language_ID) index;
+	return true, inserted.id;
 }
 @Amber_API
 

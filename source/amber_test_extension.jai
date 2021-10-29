@@ -9,7 +9,8 @@ init_extension :: (id : Extension_ID, using amber : *Amber_Hooks) -> bool
 	println ("Hello Sailor, I am extension %!", id);
 	language : Language;
 	language.extension_id = id;
-	language.name = "foo";
+	language.name = "Foo Language";
+	language.associated_extensions = string.[ "foo" ];
 	language.process_buffer = foo_process_buffer;
 	on_event  = handle_event;
 	on_update = update;
@@ -48,5 +49,21 @@ update :: (using amber : *Amber_Hooks)
 
 foo_process_buffer :: (using amber : *Amber_Hooks, buffer_id : Buffer_ID)
 {
-	println ("Foo is processing the buffer %.", buffer_id);
+	layout_id := buffer_get_text_layout (buffer_id);
+	i := 0;
+	while i < buffer_get_count (buffer_id)
+	{
+		range := rangei (i, i + 5);
+		color := rgba (0, 0, 255);
+		text_layout_push_color (layout_id, range, color);
+		i += 5;
+		range = rangei (i, i + 5);
+		color = rgba (255, 255, 255);
+		text_layout_push_color (layout_id, range, color);
+		i += 5;
+		range = rangei (i, i + 5);
+		color = rgba (255, 0, 0);
+		text_layout_push_color (layout_id, range, color);
+		i += 5;
+	}
 }

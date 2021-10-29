@@ -12,7 +12,7 @@ Buffer :: struct
 	text_layout_id : Text_Layout_ID;
 	language_id : Language_ID;
 	
-	filename : string;
+	filepath : string;
 	name     : string;
 	
 	data : *u32;
@@ -50,6 +50,12 @@ get_buffer :: inline (id : Buffer_ID) -> *Buffer #must
 	return get_ptr (*buffers, cast (s64) id - 1);
 }
 
+get_buffer_count :: inline () -> s64 #must
+{
+	return buffers.count;
+}
+@Amber_API
+
 get_active_buffer :: inline () -> Buffer_ID #must
 {
 	split_id := get_active_split ();
@@ -69,43 +75,31 @@ buffer_exists :: inline (id : Buffer_ID) -> bool #must
 buffer_init :: (buffer_id : Buffer_ID, capacity : s64)
 {
 	using buffer := get_buffer (buffer_id);
-	filename = "";
-	name     = "";
+	initialize_item (buffer);
+	id = buffer_id;
 	data = alloc (size_of (u32) * capacity, heap_allocator);
 	gap       = capacity;
 	allocated = capacity;
-	offset       = 0;
-	selection    = 0;
-	line_index   = 0;
-	column_index = 0;
 	init_array (*other_cursors, 20, heap_allocator);
 	init_array (*lines, 5000, heap_allocator);
 	push_into_array (*lines, 0);
 	
 	init_array (*history.edits, 1000, heap_allocator);
-	history.index = 0;
 	init_array (*history.edit_buffer, capacity, heap_allocator);
-	
-	eol_sequence = .PLATFORM;
 }
 
 buffer_reset :: (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
-	free (filename, heap_allocator);
+	free (filepath, heap_allocator);
 	free (name, heap_allocator);
 	free (data, heap_allocator);
-	data = null;
-	allocated = 0;
-	offset = 0;
-	selection = 0;
-	line_index = 0;
-	column_index = 0;
 	reset_array (*other_cursors);
 	reset_array (*lines);
 	reset_array (*history.edits);
-	history.index = 0;
 	reset_array (*history.edit_buffer);
+	initialize_item (buffer);
+	id = buffer_id;
 }
 
 buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
@@ -126,19 +120,15 @@ buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
 	gap       = new_gap;
 }
 
-buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
+buffer_load_file :: inline (buffer_id : Buffer_ID, filepath : string) -> bool
 {
-	str, ok := platform_read_entire_file (filename, temp_allocator);
+	str, ok := platform_read_entire_file (filepath, temp_allocator);
 	if !ok then return false;
 	buffer_clear (buffer_id);
 	utf8_str := utf8 (str);
 	for utf8_str
 		buffer_insert_at_cursor (buffer_id, it, WRITE_HEAD);
-	buffer_set_filename (buffer_id, filename);
-	layout_id := buffer_get_text_layout (buffer_id);
-	language_process_buffer (buffer_id);
-	text_layout_update_area (layout_id);
-	text_layout_compute (layout_id);
+	buffer_set_filepath (buffer_id, filepath);
 
 	return true;
 }
@@ -208,30 +198,29 @@ buffer_get_language :: inline (buffer_id : Buffer_ID) -> Language_ID #must
 }
 @Amber_API
 
-buffer_set_language :: inline (buffer_id : Buffer_ID, language_id : Language_ID) -> Language_ID #must
+buffer_set_language :: inline (buffer_id : Buffer_ID, language_id : Language_ID)
 {
-	assert (language_exists (language_id), "Language % does not exist.", language_id);
+	assert (language_exists (language_id), "Invalid language id (%).", language_id);
 	buffer := get_buffer (buffer_id);
 	buffer.language_id = language_id;
 	language_process_buffer (buffer_id);
-	
-	return language_id;
 }
 @Amber_API
 
-buffer_get_filename :: inline (buffer_id : Buffer_ID, allocator : Allocator, allocator_data := null) -> string #must
+buffer_get_filepath :: inline (buffer_id : Buffer_ID, allocator : Allocator, allocator_data := null) -> string #must
 {
 	using buffer := get_buffer (buffer_id);
 	
-	return clone_string (filename, allocator, allocator_data);
+	return clone_string (filepath, allocator, allocator_data);
 }
 @Amber_API
 
-buffer_set_filename :: inline (buffer_id : Buffer_ID, new_filename : string)
+buffer_set_filepath :: inline (buffer_id : Buffer_ID, new_filepath : string)
 {
 	using buffer := get_buffer (buffer_id);
-	free (filename, heap_allocator);
-	filename = clone_string (new_filename, heap_allocator);
+	free (filepath, heap_allocator);
+	filepath = clone_string (new_filepath, heap_allocator);
+	buffer_set_language (buffer_id, language_detect (filepath));
 }
 @Amber_API
 
@@ -832,6 +821,7 @@ buffer_merge_duplicate_cursors :: (buffer_id : Buffer_ID)
 buffer_add_cursor_at_offset :: (buffer_id : Buffer_ID, target_offset : s64) -> bool
 {
 	using buffer := get_buffer (buffer_id);
+
 	for :cursors buffer
 	{
 		if it.selection > 0 && target_offset >= it.offset && target_offset < it.offset + it.selection ||
@@ -862,6 +852,7 @@ buffer_add_cursor_on_previous_line :: (buffer_id : Buffer_ID, cursor_id : Buffer
 {
 	using buffer := get_buffer (buffer_id);
 	
+	// @Fix (stefan): This will add cursors on newly added cursors sometimes.
 	if cursor_id == ALL_CURSORS
 	{
 		added := false;
@@ -907,7 +898,8 @@ buffer_add_cursor_on_previous_line :: (buffer_id : Buffer_ID, cursor_id : Buffer
 buffer_add_cursor_on_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool
 {
 	using buffer := get_buffer (buffer_id);
-	
+
+	// @Fix (stefan): This will add cursors on newly added cursors sometimes.
 	if cursor_id == ALL_CURSORS
 	{
 		added := false;
