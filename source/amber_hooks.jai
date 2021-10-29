@@ -16,8 +16,16 @@ Amber_Hooks :: struct #type_info_none
 	buffer_delete_selection : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_exists : (Buffer_ID) -> bool;
 	buffer_get_codepoint : (Buffer_ID, s64) -> u32;
+	buffer_get_column_index : (Buffer_ID) -> s64;
 	buffer_get_count : (Buffer_ID) -> s64;
 	buffer_get_cursor : (Buffer_ID, Buffer_Cursor_ID) -> Buffer_Cursor;
+	buffer_get_eol_sequence : (Buffer_ID) -> EOL_Sequence;
+	buffer_get_filename : (Buffer_ID, (Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> string;
+	buffer_get_language : (Buffer_ID) -> Language_ID;
+	buffer_get_line_count : (Buffer_ID) -> s64;
+	buffer_get_line_index : (Buffer_ID) -> s64;
+	buffer_get_name : (Buffer_ID, (Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> string;
+	buffer_get_split : (Buffer_ID) -> Split_ID;
 	buffer_get_text_layout : (Buffer_ID) -> Text_Layout_ID;
 	buffer_insert_at_cursor : (Buffer_ID, u32, Buffer_Cursor_ID);
 	buffer_merge_duplicate_cursors : (Buffer_ID);
@@ -33,8 +41,11 @@ Amber_Hooks :: struct #type_info_none
 	buffer_move_write_head_to_column : (Buffer_ID, s64, bool) -> bool;
 	buffer_move_write_head_to_line_and_column : (Buffer_ID, s64, s64, bool) -> bool;
 	buffer_move_write_head_to_line : (Buffer_ID, s64, bool) -> bool;
-	buffer_open : (Split_ID, string) -> Buffer_ID;
+	buffer_open : (Split_ID, string, string) -> Buffer_ID;
 	buffer_remove_cursor : (Buffer_ID, Buffer_Cursor_ID);
+	buffer_set_eol_sequence : (Buffer_ID, EOL_Sequence);
+	buffer_set_language : (Buffer_ID, Language_ID) -> Language_ID;
+	buffer_set_name : (Buffer_ID, string);
 	buffer_set_text_layout : (Buffer_ID, Text_Layout_ID);
 	buffer_skip_word_backward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
 	buffer_skip_word_forward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
@@ -73,8 +84,11 @@ Amber_Hooks :: struct #type_info_none
 	draw_triangle : (Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32), RGBA, Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32));
 	font_exists : (Font_ID) -> bool;
 	font_load_from_file : (string) -> (bool, Font_ID);
+	get_active_buffer : () -> Buffer_ID;
 	get_active_split : () -> Split_ID;
+	get_active_text_layout : () -> Text_Layout_ID;
 	heap_allocator : (Allocator_Mode, s64, s64, *void, *void) -> *void;
+	language_exists : (Language_ID) -> bool;
 	language_register : (Language) -> (bool, Language_ID);
 	platform_close_file : (*void);
 	platform_create_directory : (string) -> bool;
@@ -116,6 +130,7 @@ Amber_Hooks :: struct #type_info_none
 	platform_write_to_file : (string, string) -> (s64, bool);
 	split_create_above : (Split_ID) -> Split_ID;
 	split_create_below : (Split_ID) -> Split_ID;
+	split_create_first : () -> Split_ID;
 	split_create_left : (Split_ID) -> Split_ID;
 	split_create_right : (Split_ID) -> Split_ID;
 	split_exists : (Split_ID) -> bool;
@@ -124,6 +139,7 @@ Amber_Hooks :: struct #type_info_none
 	split_get_area : (Split_ID) -> Rect (T = f32);
 	split_get_buffer_count : (Split_ID) -> s64;
 	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
+	split_get_scrollbar_rect : (Split_ID) -> Rect (T = f32);
 	split_merge_above : (Split_ID);
 	split_merge_below : (Split_ID);
 	split_merge_left : (Split_ID);
@@ -139,8 +155,11 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_get_extents : (Text_Layout_ID) -> Vec2 (T = f32);
 	text_layout_get_font : (Text_Layout_ID) -> Font_ID;
 	text_layout_get_font_height : (Text_Layout_ID) -> u32;
+	text_layout_get_line_height : (Text_Layout_ID) -> f32;
 	text_layout_get_line_range : (Text_Layout_ID, s64) -> Range (T = s64);
+	text_layout_get_max_scroll : (Text_Layout_ID) -> Vec2 (T = f32);
 	text_layout_get_rect : (Text_Layout_ID, s64) -> Rect (T = f32);
+	text_layout_get_relative_rect : (Text_Layout_ID, s64) -> Rect (T = f32);
 	text_layout_get_scroll : (Text_Layout_ID) -> Vec2 (T = f32);
 	text_layout_get_split : (Text_Layout_ID) -> Split_ID;
 	text_layout_get_visible_line_range : (Text_Layout_ID) -> Range (T = s64);
@@ -153,6 +172,8 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_set_dirty : (Text_Layout_ID);
 	text_layout_set_font : (Text_Layout_ID, Font_ID);
 	text_layout_set_font_height : (Text_Layout_ID, u32);
+	text_layout_set_scroll_x : (Text_Layout_ID, f32);
+	text_layout_set_scroll_y : (Text_Layout_ID, f32);
 	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_set_visual_scroll : (Text_Layout_ID, Vec2 (T = f32));
 }
