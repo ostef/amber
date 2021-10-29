@@ -20,15 +20,6 @@ Text_Layout :: struct
 	rects         : [..]Rectf;
 	wrapped_lines : [..]Line;
 	colors : [..]Color_Range;
-
-	// @Note (stefan): Should these really be in Text_Layout ?
-	is_dragging_cursor    : bool;
-	is_dragging_scrollbar : bool;
-	scrollbar_drag_offset : f32;
-	scrollbar_rect : Rectf;
-	scrollbar_alpha : u8;
-	scrollbar_show_time : f32;
-	cursor_view_alpha : u8;
 }
 
 Color_Range :: struct
@@ -36,6 +27,38 @@ Color_Range :: struct
 	range : Rangei;
 	color : RGBA;
 }
+
+add_text_layout :: inline () -> *Text_Layout #must
+{
+	layout, index := insert_into_slot_array (*text_layouts);
+	layout.id = cast (Text_Layout_ID) (index + 1);
+	text_layout_init (layout.id, 10000);
+	
+	return layout;
+}
+
+get_text_layout :: inline (id : Text_Layout_ID) -> *Text_Layout #must
+{
+	assert (text_layout_exists (id), "Invalid text layout id (%).", id);
+	
+	return get_ptr (*text_layouts, cast (s64) id - 1);
+}
+
+get_active_text_layout :: inline () -> Text_Layout_ID #must
+{
+	buffer_id := get_active_buffer ();
+	if buffer_id == NULL_BUFFER
+		return NULL_TEXT_LAYOUT;
+	
+	return buffer_get_text_layout (buffer_id);
+}
+@Amber_API
+
+text_layout_exists :: inline (id : Text_Layout_ID) -> bool #must
+{
+	return id > 0 && id <= xx text_layouts.max_occupied && text_layouts.slots[cast (s64) id - 1].occupied;
+}
+@Amber_API
 
 text_layout_init :: (layout_id : Text_Layout_ID, capacity : s64)
 {
@@ -93,6 +116,15 @@ text_layout_set_font_height :: inline (layout_id : Text_Layout_ID, new_font_heig
 }
 @Amber_API
 
+text_layout_get_line_height :: inline (layout_id : Text_Layout_ID) -> f32 #must
+{
+	font := get_font (text_layout_get_font (layout_id));
+	page := load_page (font, text_layout_get_font_height (layout_id));
+	
+	return cast (f32) (page.ascent - page.descent);
+}
+@Amber_API
+
 text_layout_is_dirty :: inline (layout_id : Text_Layout_ID) -> bool #must
 {
 	using layout := get_text_layout (layout_id);
@@ -140,6 +172,22 @@ text_layout_set_scroll :: inline (layout_id : Text_Layout_ID, new_scroll : Vec2f
 }
 @Amber_API
 
+text_layout_set_scroll_x :: inline (layout_id : Text_Layout_ID, new_scroll_x : f32)
+{
+	using layout := get_text_layout (layout_id);
+	
+	scroll.x = new_scroll_x;
+}
+@Amber_API
+
+text_layout_set_scroll_y :: inline (layout_id : Text_Layout_ID, new_scroll_y : f32)
+{
+	using layout := get_text_layout (layout_id);
+	
+	scroll.y = new_scroll_y;
+}
+@Amber_API
+
 text_layout_scroll_x :: inline (layout_id : Text_Layout_ID, add_scroll : f32)
 {
 	using layout := get_text_layout (layout_id);
@@ -156,6 +204,21 @@ text_layout_scroll_y :: inline (layout_id : Text_Layout_ID, add_scroll : f32)
 }
 @Amber_API
 
+text_layout_get_max_scroll :: inline (layout_id : Text_Layout_ID) -> Vec2f #must
+{
+	font := get_font (text_layout_get_font (layout_id));
+	page := load_page (font, text_layout_get_font_height (layout_id));
+	line_height := cast (f32) (page.ascent - page.descent);
+	extents := text_layout_get_extents (layout_id);
+	area    := text_layout_get_area (layout_id);
+	
+	return vec2f (
+		max ((extents.x - rect_width (area)) / cast (f32) page.space_advance - 1, 0),
+		max (extents.y / line_height - 1, 0)
+	);
+}
+@Amber_API
+
 text_layout_get_visual_scroll :: inline (layout_id : Text_Layout_ID) -> Vec2f #must
 {
 	using layout := get_text_layout (layout_id);
@@ -169,6 +232,109 @@ text_layout_set_visual_scroll :: inline (layout_id : Text_Layout_ID, new_scroll 
 	using layout := get_text_layout (layout_id);
 	
 	visual_scroll = new_scroll;
+}
+@Amber_API
+
+text_layout_get_rect :: inline (layout_id : Text_Layout_ID, index : s64) -> Rectf #must
+{
+	using layout := get_text_layout (layout_id);
+	font := get_font (font_id);
+	page := load_page (font, font_height);
+	line_height := cast (f32) (page.ascent - page.descent);
+	
+	return move (rects[index], area.x1 - visual_scroll.x * page.space_advance, area.y1 - visual_scroll.y * line_height);
+}
+@Amber_API
+
+text_layout_get_relative_rect :: inline (layout_id : Text_Layout_ID, index : s64) -> Rectf #must
+{
+	using layout := get_text_layout (layout_id);
+	
+	return rects[index];
+}
+@Amber_API
+
+text_layout_get_visible_range :: (layout_id : Text_Layout_ID) -> Rangei #must
+{
+	using layout := get_text_layout (layout_id);
+	font := get_font (font_id);
+	page := load_page (font, font_height);
+	line_height := cast (f32) (page.ascent - page.descent);
+	result : Rangei;
+	result.min = wrapped_lines[text_layout_get_base_line (layout_id)].first_character;
+	result.max = rects.count - 1;
+	for i : text_layout_get_base_line (layout_id)..wrapped_lines.count - 1
+	{
+		if i * line_height - visual_scroll.y * line_height >= rect_height (area)
+		{
+			result.max = wrapped_lines[i].first_character - 1;
+		
+			break;
+		}
+	}
+	
+	return result;
+}
+@Amber_API
+
+text_layout_get_visible_line_range :: (layout_id : Text_Layout_ID) -> Rangei #must
+{
+	using layout := get_text_layout (layout_id);
+	font := get_font (font_id);
+	page := load_page (font, font_height);
+	line_height := cast (f32) (page.ascent - page.descent);
+	result : Rangei;
+	result.min = text_layout_get_base_line (layout_id);
+	result.max = wrapped_lines.count - 1;
+	for i : text_layout_get_base_line (layout_id)..wrapped_lines.count - 1
+	{
+		if i * line_height - visual_scroll.y * line_height >= rect_height (area)
+		{
+			result.max = i;
+		
+			break;
+		}
+	}
+	
+	return result;
+}
+@Amber_API
+
+text_layout_get_line_range :: inline (layout_id : Text_Layout_ID, line_index : s64) -> Rangei #must
+{
+	using layout := get_text_layout (layout_id);
+	result : Rangei;
+	result.min = wrapped_lines[line_index].first_character;
+	result.max = ifx line_index + 1 < wrapped_lines.count then wrapped_lines[line_index + 1].first_character - 1 else rects.count - 1;
+	
+	return result;
+}
+@Amber_API
+
+text_layout_get_closest_character :: (layout_id : Text_Layout_ID, position : Vec2f) -> s64 #must
+{
+	using layout := get_text_layout (layout_id);
+	font := get_font (font_id);
+	page := load_page (font, font_height);
+	line_height := cast (f32) (page.ascent - page.descent);
+	relative := position - rect_position (area);
+	line_index := cast (s64) round (visual_scroll.y) + cast (s64) (relative.y / line_height);
+	line_index = clamp (line_index, 0, wrapped_lines.count - 1);
+	range : Rangei;
+	range.min = wrapped_lines[line_index].first_character;
+	range.max = ifx line_index == wrapped_lines.count - 1 then rects.count - 1 else wrapped_lines[line_index + 1].first_character - 1;
+	if position.x <= text_layout_get_rect (layout_id, range.min).x1
+		return range.min;
+	else if position.x >= text_layout_get_rect (layout_id, range.max).x2
+		return range.max;
+	for i : range
+	{
+		rect := text_layout_get_rect (layout_id, i);
+		if contains (rect, position)
+			return i;
+	}
+	
+	return range.max;
 }
 @Amber_API
 
@@ -498,98 +664,3 @@ draw_text_layout :: (layout_id : Text_Layout_ID)
 		draw_rect (glyph_rect, (ifx draw_cursor then invert (color) else color), uv_rect = glyph.uv_rect);
 	}
 }
-
-text_layout_get_rect :: inline (layout_id : Text_Layout_ID, index : s64) -> Rectf #must
-{
-	using layout := get_text_layout (layout_id);
-	font := get_font (font_id);
-	page := load_page (font, font_height);
-	line_height := cast (f32) (page.ascent - page.descent);
-	
-	return move (rects[index], area.x1 - visual_scroll.x * page.space_advance, area.y1 - visual_scroll.y * line_height);
-}
-@Amber_API
-
-text_layout_get_visible_range :: (layout_id : Text_Layout_ID) -> Rangei #must
-{
-	using layout := get_text_layout (layout_id);
-	font := get_font (font_id);
-	page := load_page (font, font_height);
-	line_height := cast (f32) (page.ascent - page.descent);
-	result : Rangei;
-	result.min = wrapped_lines[text_layout_get_base_line (layout_id)].first_character;
-	result.max = rects.count - 1;
-	for i : text_layout_get_base_line (layout_id)..wrapped_lines.count - 1
-	{
-		if i * line_height - visual_scroll.y * line_height >= rect_height (area)
-		{
-			result.max = wrapped_lines[i].first_character - 1;
-		
-			break;
-		}
-	}
-	
-	return result;
-}
-@Amber_API
-
-text_layout_get_visible_line_range :: (layout_id : Text_Layout_ID) -> Rangei #must
-{
-	using layout := get_text_layout (layout_id);
-	font := get_font (font_id);
-	page := load_page (font, font_height);
-	line_height := cast (f32) (page.ascent - page.descent);
-	result : Rangei;
-	result.min = text_layout_get_base_line (layout_id);
-	result.max = wrapped_lines.count - 1;
-	for i : text_layout_get_base_line (layout_id)..wrapped_lines.count - 1
-	{
-		if i * line_height - visual_scroll.y * line_height >= rect_height (area)
-		{
-			result.max = i;
-		
-			break;
-		}
-	}
-	
-	return result;
-}
-@Amber_API
-
-text_layout_get_line_range :: inline (layout_id : Text_Layout_ID, line_index : s64) -> Rangei #must
-{
-	using layout := get_text_layout (layout_id);
-	result : Rangei;
-	result.min = wrapped_lines[line_index].first_character;
-	result.max = ifx line_index + 1 < wrapped_lines.count then wrapped_lines[line_index + 1].first_character - 1 else rects.count - 1;
-	
-	return result;
-}
-@Amber_API
-
-text_layout_get_closest_character :: (layout_id : Text_Layout_ID, position : Vec2f) -> s64 #must
-{
-	using layout := get_text_layout (layout_id);
-	font := get_font (font_id);
-	page := load_page (font, font_height);
-	line_height := cast (f32) (page.ascent - page.descent);
-	relative := position - rect_position (area);
-	line_index := cast (s64) round (visual_scroll.y) + cast (s64) (relative.y / line_height);
-	line_index = clamp (line_index, 0, wrapped_lines.count - 1);
-	range : Rangei;
-	range.min = wrapped_lines[line_index].first_character;
-	range.max = ifx line_index == wrapped_lines.count - 1 then rects.count - 1 else wrapped_lines[line_index + 1].first_character - 1;
-	if position.x <= text_layout_get_rect (layout_id, range.min).x1
-		return range.min;
-	else if position.x >= text_layout_get_rect (layout_id, range.max).x2
-		return range.max;
-	for i : range
-	{
-		rect := text_layout_get_rect (layout_id, i);
-		if contains (rect, position)
-			return i;
-	}
-	
-	return range.max;
-}
-@Amber_API

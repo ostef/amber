@@ -28,6 +28,101 @@ Buffer :: struct
 	eol_sequence := EOL_Sequence.PLATFORM;
 }
 
+add_buffer :: inline () -> *Buffer #must
+{
+	buffer, index := insert_into_slot_array (*buffers);
+	buffer.id = cast (Buffer_ID) (index + 1);
+	buffer_init (buffer.id, 10000);
+	
+	return buffer;
+}
+
+get_buffer :: inline (id : Buffer_ID) -> *Buffer #must
+{
+	assert (buffer_exists (id), "Invalid buffer id (%).", id);
+	
+	return get_ptr (*buffers, cast (s64) id - 1);
+}
+
+get_active_buffer :: inline () -> Buffer_ID #must
+{
+	split_id := get_active_split ();
+	if split_id == NULL_SPLIT
+		return NULL_BUFFER;
+	
+	return split_get_active_buffer (split_id);
+}
+@Amber_API
+
+buffer_exists :: inline (id : Buffer_ID) -> bool #must
+{
+	return id > 0 && id <= xx buffers.max_occupied && buffers.slots[cast (s64) id - 1].occupied;
+}
+@Amber_API
+
+buffer_open :: inline (split_id : Split_ID, filename : string, name : string) -> Buffer_ID
+{
+	split : *Split;
+	if splits.count == 0
+		split = add_split ();
+	else
+		split = get_split (split_id);
+	buffer := add_buffer ();
+	push_into_array (*split.opened_buffer_ids, buffer.id);
+	buffer.split_id = split.id;
+	if filename
+	{
+		str, ok := platform_read_entire_file (filename, temp_allocator);
+		utf8_str := utf8 (str);
+		if ok
+		{
+			buffer.filename = clone_string (filename, heap_allocator);
+			for utf8_str
+				buffer_insert_at_cursor (buffer.id, it, WRITE_HEAD);
+			buffer_move_cursor_to_beginning (buffer.id, WRITE_HEAD);
+		}
+	}
+	buffer.name = clone_string (name, heap_allocator);
+
+	text_layout := add_text_layout ();
+	text_layout.split_id = split.id;
+	text_layout.font_id = 1;
+	text_layout.font_height = 16;
+	buffer_set_text_layout (buffer.id, text_layout.id);
+	language_process_buffer (buffer.id);
+	page := load_page (get_font (text_layout.font_id), text_layout.font_height);
+	line_number_len := count_digits (buffer.lines.count);
+	text_layout.area = rectf (
+		split.area.x1 + cast (f32) (line_number_len + 2) * page.space_advance,
+		split.area.y1,
+		split.area.x2,
+		split.area.y2 - cast (f32) (page.ascent - page.descent)
+	);
+	text_layout_compute (text_layout.id);
+	
+	return buffer.id;
+}
+@Amber_API
+
+buffer_close :: inline (buffer_id : Buffer_ID)
+{
+	buffer := get_buffer (buffer_id);
+	split  := get_split (buffer.split_id);
+	for split.opened_buffer_ids
+	{
+		if it == buffer_id
+		{
+			remove it;
+			buffer_reset (buffer_id);
+			remove_from_slot_array (*buffers, xx buffer_id - 1);
+			
+			return;
+		}
+	}
+	panic ("Buffer with id % does not exist in split with id %.", buffer_id, split.id);
+}
+@Amber_API
+
 buffer_init :: (buffer_id : Buffer_ID, capacity : s64)
 {
 	using buffer := get_buffer (buffer_id);
@@ -119,6 +214,14 @@ buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
 	gap       = new_gap;
 }
 
+buffer_get_split :: inline (buffer_id : Buffer_ID) -> Split_ID #must
+{
+	using buffer := get_buffer (buffer_id);
+	
+	return split_id;
+}
+@Amber_API
+
 buffer_get_text_layout :: inline (buffer_id : Buffer_ID) -> Text_Layout_ID #must
 {
 	using buffer := get_buffer (buffer_id);
@@ -136,11 +239,47 @@ buffer_set_text_layout :: inline (buffer_id : Buffer_ID, text_layout_id : Text_L
 }
 @Amber_API
 
-buffer_get_count :: inline (buffer_id : Buffer_ID) -> s64 #must
+buffer_get_language :: inline (buffer_id : Buffer_ID) -> Language_ID #must
 {
 	using buffer := get_buffer (buffer_id);
 	
-	return allocated - gap;
+	return language_id;
+}
+@Amber_API
+
+buffer_set_language :: inline (buffer_id : Buffer_ID, language_id : Language_ID) -> Language_ID #must
+{
+	assert (language_exists (language_id), "Language % does not exist.", language_id);
+	buffer := get_buffer (buffer_id);
+	buffer.language_id = language_id;
+	language_process_buffer (buffer_id);
+	
+	return language_id;
+}
+@Amber_API
+
+buffer_get_filename :: inline (buffer_id : Buffer_ID, allocator : Allocator, allocator_data := null) -> string #must
+{
+	using buffer := get_buffer (buffer_id);
+	
+	return clone_string (filename, allocator, allocator_data);
+}
+@Amber_API
+
+buffer_get_name :: inline (buffer_id : Buffer_ID, allocator : Allocator, allocator_data := null) -> string #must
+{
+	using buffer := get_buffer (buffer_id);
+	
+	return clone_string (name, allocator, allocator_data);
+}
+@Amber_API
+
+buffer_set_name :: inline (buffer_id : Buffer_ID, name : string)
+{
+	buffer := get_buffer (buffer_id);
+	if buffer.name
+		free (buffer.name, heap_allocator);
+	buffer.name = clone_string (name, heap_allocator);
 }
 @Amber_API
 
@@ -150,6 +289,14 @@ buffer_get_codepoint :: inline (buffer_id : Buffer_ID, index : s64) -> u32 #must
 	assert (index >= 0 && index < buffer_get_count (buffer_id), "Buffer index % is out of range [0;%).", index, buffer_get_count (buffer_id));
 	
 	return data[cast (s64) (index >= offset) * gap + index];
+}
+@Amber_API
+
+buffer_get_count :: inline (buffer_id : Buffer_ID) -> s64 #must
+{
+	using buffer := get_buffer (buffer_id);
+	
+	return allocated - gap;
 }
 @Amber_API
 
@@ -187,6 +334,45 @@ buffer_cursor_is_at_eol :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cur
 	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
 	
 	return cursor.offset == buffer_get_count (buffer_id) || buffer_get_codepoint (buffer_id, cursor.offset) == #char "\n";
+}
+@Amber_API
+
+buffer_get_line_index :: inline (buffer_id : Buffer_ID) -> s64 #must
+{
+	using buffer := get_buffer (buffer_id);
+	
+	return line_index;
+}
+@Amber_API
+
+buffer_get_column_index :: inline (buffer_id : Buffer_ID) -> s64 #must
+{
+	using buffer := get_buffer (buffer_id);
+	
+	return column_index;
+}
+@Amber_API
+
+buffer_get_line_count :: inline (buffer_id : Buffer_ID) -> s64 #must
+{
+	using buffer := get_buffer (buffer_id);
+	
+	return lines.count;
+}
+@Amber_API
+
+buffer_get_eol_sequence :: inline (buffer_id : Buffer_ID) -> EOL_Sequence #must
+{
+	using buffer := get_buffer (buffer_id);
+	
+	return eol_sequence;
+}
+@Amber_API
+
+buffer_set_eol_sequence :: inline (buffer_id : Buffer_ID, eol_sequence : EOL_Sequence)
+{
+	buffer := get_buffer (buffer_id);
+	buffer.eol_sequence = eol_sequence;
 }
 @Amber_API
 
