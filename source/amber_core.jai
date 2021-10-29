@@ -2533,3 +2533,39 @@ remove_from_slot_array :: inline (using array : *Slot_Array, index : s64)
 		}
 	}
 }
+
+// Filepath utils
+
+filepath_get_filename :: inline (filepath : string) -> string #must
+{
+	result := filepath;
+	result.data += result.count;
+	result.count = 0;
+	while result.count != filepath.count
+	{
+		if result.data[-1] == #char "/" || result.data[-1] == #char "\\"
+			break;
+		result.data  -= 1;
+		result.count += 1;
+	}
+	
+	return result;
+}
+
+filepath_get_extension :: inline (filepath : string) -> string #must
+{
+	result := filepath;
+	result.data += result.count;
+	result.count = 0;
+	while result.count != filepath.count
+	{
+		if result.data[-1] == #char "."
+			break;
+		if result.data[-1] == #char "/" || result.data[-1] == #char "\\"
+			return "";
+		result.data  -= 1;
+		result.count += 1;
+	}
+	
+	return result;
+}
