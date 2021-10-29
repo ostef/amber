@@ -31,17 +31,20 @@ handle_event :: inline (event : Event) -> Event_Result #must
 		running = false;
 		
 	case .WINDOW_RESIZE;
-		for * split : splits
+		if event.viewport_size.x != 0 && event.viewport_size.y != 0
 		{
-			new_area := rectf (
-				(split.area.x1 / cast (f32) viewport_size.x) * event.viewport_size.x,
-				(split.area.y1 / cast (f32) viewport_size.y) * event.viewport_size.y,
-				(split.area.x2 / cast (f32) viewport_size.x) * event.viewport_size.x,
-				(split.area.y2 / cast (f32) viewport_size.y) * event.viewport_size.y
-			);
-			split_set_area (split.id, new_area);
+			for * split : splits
+			{
+				new_area := rectf (
+					(split.area.x1 / cast (f32) viewport_size.x) * event.viewport_size.x,
+					(split.area.y1 / cast (f32) viewport_size.y) * event.viewport_size.y,
+					(split.area.x2 / cast (f32) viewport_size.x) * event.viewport_size.x,
+					(split.area.y2 / cast (f32) viewport_size.y) * event.viewport_size.y
+				);
+				split_set_area (split.id, new_area);
+			}
+			viewport_size = event.viewport_size;
 		}
-		viewport_size = event.viewport_size;
 	
 	case .MOUSE_PRESS;
 		for splits
