@@ -4,6 +4,12 @@ languages : Slot_Array (Language);
 
 #scope_export
 
+language_exists :: inline (id : Language_ID) -> bool #must
+{
+	return id > 0 && id <= xx languages.max_occupied && languages.slots[cast (s64) id - 1].occupied;
+}
+@Amber_API
+
 language_register :: (language : Language) -> bool, Language_ID
 {
 	if !languages.allocator then languages.allocator = heap_allocator;
@@ -23,6 +29,7 @@ language_register :: (language : Language) -> bool, Language_ID
 language_process_buffer :: (buffer_id : Buffer_ID)
 {
 	buffer := get_buffer (buffer_id);
+	text_layout_clear_colors (buffer.text_layout_id);
 	if buffer.language_id == PLAIN_TEXT
 	{
 		text_layout_push_color (buffer.text_layout_id, rangei (0, buffer_get_count (buffer_id)), RGBA_WHITE);
