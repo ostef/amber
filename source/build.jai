@@ -12,6 +12,7 @@ APP_OUTPUT_NAME  :: "amber";
 USER_OUTPUT_NAME :: "user";
 ICON_FILENAME    :: "misc/icon.ico";
 
+partial_build := false;
 use_llvm := false;
 profile := false;
 release := false;
@@ -31,11 +32,15 @@ report_error :: (fmt : string, args : ..Any, location := #caller_location)
 	Compiler.compiler_report (str, location);
 }
 
-set_default_build_options :: (options : *Compiler.Build_Options)
+set_default_build_options :: (options : *Compiler.Build_Options, output_type : type_of (Compiler.Build_Options.output_type), output_name : string)
 {
 	options.output_path       = build_dir;
 	options.intermediate_path = int_dir;
 	if release then Compiler.set_optimization_level (options, 2, 0);
+	if release
+		options.dead_code_elimination = .ALL;
+	else
+		options.dead_code_elimination = .MODULES_ONLY;
 	options.stack_trace = !release || profile;
 	options.backend = .X64;
 	if use_llvm then options.backend = .LLVM;
@@ -43,6 +48,11 @@ set_default_build_options :: (options : *Compiler.Build_Options)
 	options.text_output_flags = 0;
 	if time_info then options.text_output_flags |= .OUTPUT_TIMING_INFO;
 	if link_info then options.text_output_flags |= .OUTPUT_LINK_LINE;
+	if partial_build
+		options.output_type = .NO_OUTPUT;
+	else
+		options.output_type = output_type;
+	options.output_executable_name = output_name;
 }
 
 compile_workspace :: (workspace : Workspace, files : ..string) -> bool
@@ -181,6 +191,7 @@ build :: ()
 		}
 		else if it ==
 		{
+		case "partial"; partial_build = true;
 		case "llvm";    use_llvm = true;
 		case "release"; release = true;
 		case "profile"; profile = true;
@@ -247,17 +258,13 @@ build :: ()
 	app := Compiler.compiler_create_workspace (APP_OUTPUT_NAME);
 	{
 		options := Compiler.get_build_options (app);
-		set_default_build_options (*options);
-		options.output_type = .EXECUTABLE;
-		options.output_executable_name = APP_OUTPUT_NAME;
+		set_default_build_options (*options, .EXECUTABLE, APP_OUTPUT_NAME);
 		Compiler.set_build_options (options, app);
 	}
 	user := Compiler.compiler_create_workspace (USER_OUTPUT_NAME);
 	{
 		options := Compiler.get_build_options (user);
-		set_default_build_options (*options);
-		options.output_type = .DYNAMIC_LIBRARY;
-		options.output_executable_name = USER_OUTPUT_NAME;
+		set_default_build_options (*options, .DYNAMIC_LIBRARY, USER_OUTPUT_NAME);
 		Compiler.set_build_options (options, user);
 	}
 
@@ -277,7 +284,7 @@ build :: ()
 	else println ("Workspace '%':\tBuild failed.", USER_OUTPUT_NAME);
 	print ("\n");
 
-	if app_build_success
+	if app_build_success && !partial_build
 	{
 		exe_filename := join (temp_allocator, build_dir, APP_OUTPUT_NAME, ".exe");
 		print ("Setting icon to '%' for executable '%' - ", ICON_FILENAME, exe_filename);
@@ -286,7 +293,7 @@ build :: ()
 		else println ("FAILED");
 	}
 	
-	if user_build_success && app_build_success
+	if user_build_success && app_build_success && !partial_build
 	{
 		copy_files (DATA_DIR, build_dir);
 
