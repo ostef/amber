@@ -41,6 +41,12 @@ get_split :: inline (id : Split_ID) -> *Split #must
 	return get_ptr (*splits, cast (s64) id - 1);
 }
 
+get_split_count :: inline () -> s64 #must
+{
+	return splits.count;
+}
+@Amber_API
+
 get_active_split :: inline () -> Split_ID #must
 {
 	return active_split_id;
@@ -460,6 +466,9 @@ split_draw :: (split_id : Split_ID)
 	draw_rect (scrollbar_rect, rgba (RGBA_WHITE, split.scrollbar_alpha), rect_width (scrollbar_rect) * 0.5);
 	draw_rect (xywhf (layout_area.x2 - SCROLLBAR_WIDTH, layout_area.y1 + cursor_view_position, SCROLLBAR_WIDTH, 2), rgba (RGBA_WHITE, split.cursor_view_alpha));
 
+	language_name := "Plain Text";
+	if buffer_get_language (active_buffer_id) != PLAIN_TEXT
+		language_name = get_language (buffer_get_language (active_buffer_id)).name;
 	draw_rect (rectf (split.area.x1, split.area.y2 - line_height, split.area.x2, split.area.y2), RGBA_WHITE);
 	draw_text (
 		text_layout_get_font (active_layout_id),
@@ -467,14 +476,15 @@ split_draw :: (split_id : Split_ID)
 		vec2f (split.area.x1, split.area.y2 - line_height),
 		fstring (
 			temp_allocator,
-			"Ln %, Col % ~ % line(s)",
+			"Ln %, Col % ~ % line(s) ~ %",
 			buffer_get_line_index (active_buffer_id) + 1,
 			buffer_get_column_index (active_buffer_id) + 1,
-			buffer_get_line_count (active_buffer_id)
+			buffer_get_line_count (active_buffer_id),
+			language_name
 		),
 		RGBA_BLACK
 	);
 
-	if split_id == get_active_split ()
-		draw_rect_outline (truncate_all_sides (area, 1.5), rgba (50, 100, 200, 128), 3, 5.0);
+	if split_id == get_active_split () && get_split_count () > 1
+		draw_rect_outline (area, rgba (50, 100, 200, 128), 3, 5.0);
 }

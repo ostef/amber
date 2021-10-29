@@ -50,6 +50,12 @@ get_text_layout :: inline (id : Text_Layout_ID) -> *Text_Layout #must
 	return get_ptr (*text_layouts, cast (s64) id - 1);
 }
 
+get_text_layout_count :: inline () -> s64 #must
+{
+	return text_layouts.count;
+}
+@Amber_API
+
 get_active_text_layout :: inline () -> Text_Layout_ID #must
 {
 	buffer_id := get_active_buffer ();
