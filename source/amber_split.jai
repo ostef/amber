@@ -398,15 +398,14 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 	if scroll_to_cursor
 	{
 		cursor_rect := text_layout_get_rect (active_layout_id, buffer_get_cursor (active_buffer_id, WRITE_HEAD).offset);
-		// @Fix
 		if cursor_rect.y1 < layout_area.y1
 		{
-			text_layout_scroll_y (active_layout_id, (cursor_rect.y1 - layout_area.y1) / line_height);
+			text_layout_scroll_y (active_layout_id, ceil ((cursor_rect.y1 - layout_area.y1) / line_height));
 			show_scrollbar = true;
 		}
 		if cursor_rect.y2 > layout_area.y2
 		{
-			text_layout_scroll_y (active_layout_id, (cursor_rect.y2 - layout_area.y2) / line_height);
+			text_layout_scroll_y (active_layout_id, ceil ((cursor_rect.y2 - layout_area.y2) / line_height));
 			show_scrollbar = true;
 		}
 	}
