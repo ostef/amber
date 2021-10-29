@@ -1,6 +1,5 @@
 #load "amber_types.jai";
 #load "amber_core.jai";
-#load "amber_math.jai";
 #load "amber_unicode.jai";
 #load "amber_platform.jai";
 #load "amber_gl.jai";

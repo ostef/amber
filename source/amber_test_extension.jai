@@ -1,6 +1,5 @@
 #load "amber_types.jai";
 #load "amber_core.jai";
-#load "amber_math.jai";
 #load "amber_hooks.jai";
 
 #program_export
