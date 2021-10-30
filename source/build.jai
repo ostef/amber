@@ -9,7 +9,7 @@ DATA_DIR          :: "data/";
 DEFAULT_BUILD_DIR :: "bin/";
 DEFAULT_INT_DIR   :: "int/";
 APP_OUTPUT_NAME  :: "amber";
-USER_OUTPUT_NAME :: "user";
+EXTENSIONS       :: string.[ "amber_test_extension", "amber_jai" ];
 ICON_FILENAME    :: "misc/icon.ico";
 
 partial_build := false;
@@ -250,6 +250,7 @@ build :: ()
 	println ("Intermediate directory: '%'.", int_dir);
 	print ("\n");
 	sorted_insert_to_array (*program_args, 0, APP_OUTPUT_NAME);
+	extension_workspaces : [EXTENSIONS.count]Workspace;
 
 	// #filepath is 'something/source/', we want 'something/'
 	set_working_directory (strip_filename_from_path (#filepath));
@@ -261,11 +262,15 @@ build :: ()
 		set_default_build_options (*options, .EXECUTABLE, APP_OUTPUT_NAME);
 		Compiler.set_build_options (options, app);
 	}
-	user := Compiler.compiler_create_workspace (USER_OUTPUT_NAME);
+	
+	for name, i : EXTENSIONS
 	{
-		options := Compiler.get_build_options (user);
-		set_default_build_options (*options, .DYNAMIC_LIBRARY, USER_OUTPUT_NAME);
-		Compiler.set_build_options (options, user);
+		extension_workspaces[i] = Compiler.compiler_create_workspace (name);
+		{
+			options := Compiler.get_build_options (extension_workspaces[i]);
+			set_default_build_options (*options, .DYNAMIC_LIBRARY, name);
+			Compiler.set_build_options (options, extension_workspaces[i]);
+		}
 	}
 
 	delete_directory (build_dir);
@@ -275,13 +280,22 @@ build :: ()
 	
 	app_build_success  := compile_workspace (app,  "source/amber_main.jai");
 	generate_amber_hooks = false;
-	user_build_success := compile_workspace (user, "source/amber_test_extension.jai");
+	extensions_build_success : [EXTENSIONS.count]bool;
+	all_extensions_build_success := true;
+	for workspace, i : extension_workspaces
+	{
+		extensions_build_success[i] = compile_workspace (workspace, join (temp_allocator, "source/", EXTENSIONS[i], ".jai"));
+		all_extensions_build_success &= extensions_build_success[i];
+	}
 	
 	print ("\n");
 	if app_build_success then println ("Workspace '%':\tBuild successful.", APP_OUTPUT_NAME);
 	else println ("Workspace '%':\tBuild failed.", APP_OUTPUT_NAME);
-	if user_build_success then println ("Workspace '%':\tBuild successful.", USER_OUTPUT_NAME);
-	else println ("Workspace '%':\tBuild failed.", USER_OUTPUT_NAME);
+	for name, i : EXTENSIONS
+	{
+		if extensions_build_success[i] then println ("Workspace '%':\tBuild successful.", name);
+		else println ("Workspace '%':\tBuild failed.", name);
+	}
 	print ("\n");
 
 	if app_build_success && !partial_build
@@ -293,7 +307,7 @@ build :: ()
 		else println ("FAILED");
 	}
 	
-	if user_build_success && app_build_success && !partial_build
+	if all_extensions_build_success && app_build_success && !partial_build
 	{
 		copy_files (DATA_DIR, build_dir);
 
