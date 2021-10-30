@@ -2465,7 +2465,7 @@ operator == :: inline (left : $R/Rect, right : R) -> bool #must
 // RGBA
 
 rgba :: make_rgba;
-make_rgba :: inline (r : u8 = 0, g : u8 = 0, b : u8 = 0, a : u8 = 255) -> RGBA #must
+make_rgba :: inline (r : u8, g : u8, b : u8, a : u8 = 255) -> RGBA #must
 {
 	result : RGBA = ---;
 	result.r = r;
