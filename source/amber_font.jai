@@ -4,6 +4,8 @@
 
 #scope_export
 
+DISALLOW_NON_MONOSPACE_FONTS :: true;
+
 Font :: struct
 {
 	using info : Font_Info;
@@ -169,6 +171,11 @@ load_glyph :: (using page : *Font_Page, codepoint : u32) -> *Font_Glyph
 	glyph.bitmap_height    = xx slot.bitmap.rows;
 	glyph.bitmap_bearing_x = xx slot.bitmap_left;
 	glyph.bitmap_bearing_y = xx slot.bitmap_top;
+#if DISALLOW_NON_MONOSPACE_FONTS
+{
+	if codepoint != #char " "
+		always_assert (glyph.advance == xx space_advance, "Font is not monospace (glyph % advance is %, space advance is %).", codepoint, glyph.advance, space_advance);
+}
 
 	atlas : *Font_Atlas;
 	for * atlases
