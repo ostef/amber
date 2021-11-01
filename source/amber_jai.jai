@@ -8,7 +8,7 @@ Jai_Lexer :: struct
 	offset, count, line, column : s64;
 	is_in_asm_block : bool;
 	is_in_herestring : bool;
-	herestring_end_word : Rangei;
+	herestring_end_ident : Rangei;
 	tokens : [..]Jai_Token;
 }
 
@@ -43,12 +43,12 @@ Jai_Token :: struct
 	l0, c0, l1, c1 : s64;
 	union
 	{
-		control_keyword : s64;
-		storage_type_keyword : s64;
-		type_keyword : s64;
-		function_keyword : s64;
-		keyword : s64;
-		compiler_directive : s64;
+		control_keyword : Jai_Control_Keyword;
+		storage_type_keyword : Jai_Storage_Type_Keyword;
+		type_keyword : Jai_Type_Keyword;
+		function_keyword : Jai_Function_Keyword;
+		keyword : Jai_Keyword;
+		compiler_directive : Jai_Compiler_Directive;
 	};
 }
 
@@ -103,6 +103,54 @@ JAI_ASM_INSTRUCTION_KEYWORDS :: string.[
 ];
 JAI_ASM_SIZE_KEYWORDS :: string.[ "b", "w", "d", "q", "x", "y", "z" ];
 
+#insert -> string
+{
+	pr :: print_to_builder;
+	ln :: print_line_to_builder;
+	nl :: print_newline_to_builder;
+	
+	builder : String_Builder;
+	init_string_builder (*builder, 1000, temp_allocator);
+	ln (*builder, "Jai_Control_Keyword :: enum\n{");
+	for JAI_CONTROL_KEYWORDS
+		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+	ln (*builder, "}");
+	nl (*builder);
+	
+	ln (*builder, "Jai_Storage_Type_Keyword :: enum\n{");
+	for JAI_STORAGE_TYPE_KEYWORDS
+		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+	ln (*builder, "}");
+	nl (*builder);
+	
+	ln (*builder, "Jai_Type_Keyword :: enum\n{");
+	for JAI_TYPE_KEYWORDS
+		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+	ln (*builder, "}");
+	nl (*builder);
+	
+	
+	ln (*builder, "Jai_Function_Keyword :: enum\n{");
+	for JAI_FUNCTION_KEYWORDS
+		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+	ln (*builder, "}");
+	nl (*builder);
+	
+	ln (*builder, "Jai_Keyword :: enum\n{");
+	for JAI_OTHER_KEYWORDS
+		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+	ln (*builder, "}");
+	nl (*builder);
+	
+	ln (*builder, "Jai_Compiler_Directive :: enum\n{");
+	for JAI_COMPILER_DIRECTIVES
+		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+	ln (*builder, "}");
+	nl (*builder);
+	
+	return to_string (builder);
+}
+
 #program_export
 init_extension :: (id : Extension_ID, using hooks : *Amber_Hooks) -> bool
 {
@@ -131,6 +179,7 @@ jai_process_buffer :: (using hooks : *Amber_Hooks, buffer_id : Buffer_ID)
 	lexer.count  = buffer_get_count (buffer_id);
 	lexer.line   = 1;
 	lexer.column = 1;
+	next_token_is_herestring_end_ident := false;
 	while true
 	{
 		token := read_next_token (hooks, *lexer);
@@ -141,15 +190,30 @@ jai_process_buffer :: (using hooks : *Amber_Hooks, buffer_id : Buffer_ID)
 		{
 		case .INVALID; color = rgba (255, 0, 0);
 		case .COMMENT; color = rgba (0x52, 0xb0, 0x41);
-		case .STRING_LITERAL; color = rgba (0xe0, 0x83, 0x69);
+		case .STRING_LITERAL;
+			color = rgba (0xe0, 0x83, 0x69);
+			lexer.is_in_herestring = false;
+		
 		case .NUMBER_LITERAL; color = rgba (0xae, 0xdb, 0x9a);
-		case .IDENTIFIER; color = rgba (255, 255, 255);
+		case .IDENTIFIER;
+			color = rgba (255, 255, 255);
+			if next_token_is_herestring_end_ident
+			{
+				lexer.herestring_end_ident = token.range;
+				lexer.is_in_herestring = true;
+				next_token_is_herestring_end_ident = false;
+			}
+		
 		case .KEYWORD; color = rgba (0x4a, 0xa1, 0xff);
 		case .KEYWORD_CONTROL; color = rgba (0xe8, 0x79, 0xb2);
 		case .KEYWORD_STORAGE_TYPE; color = rgba (0x4a, 0xa1, 0xff);
 		case .KEYWORD_TYPE; color = rgba (0x4a, 0xa1, 0xff);
 		case .KEYWORD_FUNCTION; color = rgba (0x4a, 0xa1, 0xff);
-		case .COMPILER_DIRECTIVE; color = rgba (0x4a, 0xa1, 0xff);
+		case .COMPILER_DIRECTIVE;
+			color = rgba (0x4a, 0xa1, 0xff);
+			if token.compiler_directive == .STRING
+				next_token_is_herestring_end_ident = true;
+			
 		case .POLYMORPHIC_ARGUMENT; color = rgba (0x4a, 0xa1, 0xff);
 		case .NOTE; color = rgba (0x4a, 0xa1, 0xff);
 		case .SYMBOL; color = rgba (0xe5, 0xe5, 0xe5);
@@ -182,6 +246,15 @@ read_next_token :: (using hooks : *Amber_Hooks, using lexer : *Jai_Lexer) -> Jai
 	if offset >= count
 	{
 		token.kind = .EOI;
+		set_token_end (lexer, *token);
+	}
+	else if is_in_herestring
+	{
+		token.kind = .STRING_LITERAL;
+		while offset < count && !matches_range (hooks, lexer, herestring_end_ident)
+			advance (hooks, lexer);
+		if offset == count
+			token.kind = .INVALID;
 		set_token_end (lexer, *token);
 	}
 	else if is_space (peek_codepoint (hooks, lexer))
@@ -262,8 +335,12 @@ read_next_token :: (using hooks : *Amber_Hooks, using lexer : *Jai_Lexer) -> Jai
 	{
 		advance (hooks, lexer);
 		skip_spaces (hooks, lexer);
-		if advance_if_matches_identifier_in_array (hooks, lexer, JAI_COMPILER_DIRECTIVES)
+		ok, directive := advance_if_matches_identifier_in_array (hooks, lexer, JAI_COMPILER_DIRECTIVES);
+		if ok
+		{
 			token.kind = .COMPILER_DIRECTIVE;
+			token.compiler_directive = xx directive;
+		}
 		else
 		{
 			token.kind = .INVALID;
@@ -339,7 +416,7 @@ skip_identifier :: inline (using hooks : *Amber_Hooks, using lexer : *Jai_Lexer)
 
 matches_string :: inline (using hooks : *Amber_Hooks, using lexer : *Jai_Lexer, str : string) -> bool #must
 {
-	if offset + str.count >= count then return false;
+	if offset + str.count > count then return false;
 	for i : 0..str.count - 1
 	{
 		if peek_codepoint (hooks, lexer, i) != str[i]
@@ -361,9 +438,33 @@ advance_if_matches_string :: inline (using hooks : *Amber_Hooks, using lexer : *
 	return false;
 }
 
+matches_range :: inline (using hooks : *Amber_Hooks, using lexer : *Jai_Lexer, range : Rangei) -> bool #must
+{
+	if offset + length (range) > count then return false;
+	for i : 0..length (range) - 1
+	{
+		if peek_codepoint (hooks, lexer, i) != buffer_get_codepoint (buffer_id, range.min + i)
+			return false;
+	}
+	
+	return true;
+}
+
+advance_if_matches_range :: inline (using hooks : *Amber_Hooks, using lexer : *Jai_Lexer, range : Rangei) -> bool
+{
+	if matches_range (hooks, lexer, range)
+	{
+		advance (hooks, lexer, length (range));
+		
+		return true;
+	}
+	
+	return false;
+}
+
 matches_identifier :: inline (using hooks : *Amber_Hooks, using lexer : *Jai_Lexer, ident : string) -> bool #must
 {
-	if offset + ident.count >= count then return false;
+	if offset + ident.count > count then return false;
 	for i : 0..ident.count - 1
 	{
 		if peek_codepoint (hooks, lexer, i) != ident[i]
