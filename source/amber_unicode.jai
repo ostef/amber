@@ -1,3 +1,5 @@
+// @Todo (stefan): Handle UTF-16 endianness.
+
 UNICODE_INVALID : u32 : 0xfffd;
 UNICODE_BOM     : u32 : 0xfeff;
 // @Note (stefan): End of input does not exist as a unicode codepoint.
@@ -532,32 +534,32 @@ for_expansion :: (str : *UTF32_String, body : Code, flags : For_Flags) #expand
 	}
 }
 
-operator == :: (left : UTF8_String, right : UTF8_String) -> bool #must
+operator == :: inline (left : UTF8_String, right : UTF8_String) -> bool #must
 {
 	return left.as_string == right.as_string;
 }
 
-operator == :: (left : UTF8_String, right : UTF16_String) -> bool #must #symmetric
+operator == :: inline (left : UTF8_String, right : UTF16_String) -> bool #must #symmetric
 {
 	return inline utf8_equals_utf16 (left.as_string, right.as_array);
 }
 
-operator == :: (left : UTF8_String, right : UTF32_String) -> bool #must #symmetric
+operator == :: inline (left : UTF8_String, right : UTF32_String) -> bool #must #symmetric
 {
 	return inline utf8_equals_utf32 (left.as_string, right.as_array);
 }
 
-operator == :: (left : UTF16_String, right : UTF16_String) -> bool #must
+operator == :: inline (left : UTF16_String, right : UTF16_String) -> bool #must
 {
 	return inline utf16_equals_utf16 (left.as_array, right.as_array);
 }
 
-operator == :: (left : UTF16_String, right : UTF32_String) -> bool #must #symmetric
+operator == :: inline (left : UTF16_String, right : UTF32_String) -> bool #must #symmetric
 {
 	return inline utf16_equals_utf32 (left.as_array, right.as_array);
 }
 
-operator == :: (left : UTF32_String, right : UTF32_String) -> bool #must
+operator == :: inline (left : UTF32_String, right : UTF32_String) -> bool #must
 {
 	return inline utf32_equals_utf32 (left.as_array, right.as_array);
 }
