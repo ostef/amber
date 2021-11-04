@@ -714,6 +714,6 @@ draw_text_layout :: (layout_id : Text_Layout_ID)
 		);
 		if is_whitespace then color.a /= 3;
 		draw_set_texture (glyph.atlas_texture);
-		draw_rect (glyph_rect, (ifx draw_cursor then invert (color) else color), uv_rect = glyph.uv_rect);
+		draw_rect (glyph_rect, (ifx draw_cursor then RGBA_BLACK else color), uv_rect = glyph.uv_rect);
 	}
 }
