@@ -53,8 +53,6 @@ language_register :: inline (language : Language) -> bool, Language_ID
 	// @Note (stefan): We don't make assumptions about where the memory for the
 	// following members comes from, so we allocate new memory for them.
 	inserted.name = clone_string (language.name, heap_allocator);
-	println ("Registering language %.", inserted.name);
-	println ("%, %", inserted.name.data, inserted.name.count);
 	inserted.associated_filenames  = clone_array (language.associated_filenames, heap_allocator);
 	inserted.associated_extensions = clone_array (language.associated_extensions, heap_allocator);
 	
