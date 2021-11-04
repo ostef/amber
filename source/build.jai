@@ -61,7 +61,7 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 	Compiler.compiler_begin_intercept (workspace);
 	for files
 		Compiler.add_build_file (it, workspace);
-	Compiler.add_build_string (fstring (temp_allocator, "PROFILE :: %;", profile), workspace);
+	Compiler.add_build_string (fstring (temp_allocator, "ENABLE_PROFILING :: %;", profile), workspace);
 	Compiler.add_build_string (fstring (temp_allocator, "RELEASE :: %;", release), workspace);
 	Compiler.add_build_string (fstring (temp_allocator, "DEBUG   :: %;", !release), workspace);
 	Compiler.add_build_string ("IS_IN_METAPROGRAM :: false;", workspace);
@@ -323,7 +323,7 @@ build :: ()
 	}
 	
 	// Set metaprogram output to none
-	Compiler.set_build_options_dc (.{ do_output = false });
+	Compiler.set_build_options_dc (.{ do_output = false, write_added_strings = false });
 }
 
 #run build ();
