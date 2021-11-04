@@ -1,4 +1,5 @@
 .build/
+.vs/
 bin/
 int/
 debug/
