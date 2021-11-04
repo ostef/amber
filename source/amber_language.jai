@@ -9,7 +9,7 @@ get_language :: inline (language_id : Language_ID) -> *Language #must
 	assert (language_exists (language_id), "Invalid language id (%).", language_id);
 	assert (language_id != PLAIN_TEXT, "PLAIN_TEXT is not a registered language, but a predefined id. Don't call get_language with it!");
 	
-	return *languages[cast (s64) language_id - 1];
+	return get_ptr (*languages, cast (s64) language_id - 1);
 }
 
 language_exists :: inline (id : Language_ID) -> bool #must
@@ -53,6 +53,8 @@ language_register :: inline (language : Language) -> bool, Language_ID
 	// @Note (stefan): We don't make assumptions about where the memory for the
 	// following members comes from, so we allocate new memory for them.
 	inserted.name = clone_string (language.name, heap_allocator);
+	println ("Registering language %.", inserted.name);
+	println ("%, %", inserted.name.data, inserted.name.count);
 	inserted.associated_filenames  = clone_array (language.associated_filenames, heap_allocator);
 	inserted.associated_extensions = clone_array (language.associated_extensions, heap_allocator);
 	
