@@ -11,6 +11,7 @@
 #load "amber_language.jai";
 #load "amber_command.jai";
 #load "amber_extension.jai";
+#load "amber_profiler.jai";
 
 CURSOR_ROUNDING :: 3.0;
 CURSOR_MARGIN   :: 0;
@@ -64,7 +65,10 @@ handle_event :: inline (event : Event) -> Event_Result #must
 main :: ()
 {
 	FONT_NAME :: "fonts/jetbrainsmono/JetBrainsMono-Regular.ttf";
+	context.allocator = heap_allocator;
 	
+#if ENABLE_PROFILING
+	init_profiler ();
 	platform_init_window_and_gl ();
 	viewport_size = platform_get_viewport_size ();
 	draw_init ();
@@ -72,7 +76,8 @@ main :: ()
 	init_slot_array (*buffers, 20, heap_allocator);
 	init_slot_array (*text_layouts, 20, heap_allocator);
 	init_slot_array (*splits, 10, heap_allocator);
-	load_extension ("user.dll");
+	load_extension ("amber_test_extension.dll");
+	load_extension ("amber_jai.dll");
 	init_extensions ();
 	font_load_from_file (FONT_NAME);
 	split_create_first ();
@@ -90,6 +95,8 @@ main :: ()
 	frame_start := platform_get_time ();
 	while running
 	{
+		profile ("main_loop");
+		
 		previous_frame_start := frame_start;
 		frame_start = platform_get_time ();
 		delta_time := cast (f32) (frame_start - previous_frame_start);
@@ -121,10 +128,19 @@ main :: ()
 	}
 
 	terminate_and_free_extensions ();
+#if ENABLE_PROFILING
+{
+	builder : String_Builder;
+	init_string_builder (*builder, 5000, temp_allocator);
+	write_profiling_data_to_builder (*builder);
+	platform_write_to_file ("profiling.txt", to_string (builder));
+}
 }
 
 draw_text :: (font_id : Font_ID, height : u32, position : Vec2f, text : string, color : RGBA)
 {
+	profile ();
+	
 	prev_texture := draw_get_texture ();
 	defer draw_set_texture (prev_texture);
 	prev_shader := draw_set_shader (glyph_shader);

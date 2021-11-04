@@ -1,6 +1,7 @@
 #load "amber_types.jai";
 #load "amber_core.jai";
 #load "amber_hooks.jai";
+#load "amber_profiler.jai";
 
 Jai_Lexer :: struct
 {
@@ -54,7 +55,7 @@ Jai_Token :: struct
 
 JAI_CONTROL_KEYWORDS :: string.[ "if", "ifx", "then", "else", "case", "for", "while", "break", "continue", "return", "using", "inline", "defer" ];
 JAI_STORAGE_TYPE_KEYWORDS :: string.[ "struct", "union", "enum", "enum_flags" ];
-JAI_TYPE_KEYWORDS :: string.[ "void", "u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "int", "float32", "float64", "f32", "f64", "float", "bool", "string", "__reg" ];
+JAI_TYPE_KEYWORDS :: string.[ "void", "u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "int", "float32", "float64", "f32", "f64", "float", "bool", "string", "__reg", "reg" ];
 JAI_FUNCTION_KEYWORDS :: string.[ "cast", "xx", "type_of", "type_info", "size_of", "align_of", "initializer_of", "is_constant" ];
 JAI_OTHER_KEYWORDS :: string.[ "push_context", "context", "null", "true", "false", "it", "it_index", "no_check", "truncate", "no_dll", "stallable",
 	"operator", "interface", "distinct", "isa" ];
@@ -98,9 +99,9 @@ JAI_ASM_INSTRUCTION_KEYWORDS :: string.[
 	"prefetch2",
 	"mfence",
 	"pause",
-	"int3",
-	
+	"int3"
 ];
+JAI_GPR_KEYWORDS :: string.[ "a", "b", "c", "d", "sp" ];
 JAI_ASM_SIZE_KEYWORDS :: string.[ "b", "w", "d", "q", "x", "y", "z" ];
 
 #insert -> string
@@ -154,6 +155,10 @@ JAI_ASM_SIZE_KEYWORDS :: string.[ "b", "w", "d", "q", "x", "y", "z" ];
 #program_export
 init_extension :: (id : Extension_ID, using hooks : *Amber_Hooks) -> bool
 {
+	context.allocator = heap_allocator;
+#if ENABLE_PROFILING
+	init_profiler ();
+
 	jai : Language;
 	jai.extension_id = id;
 	jai.name = "Jai";
@@ -167,11 +172,19 @@ init_extension :: (id : Extension_ID, using hooks : *Amber_Hooks) -> bool
 #program_export
 terminate_extension :: (using hooks : *Amber_Hooks)
 {
+#if ENABLE_PROFILING
+{
+	builder : String_Builder;
+	init_string_builder (*builder, 5000, temp_allocator);
+	write_profiling_data_to_builder (*builder);
+	platform_write_to_file ("jai_profiling.txt", to_string (builder));
+}
 }
 
 jai_process_buffer :: (using hooks : *Amber_Hooks, buffer_id : Buffer_ID)
 {
-	start := platform_get_time ();
+	profile ();
+	
 	layout_id := buffer_get_text_layout (buffer_id);
 	lexer : Jai_Lexer;
 	lexer.buffer_id = buffer_id;
@@ -221,7 +234,6 @@ jai_process_buffer :: (using hooks : *Amber_Hooks, buffer_id : Buffer_ID)
 		text_layout_push_color (layout_id, token.range, color);
 	}
 	end := platform_get_time ();
-	println ("Jai took % milliseconds to process the buffer.", (end - start) * 1000);
 }
 
 set_token_start :: inline (using lexer : *Jai_Lexer, token : *Jai_Token)
@@ -240,6 +252,8 @@ set_token_end :: inline (using lexer : *Jai_Lexer, token : *Jai_Token)
 
 read_next_token :: (using hooks : *Amber_Hooks, using lexer : *Jai_Lexer) -> Jai_Token
 {
+	profile ();
+
 	token : Jai_Token;
 	set_token_start (lexer, *token);
 

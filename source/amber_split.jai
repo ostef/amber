@@ -213,7 +213,7 @@ split_get_scrollbar_rect :: (split_id : Split_ID) -> Rectf #must
 	max_scroll     := text_layout_get_max_scroll (active_layout_id);
 	max_visible    := layout_extents.y;
 	visible_area := rect_height (layout_area) / max_visible;
-	scroll_percent   := text_layout_get_visual_scroll (active_layout_id).y / max_scroll.y;
+	scroll_percent   := text_layout_get_scroll (active_layout_id).y / max_scroll.y;
 	scrollbar_height := max (visible_area * rect_height (layout_area), MIN_SCROLLBAR_HEIGHT);
 	scrolling_area   := rect_height (layout_area) - scrollbar_height;
 	scrollbar_rect   := xywhf (layout_area.x2 - SCROLLBAR_WIDTH, layout_area.y1 + scrolling_area * scroll_percent, SCROLLBAR_WIDTH, scrollbar_height);
@@ -224,6 +224,8 @@ split_get_scrollbar_rect :: (split_id : Split_ID) -> Rectf #must
 
 split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 {
+	profile ();
+
 	using result : Event_Result;
 	using split := get_split (split_id);
 	active_buffer_id := split_get_active_buffer (split_id);
@@ -357,6 +359,8 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 
 split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_time : f32)
 {
+	profile ();
+
 	using split := get_split (split_id);
 	active_buffer_id := split_get_active_buffer (split_id);
 	active_layout_id := buffer_get_text_layout (active_buffer_id);
@@ -429,6 +433,8 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 
 split_draw :: (split_id : Split_ID)
 {
+	profile ();
+
 	using split := get_split (split_id);
 	active_buffer_id := split_get_active_buffer (split_id);
 	active_layout_id := buffer_get_text_layout (active_buffer_id);
