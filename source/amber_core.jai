@@ -68,28 +68,28 @@ S64_MIN : s64 :  0x8000_0000_0000_0000;
 S64_MAX : s64 :  0x7fff_ffff_ffff_ffff;
 U64_MAX : u64 :  0xffff_ffff_ffff_ffff;
 
-F32_MIN :: 0h0080_0000;
-F32_MAX :: 0h7f7f_ffff;
-F32_MIN_SUBNORMAL :: 0h0000_0001;
-F32_MAX_SUBNORMAL :: 0h007f_ffff;
-F32_POSITIVE_INFINITY :: 0h7f80_0000;
-F32_NEGATIVE_INFINITY :: 0hff80_0000;
-F32_NAN :: 0h7fc0_0000;
-F32_EPSILON :: 0h3400_0000;
+F32_MIN : f32 : 0h0080_0000;
+F32_MAX : f32 : 0h7f7f_ffff;
+F32_MIN_SUBNORMAL : f32 : 0h0000_0001;
+F32_MAX_SUBNORMAL : f32 : 0h007f_ffff;
+F32_POSITIVE_INFINITY : f32 : 0h7f80_0000;
+F32_NEGATIVE_INFINITY : f32 : 0hff80_0000;
+F32_NAN : f32 : 0h7fc0_0000;
+F32_EPSILON : f32 : 0h3400_0000;
 
-F64_MIN :: 0h0010_0000_0000_0000;
-F64_MAX :: 0h7fef_ffff_ffff_ffff;
-F64_MIN_SUBNORMAL :: 0h0000_0000_0000_0001;
-F64_MAX_SUBNORMAL :: 0h000f_ffff_ffff_ffff;
-F64_POSITIVE_INFINITY :: 0h7ff0_0000_0000_0000;
-F64_NEGATIVE_INFINITY :: 0hfff0_0000_0000_0000;
-F64_NAN :: 0h7ff8_0000_0000_0000;
-F64_EPSILON :: 0h3cb0_0000_0000_0000;
+F64_MIN : f64 : 0h0010_0000_0000_0000;
+F64_MAX : f64 : 0h7fef_ffff_ffff_ffff;
+F64_MIN_SUBNORMAL : f64 : 0h0000_0000_0000_0001;
+F64_MAX_SUBNORMAL : f64 : 0h000f_ffff_ffff_ffff;
+F64_POSITIVE_INFINITY : f64 : 0h7ff0_0000_0000_0000;
+F64_NEGATIVE_INFINITY : f64 : 0hfff0_0000_0000_0000;
+F64_NAN : f64 : 0h7ff8_0000_0000_0000;
+F64_EPSILON : f64 : 0h3cb0_0000_0000_0000;
 
 MAX_REPRESENTABLE_INT_AS_F32 :: 16777217;
 
-PI   :: 3.1415927;
-PI64 :: 3.141592653589793;
+PI   : f32 : 3.1415927;
+PI64 : f64 : 3.141592653589793;
 
 count_digits :: inline (value : s64) -> s64 #must
 {
@@ -1715,9 +1715,14 @@ print_to_builder :: (builder : *String_Builder, fmt : string, args : ..Any)
 	print_string_to_builder (builder, str_to_print);
 }
 
-print_line_to_builder :: (builder : *String_Builder, fmt : string, args : ..Any)
+print_line_to_builder :: inline (builder : *String_Builder, fmt : string, args : ..Any)
 {
 	print_to_builder (builder, fmt, ..args);
+	print_string_to_builder (builder, "\n");
+}
+
+print_newline_to_builder :: inline (builder : *String_Builder)
+{
 	print_string_to_builder (builder, "\n");
 }
 
@@ -2580,12 +2585,12 @@ make_range :: inline (min : $T, max : T) -> Range (T) #must
 
 length :: inline (range : $R/Range) -> R.T #must
 {
-	return abs (range.max - range.min);
+	return abs (range.max - range.min) + 1;
 }
 
 signed_length :: inline (range : $R/Range) -> R.T #must
 {
-	return range.max - range.min;
+	return (range.max + 1) - range.min;
 }
 
 contains :: inline (range : $R/Range, value : R.T) -> bool #must
