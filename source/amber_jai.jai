@@ -162,7 +162,7 @@ init_extension :: (id : Extension_ID, using hooks : *Amber_Hooks) -> bool
 	jai : Language;
 	jai.extension_id = id;
 	jai.name = "Jai";
-	jai.associated_extensions = string.[ "jai" ];
+	jai.associated_file_extensions = string.[ "jai" ];
 	jai.process_buffer = jai_process_buffer;
 	language_register (jai);
 	
@@ -324,6 +324,87 @@ read_next_token :: (using hooks : *Amber_Hooks, using lexer : *Jai_Lexer) -> Jai
 		else
 			token.kind = .STRING_LITERAL;
 		advance (hooks, lexer);
+		set_token_end (lexer, *token);
+	}
+	else if is_digit (peek_codepoint (hooks, lexer))
+	{
+		is_float_hex := advance_if_matches_string (hooks, lexer, "0h") || advance_if_matches_string (hooks, lexer, "0H");
+		is_int_hex   := false;
+		if !is_float_hex
+			is_int_hex = advance_if_matches_string (hooks, lexer, "0x") || advance_if_matches_string (hooks, lexer, "0X");
+		is_int_bin   := false;
+		if !is_float_hex && !is_int_hex
+			is_int_bin = advance_if_matches_string (hooks, lexer, "0b") || advance_if_matches_string (hooks, lexer, "0B");
+
+		valid := true;
+		found_decimal     := false;
+		found_exponent    := false;
+		last_was_decimal  := false;
+		last_was_exponent := false;
+		digit_count          := 0;
+		whole_digit_count    := 0;
+		decimal_digit_count  := 0;
+		exponent_digit_count := 0;
+		while lexer.offset < lexer.count
+		{
+			if matches_string (hooks, lexer, "..")
+			{
+				break;
+			}
+			else if peek_codepoint (hooks, lexer) == #char "."
+			{
+				if found_exponent || found_decimal || is_float_hex || is_int_hex || is_int_bin then valid = false;
+				found_decimal    = true;
+				last_was_decimal = true;
+			}
+			else if peek_codepoint (hooks, lexer) == #char "e" && !is_float_hex && !is_int_hex
+			{
+				if digit_count == 0 || found_exponent || is_int_bin then valid = false;
+				found_exponent    = true;
+				last_was_exponent = true;
+			}
+			else if is_alpha_num (peek_codepoint (hooks, lexer))
+			{
+				if (is_float_hex || is_int_hex)
+				{
+					if !is_hex_digit (peek_codepoint (hooks, lexer)) && peek_codepoint (hooks, lexer) != #char "_"
+						valid = false;
+				}
+				else if is_int_bin
+				{
+					if !is_bin_digit (peek_codepoint (hooks, lexer)) && peek_codepoint (hooks, lexer) != #char "_"
+						valid = false;
+				}
+				else if !is_digit (peek_codepoint (hooks, lexer)) && peek_codepoint (hooks, lexer) != #char "_"
+				{
+					valid = false;
+				}
+				
+				if peek_codepoint (hooks, lexer) == #char "_" && last_was_exponent then valid = false;
+
+				digit_count += 1;
+				if found_exponent then exponent_digit_count += 1;
+				else if found_decimal then decimal_digit_count += 1;
+				else whole_digit_count += 1;
+				last_was_decimal  = false;
+				last_was_exponent = false;
+			}
+			else
+			{
+				break;
+			}
+
+			advance (hooks, lexer);
+		}
+
+		if digit_count == 0 ||
+			found_decimal && decimal_digit_count == 0 ||
+			found_exponent && exponent_digit_count == 0
+		{
+			valid = false;
+		}
+
+		token.kind = ifx valid then Jai_Token.Kind.NUMBER_LITERAL else Jai_Token.Kind.INVALID;
 		set_token_end (lexer, *token);
 	}
 	else if is_alpha (peek_codepoint (hooks, lexer)) || peek_codepoint (hooks, lexer) == #char "_"
