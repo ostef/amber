@@ -334,8 +334,8 @@ draw_scope_clip_rect :: (rect : Recti) #expand
 
 draw_set_clip_rect :: inline (rect : Recti) -> previous_clip_rect : Recti
 {
-	draw_set_clipping (true);
 	draw_flush ();
+	draw_context.use_clip_rect = true;
 	previous := draw_context.clip_rect;
 	draw_context.clip_rect = rect;
 	{
@@ -350,7 +350,10 @@ draw_set_clip_rect :: inline (rect : Recti) -> previous_clip_rect : Recti
 
 draw_push_clip_rect :: inline (rect : Recti) -> previous_clip_rect : Recti
 {
-	return draw_set_clip_rect (clip (rect, draw_context.clip_rect));
+	if draw_context.use_clip_rect
+		return draw_set_clip_rect (clip (rect, draw_context.clip_rect));
+	
+	return draw_set_clip_rect (rect);
 }
 @Amber_API
 

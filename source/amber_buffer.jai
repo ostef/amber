@@ -129,6 +129,7 @@ buffer_load_file :: inline (buffer_id : Buffer_ID, filepath : string) -> bool
 	for utf8_str
 		buffer_insert_at_cursor (buffer_id, it, WRITE_HEAD);
 	buffer_set_filepath (buffer_id, filepath);
+	buffer_set_name (buffer_id, filepath);
 
 	return true;
 }

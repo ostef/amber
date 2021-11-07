@@ -81,7 +81,7 @@ Language :: struct
 	extension_id : Extension_ID;
 	name : string;
 	associated_filenames  : []string;
-	associated_extensions : []string;
+	associated_file_extensions : []string;
 	process_buffer : Process_Buffer_Proc;
 }
 

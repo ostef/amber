@@ -240,6 +240,60 @@ load_glyph :: (using page : *Font_Page, codepoint : u32) -> *Font_Glyph
 	return glyph;
 }
 
+font_get_line_height :: inline (font_id : Font_ID, font_height : u32) -> f32 #must
+{
+	font := get_font (font_id);
+	page := load_page (font, font_height);
+	
+	return cast (f32) (page.ascent - page.descent);
+}
+@Amber_API
+
+font_get_space_advance :: inline (font_id : Font_ID, font_height : u32) -> f32 #must
+{
+	font := get_font (font_id);
+	page := load_page (font, font_height);
+	
+	return cast (f32) (page.space_advance);
+}
+@Amber_API
+
+font_get_text_extents :: inline (font_id : Font_ID, font_height : u32, text : string) -> Vec2f #must
+{
+	font := get_font (font_id);
+	page := load_page (font, font_height);
+
+	pen : Vec2f;
+	for i : 0..text.count - 1
+	{
+		codepoint : u32 = text[i];
+		if codepoint ==
+		{
+		case #char "\n";
+			pen.x = 0;
+			pen.y += page.ascent - page.descent;
+		
+		case #char "\t";
+			pen.x = snap_up (pen.x + page.space_advance, page.space_advance * 4.0);
+		
+		case;
+			glyph := load_glyph (page, codepoint);
+			glyph_rect := xywhf (
+				pen.x + glyph.bitmap_bearing_x,
+				pen.y - glyph.bitmap_bearing_y + page.ascent,
+				xx glyph.bitmap_width,
+				xx glyph.bitmap_height
+			);
+			glyph_rect = glyph_rect;
+			pen.x += glyph.advance;
+		}
+	}
+	pen.y += page.ascent - page.descent;
+	
+	return pen;
+}
+@Amber_API
+
 GLYPH_FRAGMENT_SHADER :: #string END
 #version 330 core
 
