@@ -85,6 +85,9 @@ Amber_Hooks :: struct #type_info_none
 	draw_text : (Font_ID, u32, Vec2 (T = f32), string, RGBA);
 	draw_triangle : (Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32), RGBA, Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32));
 	font_exists : (Font_ID) -> bool;
+	font_get_line_height : (Font_ID, u32) -> f32;
+	font_get_space_advance : (Font_ID, u32) -> f32;
+	font_get_text_extents : (Font_ID, u32, string) -> Vec2 (T = f32);
 	font_load_from_file : (string) -> (bool, Font_ID);
 	get_active_buffer : () -> Buffer_ID;
 	get_active_split : () -> Split_ID;
@@ -95,6 +98,10 @@ Amber_Hooks :: struct #type_info_none
 	heap_allocator : (Allocator_Mode, s64, s64, *void, *void) -> *void;
 	language_detect : (string) -> Language_ID;
 	language_exists : (Language_ID) -> bool;
+	language_get_associated_file_extensions : (Language_ID, (Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> []string;
+	language_get_associated_filenames : (Language_ID, (Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> []string;
+	language_get_extension : (Language_ID) -> Extension_ID;
+	language_get_name : (Language_ID, (Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> string;
 	language_register : (Language) -> (bool, Language_ID);
 	language_unregister : (Language_ID);
 	language_unregister_for_extension : (Extension_ID);
@@ -138,7 +145,11 @@ Amber_Hooks :: struct #type_info_none
 	platform_write_to_file : (string, string) -> (s64, bool);
 	set_active_split : (Split_ID);
 	split_close_buffer : (Split_ID, s64);
+	split_create_above : (Split_ID) -> Split_ID;
+	split_create_below : (Split_ID) -> Split_ID;
 	split_create_first : () -> Split_ID;
+	split_create_left : (Split_ID) -> Split_ID;
+	split_create_right : (Split_ID) -> Split_ID;
 	split_exists : (Split_ID) -> bool;
 	split_get_active_buffer_index : (Split_ID) -> s64;
 	split_get_active_buffer : (Split_ID) -> Buffer_ID;
@@ -148,7 +159,9 @@ Amber_Hooks :: struct #type_info_none
 	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
 	split_get_scrollbar_rect : (Split_ID) -> Rect (T = f32);
 	split_get_text_layout_area : (Split_ID) -> Rect (T = f32);
+	split_merge : (Split_ID) -> Split_ID;
 	split_open_buffer : (Split_ID) -> Buffer_ID;
+	split_set_active_buffer : (Split_ID, s64);
 	split_set_area : (Split_ID, Rect (T = f32));
 	text_layout_clear : (Text_Layout_ID);
 	text_layout_clear_colors : (Text_Layout_ID);

@@ -9,6 +9,7 @@ Text_Layout :: struct
 	id : Text_Layout_ID;
 	split_id  : Split_ID;
 	buffer_id : Buffer_ID;
+	// @Todo (stefan): Handle multiple fonts for more interesting text rendering.
 	font_id : Font_ID;
 	font_height : u32;
 	is_dirty : bool;
@@ -295,7 +296,7 @@ text_layout_get_rect :: inline (layout_id : Text_Layout_ID, index : s64) -> Rect
 	page := load_page (font, font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
 	
-	return move (rects[index], area.x1 - visual_scroll.x * page.space_advance, area.y1 - visual_scroll.y * line_height);
+	return move (rects[index], round (area.x1) - visual_scroll.x * page.space_advance, round (area.y1) - visual_scroll.y * line_height);
 }
 @Amber_API
 
@@ -556,7 +557,7 @@ draw_line_numbers :: (layout_id : Text_Layout_ID, color : RGBA, highlight_color 
 	prev_shader := draw_set_shader (glyph_shader);
 	defer draw_set_shader (prev_shader);
 
-	position := vec2f (area.x1 - width + page.space_advance, area.y1 - visual_scroll.y * line_height);
+	position := vec2f (round (area.x1) - width + page.space_advance, round (area.y1) - visual_scroll.y * line_height);
 	current_line_index := -1;
 	line_range := text_layout_get_visible_line_range (layout_id);
 	for line_index : line_range
@@ -605,7 +606,7 @@ draw_selection :: (layout_id : Text_Layout_ID, color : RGBA)
 			for i : line_range
 			{
 				rect := text_layout_get_rect (layout_id, i);
-				is_selected := cur.selection > 0 && i >= cur.offset && i < cur.offset + cur.selection - 1 ||
+				is_selected := cur.selection > 0 && i >= cur.offset && i < cur.offset + cur.selection ||
 							   cur.selection < 0 && i >= cur.offset + cur.selection && i < cur.offset;
 				defer was_selected = is_selected;
 				
@@ -616,9 +617,13 @@ draw_selection :: (layout_id : Text_Layout_ID, color : RGBA)
 					selection_rect.y2 = rect.y2;
 				}
 				
-				if was_selected && !is_selected || i == line_range.max && is_selected
+				if i == line_range.max && is_selected
 				{
 					selection_rect.x2 = rect.x2;
+				}
+				else if was_selected && !is_selected
+				{
+					selection_rect.x2 = rect.x1;
 					
 					break;
 				}
@@ -660,6 +665,8 @@ draw_text_layout :: (layout_id : Text_Layout_ID)
 	prev_shader := draw_set_shader (glyph_shader);
 	defer draw_set_shader (prev_shader);
 
+	
+	active := get_active_split () == text_layout_get_split (layout_id);
 	buffer := get_buffer (buffer_id);
 	font   := get_font (font_id);
 	page   := load_page (font, font_height);
@@ -687,7 +694,10 @@ draw_text_layout :: (layout_id : Text_Layout_ID)
 		if draw_cursor
 		{
 			draw_set_texture (0);
-			draw_rect (rect, color, CURSOR_ROUNDING);
+			if active
+				draw_rect (rect, color, CURSOR_ROUNDING);
+			else
+				draw_rect_outline (truncate_all_sides (rect, 0.5), color, 1, CURSOR_ROUNDING);
 		}
 		if i == rects.count - 1 then break;
 
@@ -714,6 +724,6 @@ draw_text_layout :: (layout_id : Text_Layout_ID)
 		);
 		if is_whitespace then color.a /= 3;
 		draw_set_texture (glyph.atlas_texture);
-		draw_rect (glyph_rect, (ifx draw_cursor then RGBA_BLACK else color), uv_rect = glyph.uv_rect);
+		draw_rect (glyph_rect, (ifx active && draw_cursor then RGBA_BLACK else color), uv_rect = glyph.uv_rect);
 	}
 }

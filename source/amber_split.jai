@@ -16,8 +16,7 @@ Split :: struct
 SCROLLBAR_WIDTH         :: 10.0;
 MIN_SCROLLBAR_HEIGHT    :: 25.0;
 MAX_SCROLLBAR_SHOW_TIME :: 3.0;
-TAB_WIDTH  :: 150.0;
-TAB_HEIGHT :: 30.0;
+MAX_TAB_WIDTH  :: 250.0;
 
 add_split :: inline () -> *Split #must
 {
@@ -82,8 +81,9 @@ split_open_buffer :: (split_id : Split_ID) -> Buffer_ID
 {
 	using split := get_split (split_id);
 	buffer := add_buffer ();
+	buffer_set_name (buffer.id, "(unnamed)");
 	buffer.split_id = split_id;
-	push_into_array (*opened_buffer_ids, buffer.id);
+	sorted_insert_into_array (*opened_buffer_ids, min (active_buffer_index + 1, opened_buffer_ids.count), buffer.id);
 	active_buffer_index = opened_buffer_ids.count - 1;
 	layout := add_text_layout ();
 	layout.font_id = 1;	// @Temporary
@@ -116,10 +116,9 @@ split_get_area :: inline (split_id : Split_ID) -> Rectf #must
 }
 @Amber_API
 
-split_set_area :: inline (split_id : Split_ID, new_area : Rectf)
+split_update_area :: inline (split_id : Split_ID)
 {
 	using split := get_split (split_id);
-	area = new_area;
 	for buffer_id : opened_buffer_ids
 	{
 		layout_id := buffer_get_text_layout (buffer_id);
@@ -129,6 +128,13 @@ split_set_area :: inline (split_id : Split_ID, new_area : Rectf)
 		line_number_len := count_digits (buffer_get_line_count (buffer_id));
 		text_layout_update_area (layout_id);
 	}
+}
+
+split_set_area :: inline (split_id : Split_ID, new_area : Rectf)
+{
+	using split := get_split (split_id);
+	area = new_area;
+	split_update_area (split_id);
 }
 @Amber_API
 
@@ -143,7 +149,7 @@ split_get_text_layout_area :: inline (split_id : Split_ID) -> Rectf #must
 	
 	return rectf (
 		area.x1 + cast (f32) (line_number_len + 2) * column_width,
-		area.y1 + TAB_HEIGHT,
+		area.y1 + font_get_line_height (1, 14) * 2,
 		area.x2,
 		area.y2 - line_height
 	);
@@ -175,6 +181,13 @@ split_get_active_buffer_index :: inline (split_id : Split_ID) -> s64 #must
 }
 @Amber_API
 
+split_set_active_buffer :: inline (split_id : Split_ID, buffer_index : s64)
+{
+	using split := get_split (split_id);
+	active_buffer_index = buffer_index;
+}
+@Amber_API
+
 split_get_active_buffer :: inline (split_id : Split_ID) -> Buffer_ID #must
 {
 	using split := get_split (split_id);
@@ -203,6 +216,104 @@ split_create_first :: inline () -> Split_ID
 }
 @Amber_API
 
+split_create_left :: inline (split_id : Split_ID) -> Split_ID
+{
+	split := get_split (split_id);
+	split.area.x1 += rect_width (split.area) * 0.5;
+	split_update_area (split_id);
+	new_split := add_split ();
+	new_split.area = move (split.area, -rect_width (split.area), 0);
+	split_open_buffer (new_split.id);
+	
+	return new_split.id;
+}
+@Amber_API
+
+split_create_right :: inline (split_id : Split_ID) -> Split_ID
+{
+	split := get_split (split_id);
+	split.area.x2 -= rect_width (split.area) * 0.5;
+	split_update_area (split_id);
+	new_split := add_split ();
+	new_split.area = move (split.area, rect_width (split.area), 0);
+	split_open_buffer (new_split.id);
+	
+	return new_split.id;
+}
+@Amber_API
+
+split_create_above :: inline (split_id : Split_ID) -> Split_ID
+{
+	split := get_split (split_id);
+	split.area.y1 += rect_height (split.area) * 0.5;
+	split_update_area (split_id);
+	new_split := add_split ();
+	new_split.area = move (split.area, 0, -rect_height (split.area));
+	split_open_buffer (new_split.id);
+	
+	return new_split.id;
+}
+@Amber_API
+
+split_create_below :: inline (split_id : Split_ID) -> Split_ID
+{
+	split := get_split (split_id);
+	split.area.y2 -= rect_height (split.area) * 0.5;
+	split_update_area (split_id);
+	new_split := add_split ();
+	new_split.area = move (split.area, 0, rect_height (split.area));
+	split_open_buffer (new_split.id);
+	
+	return new_split.id;
+}
+@Amber_API
+
+split_merge :: inline (split_id : Split_ID) -> Split_ID
+{
+	split := get_split (split_id);
+	for * splits
+	{
+		if it.id == split_id
+			continue;
+		
+		merged := true;
+		// Merge left
+		if it.area.x2 == split.area.x1 && it.area.y1 == split.area.y1 && it.area.y2 == split.area.y2
+			it.area.x2 = split.area.x2;
+		// Merge right
+		else if it.area.x1 == split.area.x2 && it.area.y1 == split.area.y1 && it.area.y2 == split.area.y2
+			it.area.x1 = split.area.x1;
+		// Merge above
+		else if it.area.y2 == split.area.y1 && it.area.x1 == split.area.x1 && it.area.x2 == split.area.x2
+			it.area.y2 = split.area.y2;
+		// Merge below
+		else if it.area.y1 == split.area.y2 && it.area.x1 == split.area.x1 && it.area.x2 == split.area.x2
+			it.area.y1 = split.area.y1;
+		else
+			merged = false;
+		
+		if merged
+		{
+			for buffer_id : split.opened_buffer_ids
+			{
+				buffer := get_buffer (buffer_id);
+				layout := get_text_layout (buffer.text_layout_id);
+				buffer.split_id = it.id;
+				layout.split_id = it.id;
+				push_into_array (*it.opened_buffer_ids, buffer_id);
+			}
+			remove_split (split_id);
+			split_update_area (it.id);
+			split = get_split (it.id);
+			
+			return it.id;
+		}
+	}
+	
+	return NULL_SPLIT;
+}
+@Amber_API
+
 split_get_scrollbar_rect :: (split_id : Split_ID) -> Rectf #must
 {
 	active_buffer_id := split_get_active_buffer (split_id);
@@ -221,6 +332,33 @@ split_get_scrollbar_rect :: (split_id : Split_ID) -> Rectf #must
 	return scrollbar_rect;
 }
 @Amber_API
+
+split_get_tab_rect :: (split_id : Split_ID, buffer_index : s64) -> Rectf #must
+{
+	assert (buffer_index >= 0 && buffer_index < split_get_buffer_count (split_id));
+
+	using split := get_split (split_id);
+	rect : Rectf;
+	tab_x : f32;
+	for buffer_id : opened_buffer_ids
+	{
+		buffer_name := buffer_get_name (buffer_id, temp_allocator);
+		extents := font_get_text_extents (1, 14, buffer_name);
+		space_advance := font_get_space_advance (1, 14);
+		line_height := font_get_line_height (1, 14);
+		rect = xywhf (
+			round (area.x1) + tab_x,
+			round (area.y1),
+			min (extents.x + 2 * space_advance, MAX_TAB_WIDTH),
+			2 * line_height
+		);
+		if it_index == buffer_index
+			break;
+		tab_x = rect.x2;
+	}
+	
+	return rect;
+}
 
 split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 {
@@ -350,6 +488,18 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 				}
 				scroll_to_cursor = true;
 			}
+			else
+			{
+				for i : 0..split_get_buffer_count (split_id) - 1
+				{
+					if contains (split_get_tab_rect (split_id, i), event.mouse_position)
+					{
+						split_set_active_buffer (split_id, i);
+					
+						break;
+					}
+				}
+			}
 			show_scrollbar = true;
 		}
 	}
@@ -439,11 +589,52 @@ split_draw :: (split_id : Split_ID)
 	active_buffer_id := split_get_active_buffer (split_id);
 	active_layout_id := buffer_get_text_layout (active_buffer_id);
 
+	draw_rect (rectf (area.x1, area.y1, area.x2, area.y1 + font_get_line_height (1, 14) * 2), rgba (30, 30, 30));
+	tab_x : f32;
+	prev_clip := draw_set_clipping (false);
 	for buffer_id : opened_buffer_ids
-		draw_rect (xywhf (area.x1 + it_index * TAB_WIDTH, area.y1, TAB_WIDTH, TAB_HEIGHT), rgba (50, 50, 50, 255), 10.0, Rectangle_Corners.TOP_LEFT | .TOP_RIGHT);
+	{
+		buffer_name := buffer_get_name (buffer_id, temp_allocator);
+		extents := font_get_text_extents (1, 14, buffer_name);
+		space_advance := font_get_space_advance (1, 14);
+		line_height := font_get_line_height (1, 14);
+		rect := xywhf (
+			round (area.x1) + tab_x,
+			round (area.y1),
+			min (extents.x + 2 * space_advance, MAX_TAB_WIDTH),
+			2 * line_height
+		);
+		tab_x = rect.x2;
+		// Draw tab background
+		draw_set_clipping (false);
+		if it_index == active_buffer_index
+		{
+			draw_rect (
+				rect,
+				RGBA_BLACK,
+				10.0,
+				Rectangle_Corners.TOP_LEFT | .TOP_RIGHT
+			);
+		}
+		else if it_index != active_buffer_index - 1
+		{
+			draw_circle (vec2f (rect.x2, (rect.y1 + rect.y2) * 0.5), 2, rgba (100, 100, 100));
+		}
+		// Draw tab name
+		prev_clip_rect := draw_push_clip_rect (recti (truncate_right (rect, space_advance)));
+		draw_text (
+			1,	// @Temporary
+			14,	// @Temporary
+			vec2f (rect.x1 + space_advance, rect.y1 + rect_height (rect) * 0.5 - line_height * 0.5),
+			buffer_name,
+			(ifx it_index == active_buffer_index then RGBA_WHITE else rgba (175, 175, 175))
+		);
+		draw_set_clip_rect (prev_clip_rect);
+	}
+	draw_set_clipping (prev_clip);
 
 	draw_line_numbers (active_layout_id, rgba (150, 150, 150), RGBA_WHITE);
-	draw_line_highlight (active_layout_id, rgba (255, 255, 255, 10));
+	draw_line_highlight (active_layout_id, rgba (255, 255, 255, 20));
 	draw_selection (active_layout_id, rgba (50, 100, 200));
 	draw_text_layout (active_layout_id);
 
@@ -472,9 +663,7 @@ split_draw :: (split_id : Split_ID)
 	draw_rect (scrollbar_rect, rgba (RGBA_WHITE, split.scrollbar_alpha), rect_width (scrollbar_rect) * 0.5);
 	draw_rect (xywhf (layout_area.x2 - SCROLLBAR_WIDTH, layout_area.y1 + cursor_view_position, SCROLLBAR_WIDTH, 2), rgba (RGBA_WHITE, split.cursor_view_alpha));
 
-	language_name := "Plain Text";
-	if buffer_get_language (active_buffer_id) != PLAIN_TEXT
-		language_name = get_language (buffer_get_language (active_buffer_id)).name;
+	language_name := language_get_name (buffer_get_language (active_buffer_id), temp_allocator);
 	draw_rect (rectf (split.area.x1, split.area.y2 - line_height, split.area.x2, split.area.y2), RGBA_WHITE);
 	draw_text (
 		text_layout_get_font (active_layout_id),
@@ -490,7 +679,4 @@ split_draw :: (split_id : Split_ID)
 		),
 		RGBA_BLACK
 	);
-
-	if split_id == get_active_split () && get_split_count () > 1
-		draw_rect_outline (area, rgba (50, 100, 200, 128), 3, 5.0);
 }

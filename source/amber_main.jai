@@ -47,6 +47,41 @@ handle_event :: inline (event : Event) -> Event_Result #must
 			viewport_size = event.viewport_size;
 		}
 	
+	case .KEY_PRESS;
+		if event.mods == .CONTROL
+		{
+			if event.key_code ==
+			{
+			case .K;
+				active_split_id = split_create_below (active_split_id);
+			
+			case .I;
+				active_split_id = split_create_above (active_split_id);
+			
+			case .J;
+				active_split_id = split_create_left (active_split_id);
+			
+			case .L;
+				active_split_id = split_create_right (active_split_id);
+			
+			case .Q;
+				merged_with := split_merge (active_split_id);
+				if merged_with != NULL_SPLIT
+					active_split_id = merged_with;
+			
+			case .O;
+				split := get_split (active_split_id);
+				split.active_buffer_index = wrap (split.active_buffer_index + 1, split.opened_buffer_ids.count);
+			
+			case .U;
+				split := get_split (active_split_id);
+				split.active_buffer_index = wrap (split.active_buffer_index - 1, split.opened_buffer_ids.count);
+			
+			case .N;
+				split_open_buffer (active_split_id);
+			}
+		}
+
 	case .MOUSE_PRESS;
 		for splits
 		{
@@ -116,11 +151,20 @@ main :: ()
 
 		if active_split_id != NULL_SPLIT
 			split_update (active_split_id, *event_result, delta_time);
+		memset (*event_result, 0, size_of (Event_Result));
+		for splits
+		{
+			if it.id == active_split_id
+				continue;
+			split_update (it.id, *event_result, delta_time);
+		}
 		extensions_on_update ();
 		
 		draw_begin ();
 		for splits
 			split_draw (it.id);
+		if active_split_id != NULL_SPLIT && get_split_count () > 1
+			draw_rect_outline (truncate_all_sides (split_get_area (active_split_id), 1.5), rgba (50, 100, 200, 128), 3, 5.0);
 		draw_end ();
 		platform_swap_window_buffers ();
 		frame_end := platform_get_time ();
