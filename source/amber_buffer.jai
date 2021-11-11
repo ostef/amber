@@ -830,20 +830,15 @@ buffer_add_cursor_at_offset :: (buffer_id : Buffer_ID, target_offset : s64) -> b
 		   target_offset == it.offset
 			return false;
 	}
-	cursor : Buffer_Cursor;
-	index := other_cursors.count;
+
+	closest : Buffer_Cursor;
 	for other_cursors
 	{
-		if it.offset > target_offset
-		{
-			index = it_index;
-			cursor = it;
-			
-			break;
-		}
+		if abs (it.offset - target_offset) < abs (closest.offset - target_offset)
+			closest = it;
 	}
-	sorted_insert_into_array (*other_cursors, index, cursor);
-	buffer_move_cursor_to_offset (buffer_id, target_offset, xx (index + 1));
+	push_into_array (*other_cursors, closest);
+	buffer_move_cursor_to_offset (buffer_id, target_offset, xx other_cursors.count);
 	
 	return true;
 }
@@ -852,8 +847,7 @@ buffer_add_cursor_at_offset :: (buffer_id : Buffer_ID, target_offset : s64) -> b
 buffer_add_cursor_on_previous_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool
 {
 	using buffer := get_buffer (buffer_id);
-	
-	// @Fix (stefan): This will add cursors on newly added cursors sometimes.
+
 	if cursor_id == ALL_CURSORS
 	{
 		added := false;
@@ -879,18 +873,8 @@ buffer_add_cursor_on_previous_line :: (buffer_id : Buffer_ID, cursor_id : Buffer
 			return false;
 	}
 
-	index := other_cursors.count;
-	for other_cursors
-	{
-		if it.offset > target_offset
-		{
-			index = it_index;
-			
-			break;
-		}
-	}
-	sorted_insert_into_array (*other_cursors, index, <<cursor);
-	buffer_move_cursor_to_offset (buffer_id, target_offset, xx (index + 1));
+	push_into_array (*other_cursors, <<cursor);
+	buffer_move_cursor_to_offset (buffer_id, target_offset, xx other_cursors.count);
 	
 	return true;
 }
@@ -900,7 +884,6 @@ buffer_add_cursor_on_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cur
 {
 	using buffer := get_buffer (buffer_id);
 
-	// @Fix (stefan): This will add cursors on newly added cursors sometimes.
 	if cursor_id == ALL_CURSORS
 	{
 		added := false;
@@ -926,18 +909,8 @@ buffer_add_cursor_on_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cur
 			return false;
 	}
 	
-	index := other_cursors.count;
-	for other_cursors
-	{
-		if it.offset > target_offset
-		{
-			index = it_index;
-			
-			break;
-		}
-	}
-	sorted_insert_into_array (*other_cursors, index, <<cursor);
-	buffer_move_cursor_to_offset (buffer_id, target_offset, xx (index + 1));
+	push_into_array (*other_cursors, <<cursor);
+	buffer_move_cursor_to_offset (buffer_id, target_offset, xx other_cursors.count);
 	
 	return true;
 }
