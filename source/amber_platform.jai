@@ -131,3 +131,19 @@ heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : 
 	return null;
 }
 @Amber_API
+
+platform_is_key_down :: inline (key_code : Key_Code) -> bool #must
+{
+	state := platform_get_key_state (key_code);
+	
+	return state == .PRESSED || state == .DOWN;
+}
+@Amber_API
+
+platform_is_mouse_button_down :: inline (button : Mouse_Button) -> bool #must
+{
+	state := platform_get_mouse_button_state (button);
+	
+	return state == .PRESSED || state == .DOWN;
+}
+@Amber_API
