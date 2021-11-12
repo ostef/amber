@@ -47,7 +47,8 @@ handle_event :: inline (event : Event) -> Event_Result #must
 			viewport_size = event.viewport_size;
 		}
 	
-	case .KEY_PRESS;
+	case .KEY_PRESS; #through;
+	case .KEY_REPEAT;
 		if event.mods == .CONTROL
 		{
 			if event.key_code ==
@@ -116,7 +117,7 @@ main :: ()
 	init_extensions ();
 	font_load_from_file (FONT_NAME);
 	split_create_first ();
-	buffer_load_file (get_active_buffer (), "amber_core.jai");
+	buffer_load_file (get_active_buffer (), "some_file.txt");
 	buffer_move_cursor_to_beginning (get_active_buffer (), WRITE_HEAD);
 	
 	for buffer : buffers

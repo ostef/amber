@@ -126,6 +126,8 @@ Amber_Hooks :: struct #type_info_none
 	platform_heap_alloc : (s64) -> *void;
 	platform_heap_free : (*void);
 	platform_heap_realloc : (*void, s64) -> *void;
+	platform_is_key_down : (Key_Code) -> bool;
+	platform_is_mouse_button_down : (Mouse_Button) -> bool;
 	platform_is_window_focused : () -> bool;
 	platform_list_files_in_directory : (string, (Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> (*File_Info, []File_Info);
 	platform_load_library : (string) -> *void;
@@ -158,6 +160,7 @@ Amber_Hooks :: struct #type_info_none
 	split_get_buffer_count : (Split_ID) -> s64;
 	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
 	split_get_scrollbar_rect : (Split_ID) -> Rect (T = f32);
+	split_get_tab_rect : (Split_ID, s64) -> Rect (T = f32);
 	split_get_text_layout_area : (Split_ID) -> Rect (T = f32);
 	split_merge : (Split_ID) -> Split_ID;
 	split_open_buffer : (Split_ID) -> Buffer_ID;

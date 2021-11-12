@@ -8,6 +8,7 @@ Split :: struct
 	is_dragging_cursor    : bool;
 	is_dragging_scrollbar : bool;
 	scrollbar_drag_offset : f32;
+	
 	scrollbar_alpha : u8;
 	scrollbar_show_time : f32;
 	cursor_view_alpha : u8;
@@ -304,7 +305,6 @@ split_merge :: inline (split_id : Split_ID) -> Split_ID
 			}
 			remove_split (split_id);
 			split_update_area (it.id);
-			split = get_split (it.id);
 			
 			return it.id;
 		}
@@ -327,7 +327,12 @@ split_get_scrollbar_rect :: (split_id : Split_ID) -> Rectf #must
 	scroll_percent   := text_layout_get_scroll (active_layout_id).y / max_scroll.y;
 	scrollbar_height := max (visible_area * rect_height (layout_area), MIN_SCROLLBAR_HEIGHT);
 	scrolling_area   := rect_height (layout_area) - scrollbar_height;
-	scrollbar_rect   := xywhf (layout_area.x2 - SCROLLBAR_WIDTH, layout_area.y1 + scrolling_area * scroll_percent, SCROLLBAR_WIDTH, scrollbar_height);
+	scrollbar_rect   := xywhf (
+		layout_area.x2 - SCROLLBAR_WIDTH,
+		layout_area.y1 + scrolling_area * scroll_percent,
+		SCROLLBAR_WIDTH,
+		scrollbar_height
+	);
 
 	return scrollbar_rect;
 }
@@ -335,7 +340,7 @@ split_get_scrollbar_rect :: (split_id : Split_ID) -> Rectf #must
 
 split_get_tab_rect :: (split_id : Split_ID, buffer_index : s64) -> Rectf #must
 {
-	assert (buffer_index >= 0 && buffer_index < split_get_buffer_count (split_id));
+	assert (buffer_index >= 0 && buffer_index < split_get_buffer_count (split_id), "Invalid buffer index.");
 
 	using split := get_split (split_id);
 	rect : Rectf;
@@ -349,16 +354,17 @@ split_get_tab_rect :: (split_id : Split_ID, buffer_index : s64) -> Rectf #must
 		rect = xywhf (
 			round (area.x1) + tab_x,
 			round (area.y1),
-			min (extents.x + 2 * space_advance, MAX_TAB_WIDTH),
+			min (extents.width + 2 * space_advance, MAX_TAB_WIDTH),
 			2 * line_height
 		);
 		if it_index == buffer_index
 			break;
-		tab_x = rect.x2;
+		tab_x += rect_width (rect);
 	}
 	
 	return rect;
 }
+@Amber_API
 
 split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 {
@@ -492,7 +498,8 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 			{
 				for i : 0..split_get_buffer_count (split_id) - 1
 				{
-					if contains (split_get_tab_rect (split_id, i), event.mouse_position)
+					tab_rect := split_get_tab_rect (split_id, i);
+					if contains (tab_rect, event.mouse_position)
 					{
 						split_set_active_buffer (split_id, i);
 					
@@ -589,22 +596,16 @@ split_draw :: (split_id : Split_ID)
 	active_buffer_id := split_get_active_buffer (split_id);
 	active_layout_id := buffer_get_text_layout (active_buffer_id);
 
-	draw_rect (rectf (area.x1, area.y1, area.x2, area.y1 + font_get_line_height (1, 14) * 2), rgba (30, 30, 30));
-	tab_x : f32;
+	tab_area := rectf (area.x1, area.y1, area.x2, area.y1 + font_get_line_height (1, 14) * 2);
+	draw_rect (tab_area, rgba (30, 30, 30));
 	prev_clip := draw_set_clipping (false);
+	prev_clip_rect := draw_push_clip_rect (recti (tab_area));
 	for buffer_id : opened_buffer_ids
 	{
 		buffer_name := buffer_get_name (buffer_id, temp_allocator);
-		extents := font_get_text_extents (1, 14, buffer_name);
 		space_advance := font_get_space_advance (1, 14);
 		line_height := font_get_line_height (1, 14);
-		rect := xywhf (
-			round (area.x1) + tab_x,
-			round (area.y1),
-			min (extents.x + 2 * space_advance, MAX_TAB_WIDTH),
-			2 * line_height
-		);
-		tab_x = rect.x2;
+		rect := split_get_tab_rect (split_id, it_index);
 		// Draw tab background
 		draw_set_clipping (false);
 		if it_index == active_buffer_index
@@ -631,6 +632,7 @@ split_draw :: (split_id : Split_ID)
 		);
 		draw_set_clip_rect (prev_clip_rect);
 	}
+	draw_set_clip_rect (prev_clip_rect);
 	draw_set_clipping (prev_clip);
 
 	draw_line_numbers (active_layout_id, rgba (150, 150, 150), RGBA_WHITE);
