@@ -49,6 +49,18 @@ Amber_Hooks :: struct #type_info_none
 	buffer_set_text_layout : (Buffer_ID, Text_Layout_ID);
 	buffer_skip_word_backward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
 	buffer_skip_word_forward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
+	command_buffer_backspace : ();
+	command_buffer_clear : ();
+	command_buffer_delete : ();
+	command_buffer_get_closest_character : (Vec2 (T = f32)) -> s64;
+	command_buffer_get_cursor : () -> s64;
+	command_buffer_get_rect : () -> Rect (T = f32);
+	command_buffer_insert : (u32);
+	command_buffer_move_cursor_forward : ();
+	command_buffer_set_cursor : (s64);
+	command_buffer_set_prompt : (string);
+	command_buffer_skip_word_backward : (bool);
+	command_buffer_skip_word_forward : (bool);
 	command_register : (Command) -> bool;
 	command_unregister_for_extension : (Extension_ID);
 	create_framebuffer_and_texture : (u32, u32, s64) -> (u32, u32);
@@ -201,4 +213,5 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_set_visual_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_update_area : (Text_Layout_ID);
+	toggle_command_input : ();
 }

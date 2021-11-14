@@ -22,10 +22,18 @@ splits       : Slot_Array (Split);
 buffers      : Slot_Array (Buffer);
 text_layouts : Slot_Array (Text_Layout);
 active_split_id : Split_ID;
+is_inputting_command : bool;
+command_prompt : string;
+command_buffer : struct
+{
+	data : [..]u32;
+	cursor : s64;
+};
 
-handle_event :: inline (event : Event) -> Event_Result #must
+handle_event :: inline (event : Event) -> Event_Result #must, propagate : bool
 {
 	using result : Event_Result;
+	propagate := true;
 	if event.kind ==
 	{
 	case .WINDOW_CLOSE;
@@ -34,22 +42,54 @@ handle_event :: inline (event : Event) -> Event_Result #must
 	case .WINDOW_RESIZE;
 		if event.viewport_size.x != 0 && event.viewport_size.y != 0
 		{
+			command_line_height := rect_height (command_buffer_get_rect ());
 			for * split : splits
 			{
 				new_area := rectf (
 					(split.area.x1 / cast (f32) viewport_size.x) * event.viewport_size.x,
-					(split.area.y1 / cast (f32) viewport_size.y) * event.viewport_size.y,
+					(split.area.y1 / (viewport_size.y - command_line_height)) * (event.viewport_size.y - command_line_height),
 					(split.area.x2 / cast (f32) viewport_size.x) * event.viewport_size.x,
-					(split.area.y2 / cast (f32) viewport_size.y) * event.viewport_size.y
+					(split.area.y2 / (viewport_size.y - command_line_height)) * (event.viewport_size.y - command_line_height)
 				);
 				split_set_area (split.id, new_area);
 			}
 			viewport_size = event.viewport_size;
 		}
 	
+	case .TEXT_INPUT;
+		if is_inputting_command
+			command_buffer_insert (event.codepoint);
+
 	case .KEY_PRESS; #through;
 	case .KEY_REPEAT;
-		if event.mods == .CONTROL
+		if event.key_code == .ESCAPE && event.mods == .NONE
+		{
+			toggle_command_input ();
+			propagate = false;
+		}
+		
+		if is_inputting_command
+		{
+			if event.key_code ==
+			{
+			case .BACKSPACE;
+				command_buffer_backspace ();
+				
+			case .DELETE;
+				command_buffer_delete ();
+			
+			case .RETURN;
+				toggle_command_input ();
+				propagate = false;
+			
+			case .LEFT;
+				command_buffer_move_cursor_backward ();
+			
+			case .RIGHT;
+				command_buffer_move_cursor_forward ();
+			}
+		}
+		else if event.mods == .CONTROL
 		{
 			if event.key_code ==
 			{
@@ -84,18 +124,29 @@ handle_event :: inline (event : Event) -> Event_Result #must
 		}
 
 	case .MOUSE_PRESS;
-		for splits
+		if contains (command_buffer_get_rect (), event.mouse_position)
 		{
-			if contains (it.area, event.mouse_position)
+			if !is_inputting_command
+				toggle_command_input ();
+			else
+				command_buffer_set_cursor (command_buffer_get_closest_character (event.mouse_position));
+		}
+		else
+		{
+			for splits
 			{
-				active_split_id = it.id;
-				
-				break;
+				if contains (it.area, event.mouse_position)
+				{
+					active_split_id = it.id;
+					if is_inputting_command then toggle_command_input ();
+					
+					break;
+				}
 			}
 		}
 	}
 	
-	return result;
+	return result, propagate;
 }
 
 main :: ()
@@ -109,9 +160,11 @@ main :: ()
 	viewport_size = platform_get_viewport_size ();
 	draw_init ();
 	font_init ();
+	init_array (*command_buffer.data, 100, heap_allocator);
 	init_slot_array (*buffers, 20, heap_allocator);
 	init_slot_array (*text_layouts, 20, heap_allocator);
 	init_slot_array (*splits, 10, heap_allocator);
+	command_buffer_set_prompt (">");
 	load_extension ("amber_test_extension.dll");
 	load_extension ("amber_jai.dll");
 	init_extensions ();
@@ -142,11 +195,13 @@ main :: ()
 		platform_reset_input_state ();
 		while platform_get_next_event (*event)
 		{
-			event_result ||= handle_event (event);
-			extensions_result, propagate := extensions_on_event (event);
-			event_result ||= extensions_result;
+			intermediate_result, propagate := extensions_on_event (event);
+			event_result ||= intermediate_result;
 			if !propagate then continue;
-			if active_split_id != NULL_SPLIT
+			intermediate_result, propagate = handle_event (event);
+			event_result ||= intermediate_result;
+			if !propagate then continue;
+			if !is_inputting_command && active_split_id != NULL_SPLIT
 				event_result ||= split_handle_event (active_split_id, event);
 		}
 
@@ -159,6 +214,8 @@ main :: ()
 				continue;
 			split_update (it.id, *event_result, delta_time);
 		}
+		if contains (command_buffer_get_rect (), platform_get_mouse_position ())
+			platform_set_cursor (.ARROW);
 		extensions_on_update ();
 		
 		draw_begin ();
@@ -166,7 +223,10 @@ main :: ()
 			split_draw (it.id);
 		if active_split_id != NULL_SPLIT && get_split_count () > 1
 			draw_rect_outline (truncate_all_sides (split_get_area (active_split_id), 1.5), rgba (50, 100, 200, 128), 3, 5.0);
+		if is_inputting_command
+			draw_command_buffer (1, 16, command_buffer_get_rect ().min, RGBA_WHITE);
 		draw_end ();
+		
 		platform_swap_window_buffers ();
 		frame_end := platform_get_time ();
 		platform_sleep_milliseconds (cast (s64) max (16 - (frame_end - frame_start) * 1000, 0));
@@ -222,3 +282,235 @@ draw_text :: (font_id : Font_ID, height : u32, position : Vec2f, text : string, 
 	}
 }
 @Amber_API
+
+command_buffer_set_prompt :: inline (prompt : string)
+{
+	free (command_prompt, heap_allocator);
+	command_prompt = clone_string (prompt, heap_allocator);
+}
+@Amber_API
+
+toggle_command_input :: inline ()
+{
+	is_inputting_command = !is_inputting_command;
+	command_buffer_clear ();
+}
+@Amber_API
+
+command_buffer_clear :: inline ()
+{
+	using command_buffer;
+	clear_array (*data);
+	cursor = 0;
+}
+@Amber_API
+
+command_buffer_insert :: inline (codepoint : u32)
+{
+	using command_buffer;
+	if codepoint == #char "\n" || codepoint == #char "\r" || codepoint == #char "\t"
+		return;
+	sorted_insert_into_array (*data, cursor, codepoint);
+	cursor += 1;
+}
+@Amber_API
+
+command_buffer_delete :: inline ()
+{
+	using command_buffer;
+	if cursor != data.count
+		sorted_remove_from_array (*data, cursor);
+}
+@Amber_API
+
+command_buffer_backspace :: inline ()
+{
+	using command_buffer;
+	if cursor != 0
+	{
+		cursor -= 1;
+		sorted_remove_from_array (*data, cursor);
+	}
+}
+@Amber_API
+
+command_buffer_move_cursor_backward :: inline ()
+{
+	using command_buffer;
+	if cursor > 0
+		cursor -= 1;
+}
+
+command_buffer_move_cursor_forward :: inline ()
+{
+	using command_buffer;
+	if cursor < data.count
+		cursor += 1;
+}
+@Amber_API
+
+command_buffer_skip_word_forward :: inline (stop_at_word_separators : bool)
+{
+	using command_buffer;
+	while cursor < data.count && is_space (data[cursor])
+		command_buffer_move_cursor_forward ();
+	first := data[cursor];
+	command_buffer_move_cursor_forward ();
+	while cursor < data.count && !is_space (data[cursor])
+	{
+		if is_alpha_num (first) != is_alpha_num (data[cursor]) then break;
+		if data[cursor] == #char "_" && stop_at_word_separators then break;
+		command_buffer_move_cursor_forward ();
+	}
+}
+@Amber_API
+
+command_buffer_skip_word_backward :: inline (stop_at_word_separators : bool)
+{
+	using command_buffer;
+	while cursor > 0 && is_space (data[cursor - 1])
+		command_buffer_move_cursor_backward ();
+	first := data[cursor - 1];
+	command_buffer_move_cursor_backward ();
+	while cursor > 0 && !is_space (data[cursor - 1])
+	{
+		if is_alpha_num (first) != is_alpha_num (data[cursor - 1]) then break;
+		if data[cursor] == #char "_" && stop_at_word_separators then break;
+		command_buffer_move_cursor_backward ();
+	}
+}
+@Amber_API
+
+command_buffer_get_cursor :: inline () -> s64 #must
+{
+	return command_buffer.cursor;
+}
+@Amber_API
+
+command_buffer_set_cursor :: inline (cursor : s64)
+{
+	command_buffer.cursor = cursor;
+}
+@Amber_API
+
+command_buffer_get_rect :: inline () -> Rectf #must
+{
+	return rectf (
+		0,
+		viewport_size.y - font_get_line_height (1, 16),
+		cast (f32) viewport_size.x,
+		cast (f32) viewport_size.y
+	);
+}
+@Amber_API
+
+command_buffer_get_closest_character :: inline (position : Vec2f) -> s64 #must
+{
+	using command_buffer;
+	start := command_buffer_get_rect ().min;
+	font := get_font (1);
+	page := load_page (font, 16);
+	pen : Vec2f;
+	for codepoint, i : utf8 (command_prompt)
+	{
+		glyph := load_glyph (page, codepoint);
+		rect := xywhf (
+			pen.x,
+			pen.y,
+			xx glyph.advance,
+			xx (page.ascent - page.descent)
+		);
+		rect = move (rect, round (start.x), round (start.y));
+		if contains (rect, position)
+			return 0;
+		pen.x += glyph.advance;
+	}
+	for codepoint, i : data
+	{
+		glyph := load_glyph (page, codepoint);
+		rect := xywhf (
+			pen.x,
+			pen.y,
+			xx glyph.advance,
+			xx (page.ascent - page.descent)
+		);
+		rect = move (rect, round (start.x), round (start.y));
+		if contains (rect, position)
+			return i;
+		pen.x += glyph.advance;
+	}
+	return data.count;
+}
+@Amber_API
+
+draw_command_buffer :: (font_id : Font_ID, height : u32, position : Vec2f, color : RGBA)
+{
+	profile ();
+	
+	using command_buffer;
+	prev_texture := draw_get_texture ();
+	defer draw_set_texture (prev_texture);
+	prev_shader := draw_set_shader (glyph_shader);
+	defer draw_set_shader (prev_shader);
+	
+	font := get_font (font_id);
+	page := load_page (font, height);
+	pen : Vec2f;
+	for codepoint, i : utf8 (command_prompt)
+	{
+		glyph := load_glyph (page, codepoint);
+		glyph_rect := xywhf (
+			pen.x + glyph.bitmap_bearing_x,
+			pen.y - glyph.bitmap_bearing_y + page.ascent,
+			xx glyph.bitmap_width,
+			xx glyph.bitmap_height
+		);
+		glyph_rect = move (glyph_rect, round (position.x), round (position.y));
+		draw_set_texture (glyph.atlas_texture);
+		draw_rect (glyph_rect, color, uv_rect = glyph.uv_rect);
+		pen.x += glyph.advance;
+	}
+	for codepoint, i : data
+	{
+		glyph := load_glyph (page, codepoint);
+		glyph_rect := xywhf (
+			pen.x + glyph.bitmap_bearing_x,
+			pen.y - glyph.bitmap_bearing_y + page.ascent,
+			xx glyph.bitmap_width,
+			xx glyph.bitmap_height
+		);
+		glyph_rect = move (glyph_rect, round (position.x), round (position.y));
+		if i == cursor
+		{
+			draw_set_texture (0);
+			draw_rect (
+				xywhf (
+					round (position.x) + pen.x,
+					round (position.y) + pen.y,
+					xx glyph.advance,
+					xx (page.ascent - page.descent)
+				),
+				color,
+				CURSOR_ROUNDING
+			);
+		}
+		draw_set_texture (glyph.atlas_texture);
+		draw_rect (glyph_rect, (ifx i == cursor then RGBA_BLACK else color), uv_rect = glyph.uv_rect);
+		pen.x += glyph.advance;
+	}
+	if cursor == data.count
+	{
+		draw_set_texture (0);
+		draw_rect (
+			xywhf (
+				round (position.x) + pen.x,
+				round (position.y) + pen.y,
+				cast (f32) page.space_advance,
+				cast (f32) (page.ascent - page.descent)
+			),
+			color,
+			CURSOR_ROUNDING
+		);
+	}
+}
+

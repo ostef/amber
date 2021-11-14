@@ -209,7 +209,7 @@ split_create_first :: inline () -> Split_ID
 	
 	viewport := platform_get_viewport_size ();
 	split := add_split ();
-	split.area = rectf (0, 0, xx viewport.width, xx viewport.height);
+	split.area = rectf (0, 0, xx viewport.width, xx viewport.height - rect_height (command_buffer_get_rect ()));
 	split_open_buffer (split.id);
 	set_active_split (split.id);
 	

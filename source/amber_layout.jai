@@ -666,7 +666,7 @@ draw_text_layout :: (layout_id : Text_Layout_ID)
 	defer draw_set_shader (prev_shader);
 
 	
-	active := get_active_split () == text_layout_get_split (layout_id);
+	active := !is_inputting_command && get_active_split () == text_layout_get_split (layout_id);
 	buffer := get_buffer (buffer_id);
 	font   := get_font (font_id);
 	page   := load_page (font, font_height);
