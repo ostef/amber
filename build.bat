@@ -1,3 +1,3 @@
 @echo off
 
-jai source/build.jai -import_dir d:/dev/jai-modules -- %*
+jai source/build.jai -import_dir ../modules -- %*
