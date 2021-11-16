@@ -241,7 +241,7 @@ inspect_directory :: (dirname : string, recurse : bool, user_data : $T, proc : (
 	if !proc then return true;
 
 	dirs := make_array (string, 10, heap_allocator);
-	push_to_array (*dirs, clone_string (dirname, heap_allocator));
+	push_into_array (*dirs, clone_string (dirname, heap_allocator));
 	defer
 	{
 		for dirs
@@ -291,7 +291,7 @@ inspect_directory :: (dirname : string, recurse : bool, user_data : $T, proc : (
 						proc (*info, user_data);
 					}
 
-					if info.descend_into_directory then push_to_array (*dirs, clone_string (full_name, heap_allocator));
+					if info.descend_into_directory then push_into_array (*dirs, clone_string (full_name, heap_allocator));
 				}
 			}
 			else

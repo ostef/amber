@@ -119,7 +119,7 @@ format_string_to_cstring :: (allocator : Allocator, fmt : string, args : ..Any) 
 
 print_char_to_builder :: (builder : *String_Builder, char : u8)
 {
-	inline push_to_array (builder, char);
+	inline push_into_array (builder, char);
 }
 
 print_escaped_char_to_builder :: (builder : *String_Builder, char : u8)

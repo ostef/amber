@@ -118,7 +118,7 @@ array_top :: inline (array : [..]$T) -> T #must
 	return array[array.count - 1];
 }
 
-insert_to_array :: (array : *[..]$T, position : int, $initialize := false) -> *T #must
+insert_into_array :: (array : *[..]$T, position : int, $initialize := false) -> *T #must
 {
 	assert (position >= 0 && position <= array.count, "Index % out of range [%, %].", position, 0, array.count);
 
@@ -135,15 +135,15 @@ insert_to_array :: (array : *[..]$T, position : int, $initialize := false) -> *T
 	return ptr;
 }
 
-insert_to_array :: (array : *[..]$T, position : int, elem : T) -> *T
+insert_into_array :: (array : *[..]$T, position : int, elem : T) -> *T
 {
-	ptr := inline insert_to_array (array, position);
+	ptr := inline insert_into_array (array, position);
 	<<ptr = elem;
 
 	return ptr;
 }
 
-sorted_insert_to_array :: (array : *[..]$T, position : int, $initialize := false) -> *T #must
+sorted_insert_into_array :: (array : *[..]$T, position : int, $initialize := false) -> *T #must
 {
 	assert (position >= 0 && position <= array.count, "Index % out of range [%, %].", position, 0, array.count);
 
@@ -163,9 +163,9 @@ sorted_insert_to_array :: (array : *[..]$T, position : int, $initialize := false
 	return ptr;
 }
 
-sorted_insert_to_array :: (array : *[..]$T, position : int, elem : T) -> *T
+sorted_insert_into_array :: (array : *[..]$T, position : int, elem : T) -> *T
 {
-	ptr := inline sorted_insert_to_array (array, position);
+	ptr := inline sorted_insert_into_array (array, position);
 	<<ptr = elem;
 
 	return ptr;
@@ -175,7 +175,7 @@ sorted_insert_to_array :: (array : *[..]$T, position : int, elems : ..T) -> *T
 {
 	ptr := null;
 	for < elems
-		ptr = sorted_insert_to_array (array, position, it);
+		ptr = sorted_insert_into_array (array, position, it);
 
 	return ptr;
 }
@@ -201,7 +201,7 @@ sorted_remove_from_array :: (array : *[..]$T, position : int)
 	array.count -= 1;
 }
 
-push_to_array :: (array : *[..]$T, $initialize := false) -> *T #must
+push_into_array :: (array : *[..]$T, $initialize := false) -> *T #must
 {
 	if array.count == array.allocated then resize_array (array, array.count * 2 + 8);
 
@@ -215,7 +215,7 @@ push_to_array :: (array : *[..]$T, $initialize := false) -> *T #must
 	return ptr;
 }
 
-push_to_array :: (array : *[..]$T, elem : T) -> *T
+push_into_array :: (array : *[..]$T, elem : T) -> *T
 {
 	if array.count == array.allocated then resize_array (array, array.count * 2 + 8);
 
@@ -226,7 +226,7 @@ push_to_array :: (array : *[..]$T, elem : T) -> *T
 	return ptr;
 }
 
-push_to_array :: (array : *[..]$T, elems : ..T) -> []T
+push_into_array :: (array : *[..]$T, elems : ..T) -> []T
 {
 	if array.count + elems.count > array.allocated then resize_array (array, array.count * 2 + elems.count);
 	
@@ -242,7 +242,7 @@ push_to_array :: (array : *[..]$T, elems : ..T) -> []T
 	return result;
 }
 
-pop_from_array :: (array : *[..]$T) -> T
+pop_off_array :: (array : *[..]$T) -> T
 {
 	assert (array.count > 0, "Cannot pop because array is empty.");
 	array.count -= 1;
@@ -303,11 +303,11 @@ find_all_occurences :: (array : []$T, elem : T, out : *[..]int) -> found : int
 	return found;
 }
 
-insert_to_array_if_new :: (array : *[..]$T, position : int, elem : T) -> is_new : bool
+insert_into_array_if_new :: (array : *[..]$T, position : int, elem : T) -> is_new : bool
 {
 	if find_first_occurence (<<array, elem) == -1
 	{
-		inline insert_to_array (array, position, elem);
+		inline insert_into_array (array, position, elem);
 
 		return true;
 	}
@@ -315,11 +315,11 @@ insert_to_array_if_new :: (array : *[..]$T, position : int, elem : T) -> is_new 
 	return false;
 }
 
-push_to_array_if_new :: (array : *[..]$T, elem : T) -> is_new : bool
+push_into_array_if_new :: (array : *[..]$T, elem : T) -> is_new : bool
 {
 	if find_first_occurence (<<array, elem) == -1
 	{
-		inline push_to_array (array, elem);
+		inline push_into_array (array, elem);
 
 		return true;
 	}
