@@ -51,16 +51,14 @@ Buffer_Edit :: struct
 
 // Command
 
-Command :: struct
+Command_Proc :: #type (*Amber_Hooks, []string);
+
+Command_Info :: struct
 {
-	Proc :: #type (*Amber_Hooks, []string);
-	
-	extension_id : Extension_ID;
 	name : string;
-	proc : Proc;
+	proc : Command_Proc;
 	arg_count : s64;
 	first_optional_argument : s64;
-	combination : Key_Combination;
 }
 
 Key_Binding :: struct

@@ -3,15 +3,21 @@
 #load "amber_hooks.jai";
 
 #program_export
-init_extension :: (id : Extension_ID, using amber : *Amber_Hooks) -> bool
+init_extension :: (id : Extension_ID, using hooks : *Amber_Hooks) -> bool
 {
 	println ("Hello Sailor, I am extension %!", id);
+	register_all_commands (hooks, id);
 	
 	return true;
 }
 
 #program_export
-terminate_extension :: (using amber : *Amber_Hooks)
+terminate_extension :: (using hooks : *Amber_Hooks)
 {
 	println ("Goodbye Sailor!");
 }
+
+command_test :: (using hooks : *Amber_Hooks, str : string, i : int, b : bool, optional := 10)
+{
+}
+@Amber_Command

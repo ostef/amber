@@ -4,6 +4,8 @@
 Compiler :: #import "Compiler";
 Windows_Resources :: #import "Windows_Resources";
 
+#load "amber_meta.jai";
+
 IS_IN_METAPROGRAM :: true;
 DATA_DIR          :: "data/";
 DEFAULT_BUILD_DIR :: "bin/";
@@ -70,6 +72,7 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 	{
 		message := Compiler.compiler_wait_for_message ();
 		if message.workspace != workspace then continue;
+		amber_handle_compiler_message (message);
 		if message.kind ==
 		{
 		case .COMPLETE;
@@ -86,9 +89,9 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 				{
 					if note.text == "Amber_API"
 					{
-						push_to_array (*amber_api_procedures, header.expression);
+						push_into_array (*amber_api_procedures, header.expression);
 						
-						break;
+						break note;
 					}
 				}
 			}
@@ -187,7 +190,7 @@ build :: ()
 		}
 		else if is_program_arg
 		{
-			push_to_array (*program_args, " ", it);
+			push_into_array (*program_args, " ", it);
 		}
 		else if it ==
 		{
@@ -208,7 +211,7 @@ build :: ()
 		}
 	}
 
-	// Set build and intermediate directories	
+	// Set build and intermediate directories
 	if target ==
 	{
 	case .WINDOWS;
@@ -267,6 +270,7 @@ build :: ()
 	{
 		extension_workspaces[i] = Compiler.compiler_create_workspace (name);
 		{
+			amber_add_workspace (extension_workspaces[i]);
 			options := Compiler.get_build_options (extension_workspaces[i]);
 			set_default_build_options (*options, .DYNAMIC_LIBRARY, name);
 			Compiler.set_build_options (options, extension_workspaces[i]);

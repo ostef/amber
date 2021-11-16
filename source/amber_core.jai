@@ -1885,6 +1885,17 @@ relative_to_absolute_pointer :: (size : s64, relative_ptr : *void) -> pointer : 
 
 // String conversion
 
+string_starts_with :: inline (str : string, with : string) -> bool
+{
+	if str.count < with.count then return false;
+	for i : 0..with.count - 1
+	{
+		if str[i] != with[i] return false;
+	}
+	
+	return true;
+}
+
 string_to_s64 :: (str : string) -> value : s64 #must, success : bool, remainder : string
 {
 	if str.count == 0 then return 0, false, str;
@@ -2016,6 +2027,12 @@ string_to_bool :: (str : string, $treat_01_as_bool := true) -> value : bool #mus
 }
 
 	return false, false, str;
+}
+
+// @Note (stefan): I assure you this is useful!
+string_to_string :: inline (str : string) -> string, bool
+{
+	return str, true;
 }
 
 // Vec2

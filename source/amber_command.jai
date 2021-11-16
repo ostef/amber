@@ -1,24 +1,40 @@
+Command :: struct
+{
+	extension_id : Extension_ID;
+	name : string;
+	proc : Command_Proc;
+	arg_count : s64;
+	first_optional_argument : s64;
+	combination : Key_Combination;
+}
+
 #scope_file
 
 commands : [..]Command;
 
 #scope_export
 
-command_register :: inline (command : Command) -> bool
+command_register :: (
+	extension_id : Extension_ID,
+	using info : Command_Info
+) -> bool
 {
 	if !commands.allocator then commands.allocator = heap_allocator;
-	if !command.name || !command.proc
+	if !name || !proc
 		return false;
 	for commands
 	{
-		if it.name == command.name
+		if it.name == name
 			return false;
 	}
-	pushed := push_into_array (*commands, command);
+	pushed := push_into_array (*commands);
 	// @Note (stefan): We don't make assumptions about where the memory for name and
 	// combination comes from, so we allocate new memory for them.
-	pushed.name = clone_string (command.name, heap_allocator);
-	pushed.combination = clone_array (command.combination, heap_allocator);
+	pushed.extension_id = extension_id;
+	pushed.name = clone_string (name, heap_allocator);
+	pushed.proc = proc;
+	pushed.arg_count = arg_count;
+	pushed.first_optional_argument = first_optional_argument;
 	
 	return true;
 }
