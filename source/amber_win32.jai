@@ -931,11 +931,6 @@ window_proc :: (hwnd : HANDLE, msg : u32, wparam : WPARAM, lparam : LPARAM) -> L
 				current_event.mouse_wheel.y = HIWORD_W (wparam) / 120.0;
 			current_event.mods = platform_get_mod_state ();
 			current_event.mouse_position = platform_get_mouse_position ();
-
-		case WM_VSCROLL;
-			write_string ("WM_VSCROLL\n");
-		case WM_HSCROLL;
-			write_string ("WM_HSCROLL\n");
 		
 		// @Todo (stefan): Touchpad inertia scrolling.
 		case WM_MOUSEMOVE;
