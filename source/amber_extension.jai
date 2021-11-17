@@ -1,6 +1,6 @@
 Extension :: struct
 {
-	Init_Proc      :: #type (Extension_ID, *Amber_Hooks) -> bool;
+	Init_Proc      :: #type (*Amber_Hooks, Extension_ID) -> bool;
 	Terminate_Proc :: #type (*Amber_Hooks);
 	
 	filename  : string;
@@ -75,7 +75,7 @@ init_extensions :: ()
 	for * extension : extensions
 	{
 		if !extension.loaded then continue;
-		extension.initialized = extension.init (cast (Extension_ID) (it_index + 1), *extension.hooks);
+		extension.initialized = extension.init (*extension.hooks, cast (Extension_ID) (it_index + 1));
 	}
 }
 
