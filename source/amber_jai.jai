@@ -153,14 +153,14 @@ JAI_ASM_SIZE_KEYWORDS :: string.[ "b", "w", "d", "q", "x", "y", "z" ];
 }
 
 #program_export
-init_extension :: (id : Extension_ID, using hooks : *Amber_Hooks) -> bool
+init_extension :: (using hooks : *Amber_Hooks, extension_id : Extension_ID) -> bool
 {
 	context.allocator = heap_allocator;
 #if ENABLE_PROFILING
 	init_profiler ();
 
 	jai : Language;
-	jai.extension_id = id;
+	jai.extension_id = extension_id;
 	jai.name = "Jai";
 	jai.associated_file_extensions = string.[ "jai" ];
 	jai.process_buffer = jai_process_buffer;
