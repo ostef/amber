@@ -90,39 +90,6 @@ handle_event :: inline (event : Event) -> Event_Result #must, propagate : bool
 				command_buffer_move_cursor_forward ();
 			}
 		}
-		else if event.mods == .CONTROL
-		{
-			if event.key_code ==
-			{
-			case .K;
-				active_split_id = split_create_below (active_split_id);
-			
-			case .I;
-				active_split_id = split_create_above (active_split_id);
-			
-			case .J;
-				active_split_id = split_create_left (active_split_id);
-			
-			case .L;
-				active_split_id = split_create_right (active_split_id);
-			
-			case .Q;
-				merged_with := split_merge (active_split_id);
-				if merged_with != NULL_SPLIT
-					active_split_id = merged_with;
-			
-			case .O;
-				split := get_split (active_split_id);
-				split.active_buffer_index = wrap (split.active_buffer_index + 1, split.opened_buffer_ids.count);
-			
-			case .U;
-				split := get_split (active_split_id);
-				split.active_buffer_index = wrap (split.active_buffer_index - 1, split.opened_buffer_ids.count);
-			
-			case .N;
-				split_open_buffer (active_split_id);
-			}
-		}
 
 	case .MOUSE_PRESS;
 		if contains (command_buffer_get_rect (), event.mouse_position)
@@ -150,6 +117,12 @@ handle_event :: inline (event : Event) -> Event_Result #must, propagate : bool
 	return result, propagate;
 }
 
+amber_terminate :: ()
+{
+	running = false;
+}
+@Amber_API
+
 main :: ()
 {
 	FONT_NAME :: "fonts/jetbrainsmono/JetBrainsMono-Regular.ttf";
@@ -166,6 +139,7 @@ main :: ()
 	init_slot_array (*text_layouts, 20, heap_allocator);
 	init_slot_array (*splits, 10, heap_allocator);
 	command_buffer_set_prompt (">");
+	if !load_extension ("amber_default.dll") then println ("Could not load extension 'amber_default'.");
 	load_extension ("amber_test_extension.dll");
 	load_extension ("amber_jai.dll");
 	init_extensions ();

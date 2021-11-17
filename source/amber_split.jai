@@ -106,6 +106,16 @@ split_close_buffer :: (split_id : Split_ID, buffer_index : s64)
 	remove_text_layout (buffer_get_text_layout (buffer_id));
 	remove_buffer (buffer_id);
 	sorted_remove_from_array (*opened_buffer_ids, buffer_index);
+	active_buffer_index = clamp (active_buffer_index, 0, opened_buffer_ids.count - 1);
+	if opened_buffer_ids.count == 0
+	{
+		merged_with := split_merge (split_id);
+		if merged_with == NULL_SPLIT
+		{
+			remove_split (split_id);
+			active_split_id = NULL_SPLIT;
+		}
+	}
 }
 @Amber_API
 
@@ -192,7 +202,7 @@ split_set_active_buffer :: inline (split_id : Split_ID, buffer_index : s64)
 split_get_active_buffer :: inline (split_id : Split_ID) -> Buffer_ID #must
 {
 	using split := get_split (split_id);
-	
+
 	return opened_buffer_ids[active_buffer_index];
 }
 @Amber_API
@@ -305,6 +315,8 @@ split_merge :: inline (split_id : Split_ID) -> Split_ID
 			}
 			remove_split (split_id);
 			split_update_area (it.id);
+			if get_active_split () == split_id
+				set_active_split (it.id);
 			
 			return it.id;
 		}

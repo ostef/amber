@@ -11,7 +11,7 @@ DATA_DIR          :: "data/";
 DEFAULT_BUILD_DIR :: "bin/";
 DEFAULT_INT_DIR   :: "int/";
 APP_OUTPUT_NAME  :: "amber";
-EXTENSIONS       :: string.[ "amber_test_extension", "amber_jai" ];
+EXTENSIONS       :: string.[ "amber_default", "amber_jai" ];
 ICON_FILENAME    :: "misc/icon.ico";
 
 partial_build := false;

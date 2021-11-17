@@ -2,6 +2,7 @@ Amber_Hooks :: struct #type_info_none
 {
 	using callbacks : Extension_Callbacks;
 
+	amber_terminate : ();
 	buffer_add_cursor_at_offset : (Buffer_ID, s64) -> bool;
 	buffer_add_cursor_on_next_line : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_add_cursor_on_previous_line : (Buffer_ID, Buffer_Cursor_ID) -> bool;
@@ -19,7 +20,7 @@ Amber_Hooks :: struct #type_info_none
 	buffer_get_count : (Buffer_ID) -> s64;
 	buffer_get_cursor : (Buffer_ID, Buffer_Cursor_ID) -> Buffer_Cursor;
 	buffer_get_eol_sequence : (Buffer_ID) -> EOL_Sequence;
-	buffer_get_filepath : (Buffer_ID, (Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> string;
+	buffer_get_filename : (Buffer_ID, (Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> string;
 	buffer_get_language : (Buffer_ID) -> Language_ID;
 	buffer_get_line_count : (Buffer_ID) -> s64;
 	buffer_get_line_index : (Buffer_ID) -> s64;
@@ -43,12 +44,13 @@ Amber_Hooks :: struct #type_info_none
 	buffer_move_write_head_to_line : (Buffer_ID, s64, bool) -> bool;
 	buffer_remove_cursor : (Buffer_ID, Buffer_Cursor_ID);
 	buffer_set_eol_sequence : (Buffer_ID, EOL_Sequence);
-	buffer_set_filepath : (Buffer_ID, string);
+	buffer_set_filename : (Buffer_ID, string);
 	buffer_set_language : (Buffer_ID, Language_ID);
 	buffer_set_name : (Buffer_ID, string);
 	buffer_set_text_layout : (Buffer_ID, Text_Layout_ID);
 	buffer_skip_word_backward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
 	buffer_skip_word_forward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
+	buffer_write_to_file : (Buffer_ID) -> bool;
 	command_buffer_backspace : ();
 	command_buffer_clear : ();
 	command_buffer_delete : ();
