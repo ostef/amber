@@ -66,14 +66,14 @@ language_get_associated_file_extensions :: inline (language_id : Language_ID, al
 }
 @Amber_API
 
-language_detect :: inline (filepath : string) -> Language_ID
+language_detect :: inline (filename : string) -> Language_ID
 {
-	filename  := filepath_get_filename (filepath);
-	extension := filepath_get_extension (filepath);
+	basename  := filename_get_basename (filename);
+	extension := filename_get_extension (filename);
 	for lang : languages
 	{
 		for lang.associated_filenames
-			if filename == it then return lang.id;
+			if basename == it then return lang.id;
 		for lang.associated_file_extensions
 			if extension == it then return lang.id;
 	}

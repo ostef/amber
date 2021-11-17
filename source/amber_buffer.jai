@@ -12,7 +12,7 @@ Buffer :: struct
 	text_layout_id : Text_Layout_ID;
 	language_id : Language_ID;
 	
-	filepath : string;
+	filename : string;
 	name     : string;
 	
 	data : *u32;
@@ -91,7 +91,7 @@ buffer_init :: (buffer_id : Buffer_ID, capacity : s64)
 buffer_reset :: (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
-	free (filepath, heap_allocator);
+	free (filename, heap_allocator);
 	free (name, heap_allocator);
 	free (data, heap_allocator);
 	reset_array (*other_cursors);
@@ -120,18 +120,36 @@ buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
 	gap       = new_gap;
 }
 
-buffer_load_file :: inline (buffer_id : Buffer_ID, filepath : string) -> bool
+buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
 {
-	str, ok := platform_read_entire_file (filepath, temp_allocator);
+	str, ok := platform_read_entire_file (filename, temp_allocator);
 	if !ok then return false;
 	buffer_clear (buffer_id);
 	utf8_str := utf8 (str);
 	for utf8_str
 		buffer_insert_at_cursor (buffer_id, it, WRITE_HEAD);
-	buffer_set_filepath (buffer_id, filepath);
-	buffer_set_name (buffer_id, filepath);
+	buffer_set_filename (buffer_id, filename);
+	buffer_set_name (buffer_id, filename);
 
 	return true;
+}
+@Amber_API
+
+buffer_write_to_file :: inline (buffer_id : Buffer_ID) -> bool
+{
+	buffer := get_buffer (buffer_id);
+	if !buffer.filename then return false;
+	
+	utf8_str : string;
+	for buffer
+		utf8_str.count += utf8_codepoint_size (it);
+	utf8_str.data = alloc (utf8_str.count, temp_allocator);
+	byte_offset := 0;
+	for buffer
+		byte_offset += utf8_encode (advance (to_array (utf8_str), byte_offset), it);
+	written, ok := platform_write_to_file (buffer.filename, utf8_str);
+
+	return ok;
 }
 @Amber_API
 
@@ -208,20 +226,20 @@ buffer_set_language :: inline (buffer_id : Buffer_ID, language_id : Language_ID)
 }
 @Amber_API
 
-buffer_get_filepath :: inline (buffer_id : Buffer_ID, allocator : Allocator, allocator_data := null) -> string #must
+buffer_get_filename :: inline (buffer_id : Buffer_ID, allocator : Allocator, allocator_data := null) -> string #must
 {
 	using buffer := get_buffer (buffer_id);
 	
-	return clone_string (filepath, allocator, allocator_data);
+	return clone_string (filename, allocator, allocator_data);
 }
 @Amber_API
 
-buffer_set_filepath :: inline (buffer_id : Buffer_ID, new_filepath : string)
+buffer_set_filename :: inline (buffer_id : Buffer_ID, new_filename : string)
 {
 	using buffer := get_buffer (buffer_id);
-	free (filepath, heap_allocator);
-	filepath = clone_string (new_filepath, heap_allocator);
-	buffer_set_language (buffer_id, language_detect (filepath));
+	free (filename, heap_allocator);
+	filename = clone_string (new_filename, heap_allocator);
+	buffer_set_language (buffer_id, language_detect (filename));
 }
 @Amber_API
 
@@ -609,9 +627,10 @@ buffer_move_write_head_to_line :: inline (buffer_id : Buffer_ID, line : s64, sel
 		moved = true;
 	}
 	
-	while line_index > 0 && line_index > line
+	line = clamp (line, 0, lines.count - 1);
+	while line_index > line
 		moved |= buffer_move_cursor_to_previous_line (buffer_id, WRITE_HEAD, select);
-	while line_index < lines.count - 1 && line_index < line
+	while line_index < line
 		moved |= buffer_move_cursor_to_next_line (buffer_id, WRITE_HEAD, select);
 	
 	return moved;

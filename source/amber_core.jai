@@ -3141,14 +3141,14 @@ remove_from_slot_array :: inline (using array : *Slot_Array, index : s64)
 	}
 }
 
-// Filepath utils
+// Filename utils
 
-filepath_get_filename :: inline (filepath : string) -> string #must
+filename_get_basename :: inline (filename : string) -> string #must
 {
-	result := filepath;
+	result := filename;
 	result.data += result.count;
 	result.count = 0;
-	while result.count != filepath.count
+	while result.count != filename.count
 	{
 		if result.data[-1] == #char "/" || result.data[-1] == #char "\\"
 			break;
@@ -3159,12 +3159,12 @@ filepath_get_filename :: inline (filepath : string) -> string #must
 	return result;
 }
 
-filepath_get_extension :: inline (filepath : string) -> string #must
+filename_get_extension :: inline (filename : string) -> string #must
 {
-	result := filepath;
+	result := filename;
 	result.data += result.count;
 	result.count = 0;
-	while result.count != filepath.count
+	while result.count != filename.count
 	{
 		if result.data[-1] == #char "."
 			break;
