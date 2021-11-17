@@ -52,3 +52,74 @@ command_unregister_for_extension :: (extension_id : Extension_ID)
 	}
 }
 @Amber_API
+
+parse_command_line :: (cmd_line : []u32) -> command_name : string #must, command_args : []string #must
+{
+	// @Todo (stefan): Handle errors like unclosed string literal.
+	
+	utf32 := cmd_line;
+	while utf32.count && is_space (utf32[0])
+		utf32 = advance (utf32);
+	// Parse name
+	utf32_name := utf32;
+	while utf32.count && !is_space (utf32[0])
+		utf32 = advance (utf32);
+	utf32_name.count = utf32.data - utf32_name.data;
+	
+	// Parse arguments
+	args : [..]string;
+	init_array (*args, 10, temp_allocator);
+	current_arg : [..]u32;
+	init_array (*current_arg, 20, temp_allocator);
+	while utf32.count
+	{
+		clear_array (*current_arg);
+		// Skip spaces
+		while utf32.count && is_space (utf32[0])
+			utf32 = advance (utf32);
+		if !utf32.count then break;
+		
+		if utf32[0] == #char "\""
+		{
+			utf32 = advance (utf32);
+			while utf32.count && utf32[0] != #char "\""
+			{
+				if utf32[0] == #char "\\"
+					utf32 = advance (utf32);
+				push_into_array (*current_arg, utf32[0]);
+				utf32 = advance (utf32);
+			}
+			utf32 = advance (utf32);
+			push_into_array (*args, utf32_to_utf8 (current_arg, temp_allocator));
+		}
+		else
+		{
+			while utf32.count && !is_space (utf32[0])
+			{
+				push_into_array (*current_arg, utf32[0]);
+				utf32 = advance (utf32);
+			}
+			push_into_array (*args, utf32_to_utf8 (current_arg, temp_allocator));
+		}
+	}
+	
+	return utf32_to_utf8 (utf32_name, temp_allocator), args;
+}
+
+command_execute :: (utf32 : []u32)
+{
+	name, args := parse_command_line (utf32);
+	command : *Command;
+	for * commands
+	{
+		if it.name == name
+		{
+			command = it;
+			
+			break;
+		}
+	}
+	if !command then return;
+	command.proc (get_hooks (command.extension_id), args);
+}
+@Amber_API

@@ -25,6 +25,11 @@ get_extension :: inline (id : Extension_ID) -> *Extension #must
 	return *extensions[cast (s64) (id - 1)];
 }
 
+get_hooks :: inline (extension_id : Extension_ID) -> *Amber_Hooks #must
+{
+	return *get_extension (extension_id).hooks;
+}
+
 load_extension :: (filename : string) -> bool, Extension_ID
 {
 	if !filename then return false, 0;

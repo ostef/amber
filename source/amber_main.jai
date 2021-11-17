@@ -79,6 +79,7 @@ handle_event :: inline (event : Event) -> Event_Result #must, propagate : bool
 				command_buffer_delete ();
 			
 			case .RETURN;
+				command_execute (command_buffer.data);
 				toggle_command_input ();
 				propagate = false;
 			

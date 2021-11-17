@@ -61,6 +61,7 @@ Amber_Hooks :: struct #type_info_none
 	command_buffer_set_prompt : (string);
 	command_buffer_skip_word_backward : (bool);
 	command_buffer_skip_word_forward : (bool);
+	command_execute : ([]u32);
 	command_register : (Extension_ID, Command_Info) -> bool;
 	command_unregister_for_extension : (Extension_ID);
 	create_framebuffer_and_texture : (u32, u32, s64) -> (u32, u32);
