@@ -1,6 +1,7 @@
 #import "Common";
 #import "Process";
 #import "File";
+Sort :: #import "Sort";
 Compiler :: #import "Compiler";
 Windows_Resources :: #import "Windows_Resources";
 
@@ -106,24 +107,15 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 				
 				if generate_amber_hooks
 				{
-					i := 0;
-					while i < amber_api_procedures.count - 1
+					compare_header_names :: (
+						left : *Compiler.Code_Procedure_Header,
+						right : *Compiler.Code_Procedure_Header
+					) -> int
 					{
-						first  := *amber_api_procedures[i];
-						second := *amber_api_procedures[i + 1];
-						if compare_strings ((<<first).name, (<<second).name) > 0
-						{
-							tmp := <<first;
-							<<first = <<second;
-							<<second = tmp;
-							i = 0;
-						}
-						else
-						{
-							i += 1;
-						}
+						return compare_strings (left.name, right.name);
 					}
-
+					Sort.quick_sort (amber_api_procedures, compare_header_names);
+	
 					builder := make_string_builder (5000, temp_allocator);
 					ln (*builder, "Amber_Hooks :: struct #type_info_none\n{");
 					ln (*builder, "\tusing callbacks : Extension_Callbacks;");
