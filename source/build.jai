@@ -107,16 +107,11 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 				
 				if generate_amber_hooks
 				{
-					compare_header_names :: (
-						left : *Compiler.Code_Procedure_Header,
-						right : *Compiler.Code_Procedure_Header
-					) -> int
-					{
-						return compare_strings (left.name, right.name);
-					}
-					Sort.quick_sort (amber_api_procedures, compare_header_names);
-	
+					Sort.quick_sort (amber_api_procedures, (a, b) => compare_strings (a.name, b.name));
+
 					builder := make_string_builder (5000, temp_allocator);
+					ln (*builder, "// This file was automatically generated.");
+					nl (*builder);
 					ln (*builder, "Amber_Hooks :: struct #type_info_none\n{");
 					ln (*builder, "\tusing callbacks : Extension_Callbacks;");
 					nl (*builder);
