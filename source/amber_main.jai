@@ -14,7 +14,6 @@
 #load "amber_profiler.jai";
 
 CURSOR_ROUNDING :: 3.0;
-CURSOR_MARGIN   :: 0;
 
 viewport_size : Vec2i;
 running : bool;
@@ -145,7 +144,7 @@ main :: ()
 	init_extensions ();
 	font_load_from_file (FONT_NAME);
 	split_create_first ();
-	buffer_load_file (get_active_buffer (), "some_file.txt");
+	buffer_load_file (get_active_buffer (), "get_next_line.c");
 	buffer_move_cursor_to_beginning (get_active_buffer (), WRITE_HEAD);
 	
 	for buffer : buffers
