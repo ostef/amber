@@ -51,7 +51,7 @@ Buffer_Edit :: struct
 
 // Command
 
-Command_Proc :: #type (*Amber_Hooks, []string);
+Command_Proc :: #type (*Amber_Hooks, []string) -> bool;
 
 Command_Info :: struct
 {

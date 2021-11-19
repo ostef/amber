@@ -95,26 +95,26 @@ generate_command_wrapper :: (header : *Compiler.Code_Procedure_Header) -> string
 	ln :: print_line_to_builder;
 	nl :: print_newline_to_builder;
 	
-	ln (*builder, "%_wrapper :: (using hooks : *Amber_Hooks, args : []string)\n{", function_name);
+	ln (*builder, "%_wrapper :: (using hooks : *Amber_Hooks, args : []string) -> bool\n{", function_name);
 	if first_optional_argument != -1
 	{
 		ln (*builder, "\tif args.count < %\n\t{", first_optional_argument);
 		ln (*builder, "\t\tprintln (\"Command '%' expects at least % argument(s) but got %.\", args.count);\n", name, first_optional_argument);
-		ln (*builder, "\t\treturn;");
+		ln (*builder, "\t\treturn false;");
 		ln (*builder, "\t}");
 		
 		nl (*builder);
 		
 		ln (*builder, "\tif args.count > %\n\t{", arg_count);
 		ln (*builder, "\t\tprintln (\"Command '%' expects at most % argument(s) but got %.\", args.count);\n", name, arg_count);
-		ln (*builder, "\t\treturn;");
+		ln (*builder, "\t\treturn false;");
 		ln (*builder, "\t}");
 	}
 	else
 	{
 		ln (*builder, "\tif args.count != %\n\t{", arg_count);
 		ln (*builder, "\t\tprintln (\"Command '%' expects % argument(s) but got %.\", args.count);\n", name, arg_count);
-		ln (*builder, "\t\treturn;");
+		ln (*builder, "\t\treturn false;");
 		ln (*builder, "\t}");
 	}
 	
@@ -151,11 +151,11 @@ generate_command_wrapper :: (header : *Compiler.Code_Procedure_Header) -> string
 		}
 		ln (*builder, "\tif !arg%_ok\n\t{", i);
 		ln (*builder, "\t\tprintln (\"Command '%' expects a % for argument %.\");\n", name, typename, i);
-		ln (*builder, "\t\treturn;");
+		ln (*builder, "\t\treturn false;");
 		ln (*builder, "\t}");
 		nl (*builder);
 	}
-	pr (*builder, "\t% (hooks, ", function_name);
+	pr (*builder, "\treturn % (hooks, ", function_name);
 	for i : 0..arg_count - 1
 	{
 		if i != 0 then pr (*builder, ", ");
