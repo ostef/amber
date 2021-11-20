@@ -4,6 +4,7 @@ Amber_Hooks :: struct #type_info_none
 {
 	using callbacks : Extension_Callbacks;
 
+	amber_get_executable_path : ((Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> string;
 	amber_terminate : ();
 	buffer_add_cursor_at_offset : (Buffer_ID, s64) -> bool;
 	buffer_add_cursor_on_next_line : (Buffer_ID, Buffer_Cursor_ID) -> bool;
@@ -11,8 +12,8 @@ Amber_Hooks :: struct #type_info_none
 	buffer_clear_cursors : (Buffer_ID);
 	buffer_clear_history : (Buffer_ID);
 	buffer_clear_redo_history : (Buffer_ID);
-	buffer_clear_selection : (Buffer_ID);
 	buffer_clear : (Buffer_ID);
+	buffer_clear_selection : (Buffer_ID);
 	buffer_cursor_is_at_bol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_cursor_is_at_eol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_delete_selection : (Buffer_ID, Buffer_Cursor_ID) -> bool;
@@ -70,8 +71,8 @@ Amber_Hooks :: struct #type_info_none
 	command_unregister_for_extension : (Extension_ID);
 	create_framebuffer_and_texture : (u32, u32, s64) -> (u32, u32);
 	create_shader : (string, string) -> u32;
-	create_texture : (u32, u32, s64, *void, bool) -> u32;
 	create_texture_from_file : (string, bool) -> u32;
+	create_texture : (u32, u32, s64, *void, bool) -> u32;
 	destroy_framebuffer : (u32);
 	destroy_framebuffer_and_texture : (u32, u32);
 	destroy_shader : (u32);
@@ -131,8 +132,10 @@ Amber_Hooks :: struct #type_info_none
 	platform_free_library : (*void);
 	platform_get_file_attributes : (string) -> (File_Attributes, bool);
 	platform_get_file_cursor : (*void) -> s64;
+	platform_get_full_filename : (string, (Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> string;
 	platform_get_key_state : (Key_Code) -> Key_State;
 	platform_get_mod_state : () -> Mods;
+	platform_get_module_filename : ((Allocator_Mode, s64, s64, *void, *void) -> *void, *void) -> string;
 	platform_get_mouse_button_state : (Mouse_Button) -> Key_State;
 	platform_get_mouse_position : () -> Vec2 (T = f32);
 	platform_get_proc_address : (*void, string) -> *void;
@@ -174,8 +177,8 @@ Amber_Hooks :: struct #type_info_none
 	split_get_active_buffer_index : (Split_ID) -> s64;
 	split_get_active_text_layout : (Split_ID) -> Text_Layout_ID;
 	split_get_area : (Split_ID) -> Rect (T = f32);
-	split_get_buffer_count : (Split_ID) -> s64;
 	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
+	split_get_buffer_count : (Split_ID) -> s64;
 	split_get_scrollbar_rect : (Split_ID) -> Rect (T = f32);
 	split_get_tab_rect : (Split_ID, s64) -> Rect (T = f32);
 	split_get_text_layout_area : (Split_ID) -> Rect (T = f32);
@@ -183,8 +186,8 @@ Amber_Hooks :: struct #type_info_none
 	split_open_buffer : (Split_ID) -> Buffer_ID;
 	split_set_active_buffer : (Split_ID, s64);
 	split_set_area : (Split_ID, Rect (T = f32));
-	text_layout_clear_colors : (Text_Layout_ID);
 	text_layout_clear : (Text_Layout_ID);
+	text_layout_clear_colors : (Text_Layout_ID);
 	text_layout_compute : (Text_Layout_ID);
 	text_layout_exists : (Text_Layout_ID) -> bool;
 	text_layout_get_area : (Text_Layout_ID) -> Rect (T = f32);
@@ -211,11 +214,11 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_scroll_y : (Text_Layout_ID, f32);
 	text_layout_set_area : (Text_Layout_ID, Rect (T = f32));
 	text_layout_set_dirty : (Text_Layout_ID);
-	text_layout_set_font_height : (Text_Layout_ID, u32);
 	text_layout_set_font : (Text_Layout_ID, Font_ID);
+	text_layout_set_font_height : (Text_Layout_ID, u32);
 	text_layout_set_scroll_x : (Text_Layout_ID, f32);
-	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_set_scroll_y : (Text_Layout_ID, f32);
+	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_set_visual_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_update_area : (Text_Layout_ID);
 	toggle_command_input : ();

@@ -122,14 +122,17 @@ buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
 
 buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
 {
-	str, ok := platform_read_entire_file (filename, temp_allocator);
+	// @Note (stefan): We always use the full filename because the working directory
+	// might change later.
+	full_filename := platform_get_full_filename (filename, heap_allocator);
+	str, ok := platform_read_entire_file (full_filename, temp_allocator);
 	if !ok then return false;
 	buffer_clear (buffer_id);
 	utf8_str := utf8 (str);
 	for utf8_str
 		buffer_insert_at_cursor (buffer_id, it, WRITE_HEAD);
-	buffer_set_filename (buffer_id, filename);
-	buffer_set_name (buffer_id, filename);
+	buffer_set_filename (buffer_id, full_filename);
+	buffer_set_name (buffer_id, filename_get_basename (full_filename));
 
 	return true;
 }

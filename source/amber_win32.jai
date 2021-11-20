@@ -1,5 +1,36 @@
 #assert OS == .WINDOWS "amber_win32.jai should only be loaded on Windows.";
 
+// We try to use the following naming conventions:
+//          amber/source/amber_main.jai
+// * amber/source/amber_main.jai    is the file name (filename)
+// * amber_main.jai                 is the file basename
+// * jai                            is the file extension
+// * C:/amber/source/amber_main.jai is the absolute or full name
+// * amber/source/amber_main.jai    is a relative or short name
+
+// @Todo (stefan): Make sure we respect the above naming conventions everywhere
+
+platform_get_module_filename :: (allocator : Allocator, allocator_data := null) -> string #must
+{
+	buffer := alloc (2 * MAX_PATH, temp_allocator);
+	length := GetModuleFileNameW (null, buffer, MAX_PATH);
+	
+	return wide_to_utf8 (buffer, allocator, allocator_data);
+}
+@Amber_API
+
+platform_get_full_filename :: (filename : string, allocator : Allocator, allocator_data := null) -> string #must
+{
+	wstr_filename := utf8_to_wide (filename, temp_allocator);
+	length := GetFullPathNameW (wstr_filename, 0, null, null);
+	if length == 0 then return "";
+	buffer := alloc (2 * (length + 1), temp_allocator);
+	GetFullPathNameW (wstr_filename, length, buffer, null);
+
+	return wide_to_utf8 (buffer, allocator, allocator_data);
+}
+@Amber_API
+
 platform_open_file :: (filename : string, flags : File_Open_Flags, attributes := File_Attributes.NORMAL) -> File_Handle #must
 {
 	access, share_mode : DWORD;
@@ -1151,7 +1182,10 @@ WIN32_FIND_DATAW :: struct
 	wFinderFlags  : WORD;
 }
 
+GetFullPathNameW :: (lpFileName : *u16, nBufferLength : DWORD, lpBuffer : *u16, lpFilePart : **u16) -> DWORD #foreign kernel32;
+//PathCanonicalizeW :: (pszBuf : *u16, pszPath : *u16) -> BOOL #foreign shlwapi;
 GetModuleHandleW :: (lpModuleName : *u16) -> HANDLE #foreign kernel32;
+GetModuleFileNameW :: (hModule : HANDLE, lpFilename : *u16, nSize : DWORD) -> DWORD #foreign kernel32;
 GetFileAttributesW :: (lpFileName : *u16) -> DWORD #foreign kernel32;
 SetFileAttributesW :: (lpFileName : *u16, dwFileAttributes : DWORD) -> BOOL #foreign kernel32;
 FindFirstFileW :: (lpFileName : *u16, lpFindFileData : *WIN32_FIND_DATAW) -> HANDLE #foreign kernel32;

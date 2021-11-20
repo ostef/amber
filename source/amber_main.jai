@@ -28,6 +28,8 @@ command_buffer : struct
 	data : [..]u32;
 	cursor : s64;
 };
+executable_path : string;
+executable_dir  : string;
 
 handle_event :: inline (event : Event) -> Event_Result #must, propagate : bool
 {
@@ -122,11 +124,20 @@ amber_terminate :: ()
 }
 @Amber_API
 
+amber_get_executable_path :: (allocator : Allocator, allocator_data := null) -> string #must
+{
+	return clone_string (executable_path, allocator, allocator_data);
+}
+@Amber_API
+
 main :: ()
 {
 	FONT_NAME :: "fonts/jetbrainsmono/JetBrainsMono-Regular.ttf";
 	context.allocator = heap_allocator;
-	
+
+	executable_path = platform_get_module_filename (heap_allocator);
+	executable_dir  = filename_remove_basename (executable_path);
+
 #if ENABLE_PROFILING
 	init_profiler ();
 	platform_init_window_and_gl ();
@@ -146,7 +157,7 @@ main :: ()
 	split_create_first ();
 	buffer_load_file (get_active_buffer (), "get_next_line.c");
 	buffer_move_cursor_to_beginning (get_active_buffer (), WRITE_HEAD);
-	
+
 	for buffer : buffers
 	{
 		language_process_buffer (buffer.id);

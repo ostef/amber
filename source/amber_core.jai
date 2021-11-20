@@ -3148,6 +3148,11 @@ filename_get_basename :: inline (filename : string) -> string #must
 	result := filename;
 	result.data += result.count;
 	result.count = 0;
+	if result.count != filename.count && (result.data[-1] == #char "/" || result.data[-1] == #char "\\")
+	{
+		result.data -= 1;
+		result.count += 1;
+	}
 	while result.count != filename.count
 	{
 		if result.data[-1] == #char "/" || result.data[-1] == #char "\\"
@@ -3173,6 +3178,25 @@ filename_get_extension :: inline (filename : string) -> string #must
 		result.data  -= 1;
 		result.count += 1;
 	}
+	
+	return result;
+}
+
+filename_remove_basename :: inline (filename : string) -> string #must
+{
+	basename := filename_get_basename (filename);
+	result := filename;
+	result.count = basename.data - filename.data;
+	
+	return result;
+}
+
+filename_remove_extension :: inline (filename : string) -> string #must
+{
+	extension := filename_get_extension (filename);
+	if !extension then return filename;
+	result := filename;
+	result.count = extension.data - filename.data - 1;
 	
 	return result;
 }
