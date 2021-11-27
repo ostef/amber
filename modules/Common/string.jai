@@ -92,9 +92,9 @@ trim_spaces_at_ends :: (str : string) -> string #must
 	return result;
 }
 
-break_by :: (str : string, lookup : string, allocator : Allocator, allocator_data := null) -> []string #must
+break_by :: (str : string, lookup : string, allocator : Allocator) -> []string #must
 {
-	result := make_array (string, 10, allocator, allocator_data);
+	result := make_array (string, 10, allocator);
 	start := 0;
 	for i : 0..str.count - 1
 	{
@@ -119,9 +119,9 @@ break_by :: (str : string, lookup : string, allocator : Allocator, allocator_dat
 	return result;
 }
 
-break_by_spaces :: (str : string, allocator : Allocator, allocator_data := null) -> []string #must
+break_by_spaces :: (str : string, allocator : Allocator) -> []string #must
 {
-	result := make_array (string, 10, allocator, allocator_data);
+	result := make_array (string, 10, allocator);
 	start := 0;
 	for i : 0..str.count - 1
 	{
@@ -148,9 +148,9 @@ break_by_spaces :: (str : string, allocator : Allocator, allocator_data := null)
 	return result;
 }
 
-break_by_lines :: (str : string, allocator : Allocator, allocator_data := null) -> []string #must
+break_by_lines :: (str : string, allocator : Allocator) -> []string #must
 {
-	result := make_array (string, 10, allocator, allocator_data);
+	result := make_array (string, 10, allocator);
 	start := 0;
 	for i : 0..str.count - 1
 	{
@@ -219,34 +219,34 @@ to_string :: (char : u8) -> string #expand
 	return result;
 }
 
-clone_string :: (cstr : *u8, allocator : Allocator, allocator_data := null) -> string #must
+clone_string :: (cstr : *u8, allocator : Allocator) -> string #must
 {
-	return inline clone_string (to_string (cstr), allocator, allocator_data);
+	return inline clone_string (to_string (cstr), allocator);
 }
 
-clone_string :: (str : string, allocator : Allocator, allocator_data := null) -> string #must
+clone_string :: (str : string, allocator : Allocator) -> string #must
 {
 	result : string;
-	result.data  = cast (*u8) alloc (str.count, allocator, allocator_data);
+	result.data  = cast (*u8) alloc (str.count, allocator);
 	result.count = str.count;
 	memcpy (result.data, str.data, str.count);
 
 	return result;
 }
 
-clone_to_array :: (str : string, allocator : Allocator, allocator_data := null) -> []u8 #must
+clone_to_array :: (str : string, allocator : Allocator) -> []u8 #must
 {
 	result : []u8;
-	result.data  = cast (*u8) alloc (str.count, allocator, allocator_data);
+	result.data  = cast (*u8) alloc (str.count, allocator);
 	result.count = str.count;
 	memcpy (result.data, str.data, str.count);
 
 	return result;
 }
 
-clone_to_cstring :: (str : string, allocator : Allocator, allocator_data := null) -> *u8 #must
+clone_to_cstring :: (str : string, allocator : Allocator) -> *u8 #must
 {
-	result := cast (*u8) alloc (str.count + 1, allocator, allocator_data);
+	result := cast (*u8) alloc (str.count + 1, allocator);
 	memcpy (result, str.data, str.count);
 	result[str.count] = 0;
 
@@ -320,17 +320,17 @@ to_lower :: inline (str : string)
 	}
 }
 
-clone_to_upper :: inline (str : string, allocator : Allocator, allocator_data := null) -> string #must
+clone_to_upper :: inline (str : string, allocator : Allocator) -> string #must
 {
-	result := clone_string (str, allocator, allocator_data);
+	result := clone_string (str, allocator);
 	to_upper (result);
 
 	return result;
 }
 
-clone_to_lower :: inline (str : string, allocator : Allocator, allocator_data := null) -> string #must
+clone_to_lower :: inline (str : string, allocator : Allocator) -> string #must
 {
-	result := clone_string (str, allocator, allocator_data);
+	result := clone_string (str, allocator);
 	to_lower (result);
 
 	return result;
@@ -415,7 +415,7 @@ is_lower :: inline (codepoint : u32) -> bool #must
 	return codepoint >= #char "a" && codepoint <= #char "z";
 }
 
-join :: (allocator : Allocator, allocator_data : *void, args : ..string) -> string #must
+join :: (allocator : Allocator, args : ..string) -> string #must
 {
 	count : s64;
 	for args
@@ -423,7 +423,7 @@ join :: (allocator : Allocator, allocator_data : *void, args : ..string) -> stri
 		count += it.count;
 	}
 
-	result := alloc_string (count, allocator, allocator_data);
+	result := alloc_string (count, allocator);
 	offset : s64;
 	for args
 	{
@@ -434,12 +434,7 @@ join :: (allocator : Allocator, allocator_data : *void, args : ..string) -> stri
 	return result;
 }
 
-join :: (allocator : Allocator, args : ..string) -> string #must
-{
-	return inline join (allocator, null, ..args);
-}
-
-join_with_separator :: (allocator : Allocator, allocator_data : *void, args : ..string, separator : string) -> string #must
+join_with_separator :: (allocator : Allocator, args : ..string, separator : string) -> string #must
 {
 	count := 0;
 	for args
@@ -448,7 +443,7 @@ join_with_separator :: (allocator : Allocator, allocator_data : *void, args : ..
 		if it_index != args.count - 1 then count += separator.count;
 	}
 
-	result := alloc_string (count, allocator, allocator_data);
+	result := alloc_string (count, allocator);
 	
 	i := 0;
 	for args
@@ -460,11 +455,6 @@ join_with_separator :: (allocator : Allocator, allocator_data : *void, args : ..
 	}
 
 	return result;
-}
-
-join_with_separator :: (allocator : Allocator, args : ..string, separator : string) -> string #must
-{
-	return inline join_with_separator (allocator, null, ..args, separator);
 }
 
 slice :: (str : string, low : s64, high : s64) -> string #must

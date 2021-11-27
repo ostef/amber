@@ -24,23 +24,23 @@ win32_file_attributes :: inline (attr : File_Attributes) -> s32 #must
 
 File :: HANDLE;
 
-get_executable_path :: (allocator : Allocator, allocator_data := null) -> string #must
+get_executable_path :: (allocator : Allocator) -> string #must
 {
-	buffer := alloc (2 * MAX_PATH, temp_allocator);
+	buffer := alloc (2 * MAX_PATH, TEMP);
 	length := GetModuleFileNameW (null, buffer, MAX_PATH);
 
-	return wide_to_utf8 (buffer, allocator = allocator, allocator_data = allocator_data);
+	return wide_to_utf8 (buffer, allocator = allocator);
 }
 
-get_full_path :: (path : string, allocator : Allocator, allocator_data := null) -> string #must
+get_full_path :: (path : string, allocator : Allocator) -> string #must
 {
 	wide_path := utf8_to_wide (path);
 	length := GetFullPathNameW (wide_path, 0, null, null);
 	if length == 0 then return "";
-	buffer := alloc (size_of (u16) * (length + 1), temp_allocator);
+	buffer := alloc (size_of (u16) * (length + 1), TEMP);
 	GetFullPathNameW (wide_path, length, buffer, null);
 
-	return wide_to_utf8 (buffer, allocator = allocator, allocator_data = allocator_data);
+	return wide_to_utf8 (buffer, allocator = allocator);
 }
 
 path_leads_to_directory :: (path : string) -> bool #must
@@ -204,13 +204,13 @@ copy_file :: (source : string, dest : string, overwrite := false) -> bool
 	return CopyFileW (wstr_source, wstr_dest, xx (!overwrite)) != 0;
 }
 
-get_working_directory :: (allocator : Allocator, allocator_data := null) -> string #must
+get_working_directory :: (allocator : Allocator) -> string #must
 {
 	length := GetCurrentDirectoryW (0, null);
-	buffer := alloc (2 * (length + 1), allocator, allocator_data);
+	buffer := alloc (2 * (length + 1), allocator);
 	GetCurrentDirectoryW (length + 1, buffer);
 
-	return wide_to_utf8 (buffer, allocator = allocator, allocator_data = allocator_data);
+	return wide_to_utf8 (buffer, allocator = allocator);
 }
 
 set_working_directory :: (path : string) -> bool
@@ -240,12 +240,12 @@ inspect_directory :: (dirname : string, recurse : bool, user_data : $T, proc : (
 	// @Todo (stefan): Handle is_symlink and had_error.
 	if !proc then return true;
 
-	dirs := make_array (string, 10, heap_allocator);
-	push_into_array (*dirs, clone_string (dirname, heap_allocator));
+	dirs := make_array (string, 10, HEAP);
+	push_into_array (*dirs, clone_string (dirname, HEAP));
 	defer
 	{
 		for dirs
-			free (it, heap_allocator);
+			free (it, HEAP);
 		reset_array (*dirs);
 	}
 
@@ -257,7 +257,7 @@ inspect_directory :: (dirname : string, recurse : bool, user_data : $T, proc : (
 		current += 1;
 
 		mark := get_temporary_storage_mark ();
-		wildcard := utf8_to_wide (join (temp_allocator, current_dir, "/*"));
+		wildcard := utf8_to_wide (join (TEMP, current_dir, "/*"));
 
 		find_data : WIN32_FIND_DATAW = ---;
 		handle := FindFirstFileW (wildcard, *find_data);
@@ -267,12 +267,12 @@ inspect_directory :: (dirname : string, recurse : bool, user_data : $T, proc : (
 
 		while true
 		{
-			name := wide_to_utf8 (find_data.cFileName.data, allocator = heap_allocator);
-			full_name := make_path (heap_allocator, current_dir, "/", name);
+			name := wide_to_utf8 (find_data.cFileName.data, allocator = HEAP);
+			full_name := make_path (HEAP, current_dir, "/", name);
 			defer
 			{
-				free (name, heap_allocator);
-				free (full_name, heap_allocator);
+				free (name, HEAP);
+				free (full_name, HEAP);
 			}
 
 			info.name      = name;
@@ -291,7 +291,7 @@ inspect_directory :: (dirname : string, recurse : bool, user_data : $T, proc : (
 						proc (*info, user_data);
 					}
 
-					if info.descend_into_directory then push_into_array (*dirs, clone_string (full_name, heap_allocator));
+					if info.descend_into_directory then push_into_array (*dirs, clone_string (full_name, HEAP));
 				}
 			}
 			else

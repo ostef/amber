@@ -10,24 +10,24 @@
 
 // @Todo (stefan): Make sure we respect the above naming conventions everywhere
 
-platform_get_module_filename :: (allocator : Allocator, allocator_data := null) -> string #must
+platform_get_module_filename :: (allocator : Allocator) -> string #must
 {
-	buffer := alloc (2 * MAX_PATH, temp_allocator);
+	buffer := alloc (2 * MAX_PATH, TEMP);
 	length := GetModuleFileNameW (null, buffer, MAX_PATH);
 	
-	return wide_to_utf8 (buffer, allocator, allocator_data);
+	return wide_to_utf8 (buffer, allocator);
 }
 @Amber_API
 
-platform_get_full_filename :: (filename : string, allocator : Allocator, allocator_data := null) -> string #must
+platform_get_full_filename :: (filename : string, allocator : Allocator) -> string #must
 {
-	wstr_filename := utf8_to_wide (filename, temp_allocator);
+	wstr_filename := utf8_to_wide (filename, TEMP);
 	length := GetFullPathNameW (wstr_filename, 0, null, null);
 	if length == 0 then return "";
-	buffer := alloc (2 * (length + 1), temp_allocator);
+	buffer := alloc (2 * (length + 1), TEMP);
 	GetFullPathNameW (wstr_filename, length, buffer, null);
 
-	return wide_to_utf8 (buffer, allocator, allocator_data);
+	return wide_to_utf8 (buffer, allocator);
 }
 @Amber_API
 
@@ -51,7 +51,7 @@ platform_open_file :: (filename : string, flags : File_Open_Flags, attributes :=
 	else if flagged (flags, .OPEN_OR_CREATE) then open_mode = OPEN_ALWAYS;
 	else if flagged (flags, .ALWAYS_CREATE) then open_mode = CREATE_ALWAYS;
 	
-	file := CreateFileW (utf8_to_wide (filename, temp_allocator), access, share_mode, null, open_mode, file_attributes_to_win32 (attributes), null);
+	file := CreateFileW (utf8_to_wide (filename, TEMP), access, share_mode, null, open_mode, file_attributes_to_win32 (attributes), null);
 	if file == INVALID_HANDLE_VALUE then return null;
 	
 	return file;
@@ -66,13 +66,13 @@ platform_close_file :: (file : File_Handle)
 
 platform_delete_file :: (filename : string) -> bool
 {
-	return DeleteFileW (utf8_to_wide (filename, temp_allocator)) != 0;
+	return DeleteFileW (utf8_to_wide (filename, TEMP)) != 0;
 }
 @Amber_API
 
 platform_move_file :: (src : string, dest : string) -> bool
 {
-	return MoveFileW (utf8_to_wide (src, temp_allocator), utf8_to_wide (dest, temp_allocator)) != 0;
+	return MoveFileW (utf8_to_wide (src, TEMP), utf8_to_wide (dest, TEMP)) != 0;
 }
 @Amber_API
 
@@ -126,7 +126,7 @@ platform_write_file :: (file : File_Handle, buffer : *void, count : s64) -> writ
 
 platform_file_exists :: (filename : string) -> bool #must
 {
-	return GetFileAttributesW (utf8_to_wide (filename, temp_allocator)) != INVALID_FILE_ATTRIBUTES;
+	return GetFileAttributesW (utf8_to_wide (filename, TEMP)) != INVALID_FILE_ATTRIBUTES;
 }
 @Amber_API
 
@@ -170,7 +170,7 @@ file_attributes_to_win32 :: (attributes : File_Attributes) -> DWORD #must
 
 platform_get_file_attributes :: (filename : string) -> File_Attributes, exists : bool
 {
-	win32_attrs := GetFileAttributesW (utf8_to_wide (filename, temp_allocator));
+	win32_attrs := GetFileAttributesW (utf8_to_wide (filename, TEMP));
 	if win32_attrs == INVALID_FILE_ATTRIBUTES then return 0, false;
 	
 	return win32_to_file_attributes (win32_attrs), true;
@@ -182,7 +182,7 @@ platform_set_file_attributes :: (filename : string, attributes : File_Attributes
 	remove_flag (*attributes, .DIRECTORY);
 	remove_flag (*attributes, .SYMLINK);
 	
-	return SetFileAttributesW (utf8_to_wide (filename, temp_allocator), file_attributes_to_win32 (attributes)) != 0;
+	return SetFileAttributesW (utf8_to_wide (filename, TEMP), file_attributes_to_win32 (attributes)) != 0;
 }
 @Amber_API
 
@@ -190,7 +190,7 @@ platform_set_file_attributes :: (filename : string, attributes : File_Attributes
 
 list_files_helper :: (dirname : string, parent_index : s64, all_files : *[..]File_Info) -> bool
 {
-	wildcard := utf8_to_wide (join (temp_allocator, null, dirname, "/*"), temp_allocator);
+	wildcard := utf8_to_wide (join (TEMP, dirname, "/*"), TEMP);
 	find_data : WIN32_FIND_DATAW = ---;
 	find_handle := FindFirstFileW (wildcard, *find_data);
 	if find_handle == INVALID_HANDLE_VALUE
@@ -204,7 +204,7 @@ list_files_helper :: (dirname : string, parent_index : s64, all_files : *[..]Fil
 	prev_sibling_index := -1;
 	while true
 	{
-		utf8_name := wide_to_utf8 (find_data.cFileName.data, temp_allocator);
+		utf8_name := wide_to_utf8 (find_data.cFileName.data, TEMP);
 		is_root := utf8_name == ".";
 		// Include the root directory '.' if parent is null, because we return
 		// the root in platform_list_files_in_directory. Otherwise ignore it.
@@ -213,8 +213,8 @@ list_files_helper :: (dirname : string, parent_index : s64, all_files : *[..]Fil
 			if all_files.count == 0 then assert (is_root, "The first visited file should be the root, but it was '%'.", utf8_name);
 			
 			file_info := push_into_array (all_files);
-			file_info.name = clone_string (utf8_name, all_files.allocator, all_files.allocator_data);
-			file_info.full_name = join (all_files.allocator, all_files.allocator_data, dirname, "/", file_info.name);
+			file_info.name = clone_string (utf8_name, all_files.allocator);
+			file_info.full_name = join (all_files.allocator, dirname, "/", file_info.name);
 			file_info.attributes = win32_to_file_attributes (find_data.dwFileAttributes);
 			file_info.size   = cast (s64) find_data.nFileSizeHigh * (0xffff_ffff + 1) + cast (s64) find_data.nFileSizeLow;
 			file_info.parent = ifx parent_index > -1 then *all_files.data[parent_index] else null;
@@ -243,11 +243,10 @@ list_files_helper :: (dirname : string, parent_index : s64, all_files : *[..]Fil
 // @Note (stefan): The File_Infos are allocated contiguously, and the first File_Info is also the root.
 // This means you can ignore the all_files array, and only care about the root when you have to free the
 // allocated File_Infos.
-platform_list_files_in_directory :: (dirname : string, allocator : Allocator, allocator_data := null) -> root : *File_Info #must, all_files : []File_Info
+platform_list_files_in_directory :: (dirname : string, allocator : Allocator) -> root : *File_Info #must, all_files : []File_Info
 {
 	all_files : [..]File_Info;
-	all_files.allocator      = allocator;
-	all_files.allocator_data = allocator_data;
+	all_files.allocator = allocator;;
 	ok := list_files_helper (dirname, -1, *all_files);
 	if !ok
 	{
@@ -265,35 +264,35 @@ platform_list_files_in_directory :: (dirname : string, allocator : Allocator, al
 
 platform_create_directory :: (dirname : string) -> bool
 {
-	return CreateDirectoryW (utf8_to_wide (dirname, temp_allocator), null) != 0;
+	return CreateDirectoryW (utf8_to_wide (dirname, TEMP), null) != 0;
 }
 @Amber_API
 
 platform_delete_empty_directory :: (dirname : string) -> bool
 {
-	return RemoveDirectoryW (utf8_to_wide (dirname, temp_allocator)) != 0;
+	return RemoveDirectoryW (utf8_to_wide (dirname, TEMP)) != 0;
 }
 @Amber_API
 
-platform_get_working_directory :: (allocator : Allocator, allocator_data := null) -> string #must
+platform_get_working_directory :: (allocator : Allocator) -> string #must
 {
 	length := GetCurrentDirectoryW (0, null);
-	buffer := alloc (2 * (length + 1), temp_allocator);
+	buffer := alloc (2 * (length + 1), TEMP);
 	GetCurrentDirectoryW (length + 1, buffer);
 	
-	return wide_to_utf8 (buffer, allocator, allocator_data);
+	return wide_to_utf8 (buffer, allocator);
 }
 @Amber_API
 
 platform_set_working_directory :: (dirname : string) -> bool
 {
-	return SetCurrentDirectoryW (utf8_to_wide (dirname, temp_allocator)) != 0;
+	return SetCurrentDirectoryW (utf8_to_wide (dirname, TEMP)) != 0;
 }
 @Amber_API
 
 platform_load_library :: (filename : string) -> Library_Handle #must
 {
-	result := LoadLibraryW (utf8_to_wide (filename, temp_allocator));
+	result := LoadLibraryW (utf8_to_wide (filename, TEMP));
 	if result == INVALID_HANDLE_VALUE then return null;
 	
 	return result;
@@ -308,7 +307,7 @@ platform_free_library :: (lib : Library_Handle)
 
 platform_get_proc_address :: (lib : Library_Handle, proc_name : string) -> *void #must
 {
-	cstr_proc_name := clone_to_cstring (proc_name, temp_allocator);
+	cstr_proc_name := clone_to_cstring (proc_name, TEMP);
 
 	return GetProcAddress (lib, cstr_proc_name);
 }
@@ -420,8 +419,8 @@ window : struct
 
 platform_open_error_box :: inline (fmt : string, args : ..Any)
 {
-	message := fstring (temp_allocator, fmt, ..args);
-	MessageBoxW (window.hwnd, utf8_to_wide (message, temp_allocator), utf8_to_wide ("Amber", temp_allocator), MB_OK | MB_ICONERROR);
+	message := fstring (TEMP, fmt, ..args);
+	MessageBoxW (window.hwnd, utf8_to_wide (message, TEMP), utf8_to_wide ("Amber", TEMP), MB_OK | MB_ICONERROR);
 }
 @Amber_API
 
@@ -448,7 +447,7 @@ platform_init_window_and_gl :: ()
 		using window_class;
 		hInstance   = GetModuleHandleW (null);
 		cbSize      = size_of (WNDCLASSEXW);
-		lpszClassName = utf8_to_wide ("AMBER WINDOW CLASS", heap_allocator);
+		lpszClassName = utf8_to_wide ("AMBER WINDOW CLASS", HEAP);
 		style       = CS_OWNDC | CS_DBLCLKS;
 		lpfnWndProc = xx window_proc;
 		// @Todo (stefan): Set window icon.
@@ -503,7 +502,7 @@ platform_init_window_and_gl :: ()
 		hwnd = CreateWindowExW (
 			0,
 			window_class.lpszClassName,
-			utf8_to_wide ("Amber", temp_allocator),
+			utf8_to_wide ("Amber", TEMP),
 			WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT,
 			CW_USEDEFAULT,
@@ -683,7 +682,7 @@ platform_get_mouse_button_state :: inline (mouse_button : Mouse_Button) -> Butto
 @Amber_API
 
 /*
-platform_get_window_title :: (allocator : Allocator, allocator_data := null) -> string #must
+platform_get_window_title :: (allocator : Allocator) -> string #must
 platform_set_window_title :: (title : string)
 platform_get_mouse_wheel_state :: () -> Vec2f #must
 platform_get_window_position :: () -> Vec2i #must
@@ -786,7 +785,7 @@ print_fontsw :: (lplf : *LOGFONTW, lptm : *TEXTMETRICW, dwType : DWORD, lpData :
 	ctx : Context;
 	push_context ctx
 	{
-		wide_name := wide_to_utf8 (lplf.lfFaceName.data, temp_allocator);
+		wide_name := wide_to_utf8 (lplf.lfFaceName.data, TEMP);
 		println (wide_name);
 	}
 	
@@ -811,7 +810,7 @@ print_fontsa :: (lplf : *LOGFONTA, lptm : *TEXTMETRICA, dwType : DWORD, lpData :
 	return 1;
 }
 
-platform_enum_font_families :: (allocator : Allocator, allocator_data := null) -> []Font_Info #must
+platform_enum_font_families :: (allocator : Allocator) -> []Font_Info #must
 {
 	filter : LOGFONTA;
 	filter.lfCharSet = DEFAULT_CHARSET;
@@ -980,7 +979,7 @@ window_proc :: (hwnd : HANDLE, msg : u32, wparam : WPARAM, lparam : LPARAM) -> L
 
 // @Note (stefan): We have our utf16 procedures in amber_unicode.jai, but these are big endian, and windows is little endian.
 
-wide_to_utf8 :: (data: *u16, allocator : Allocator, allocator_data := null) -> result: string, success: bool
+wide_to_utf8 :: (data: *u16, allocator : Allocator) -> result: string, success: bool
 {
 	query_result := WideCharToMultiByte (CP_UTF8, 0, data, -1, null, 0, null, null);
 
@@ -988,7 +987,7 @@ wide_to_utf8 :: (data: *u16, allocator : Allocator, allocator_data := null) -> r
 		return "", false;
 
 	name := "";
-	name_bytes := cast (*u8) alloc (query_result, allocator, allocator_data);
+	name_bytes := cast (*u8) alloc (query_result, allocator);
 	result := WideCharToMultiByte (CP_UTF8, 0, data, -1, name_bytes, query_result, null, null);
 
 	if result > 0
@@ -1005,7 +1004,7 @@ wide_to_utf8 :: (data: *u16, allocator : Allocator, allocator_data := null) -> r
 	return "", false;
 }
 
-utf8_to_wide :: (utf8_str : string, allocator : Allocator, allocator_data := null) -> data: *u16, success: bool, result_length_in_bytes: s32 {
+utf8_to_wide :: (utf8_str : string, allocator : Allocator) -> data: *u16, success: bool, result_length_in_bytes: s32 {
 	if !utf8_str
 		return null, true, 0;
 	query_num_chars := MultiByteToWideChar (CP_UTF8, 0, utf8_str.data, cast(s32) utf8_str.count, null, 0);
@@ -1013,7 +1012,7 @@ utf8_to_wide :: (utf8_str : string, allocator : Allocator, allocator_data := nul
 		return null, false, 0;
 	
 	name := "";
-	name_u16s := cast (*u16) alloc ((query_num_chars + 1) * size_of (u16), allocator, allocator_data);
+	name_u16s := cast (*u16) alloc ((query_num_chars + 1) * size_of (u16), allocator);
 	result_num_chars := MultiByteToWideChar (CP_UTF8, 0, utf8_str.data, cast(s32) utf8_str.count, name_u16s, query_num_chars);
 
 	if result_num_chars > 0

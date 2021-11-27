@@ -25,7 +25,7 @@ f64 :: float64;
 make_default_context :: () -> Context #c_call
 {
 	result : Context;
-	result.allocator = heap_allocator;
+	result.allocator = HEAP;
 	result.logger    = console_logger;
 
 	return result;
@@ -34,7 +34,7 @@ make_default_context :: () -> Context #c_call
 get_command_line_arguments :: () -> []string #must
 {
 	c_args := __command_line_arguments;
-	result := alloc_array (string, c_args.count, heap_allocator);
+	result := alloc_array (string, c_args.count, HEAP);
 	for c_args
 	{
 		result[it_index].data  = it;
@@ -86,7 +86,7 @@ assert :: inline (assertion : bool, fmt := "", args : ..Any, location := #caller
 		// Prevent assert ()->...->assert ()->...->assert ()->...->assert () infinite loop (format_string might assert for example)
 		if context.handling_assertion_failure then return;
 		context.handling_assertion_failure = true;
-		context.assertion_failed (location, format_string (temp_allocator, fmt, ..args));
+		context.assertion_failed (location, fstring (TEMP, fmt, ..args));
 		context.handling_assertion_failure = false;
 	}
 }
@@ -127,13 +127,13 @@ shallow_copy :: (dest : Any, src : Any)
 	memcpy (dest.value_pointer, src.value_pointer, dest.type.runtime_size);
 }
 
-shallow_clone :: (src : Any, allocator : Allocator, allocator_data := null) -> Any #must
+shallow_clone :: (src : Any, allocator : Allocator) -> Any #must
 {
 	assert (src.value_pointer != null, "Cannot shallow clone: src is null.");
 
 	dest : Any;
 	dest.type = src.type;
-	dest.value_pointer = alloc (dest.type.runtime_size, allocator, allocator_data);
+	dest.value_pointer = alloc (dest.type.runtime_size, allocator);
 	memcpy (dest.value_pointer, src.value_pointer, dest.type.runtime_size);
 
 	return dest;
@@ -141,7 +141,7 @@ shallow_clone :: (src : Any, allocator : Allocator, allocator_data := null) -> A
 
 offset_of :: inline ($T : Type, $member : string) -> s64 #must
 {
-	#insert #run format_string (heap_allocator, BODY, member);
+	#insert #run fstring (HEAP, BODY, member);
 
 	BODY :: #string END
 		dummy : T = ---;

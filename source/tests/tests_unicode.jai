@@ -6,13 +6,13 @@
 main :: ()
 {
 	println ("Beginning Unicode tests.");
-	utf8_decoded := utf8_to_utf32 (UTF8_STRING, temp_allocator);
-	utf8_encoded := utf32_to_utf8 (utf8_decoded, temp_allocator);
+	utf8_decoded := utf8_to_utf32 (UTF8_STRING, TEMP);
+	utf8_encoded := utf32_to_utf8 (utf8_decoded, TEMP);
 	assert (utf8_equals_utf8 (UTF8_STRING, utf8_encoded), "utf32_to_utf8 failed.");
 	assert (utf8_equals_utf32 (UTF8_STRING, utf8_decoded), "utf8_to_utf32 failed.");
 	
-	utf16_encoded := utf32_to_utf16 (utf8_decoded, temp_allocator);
-	utf16_decoded := utf16_to_utf32 (utf16_encoded, temp_allocator);
+	utf16_encoded := utf32_to_utf16 (utf8_decoded, TEMP);
+	utf16_decoded := utf16_to_utf32 (utf16_encoded, TEMP);
 	assert (utf32_equals_utf32 (utf16_decoded, utf8_decoded), "utf16_to_utf32 failed.");
 	assert (utf16_equals_utf32 (utf16_encoded, utf8_decoded), "utf32_to_utf16 failed.");
 	assert (utf16_equals_utf8 (utf16_encoded, utf8_encoded), "utf32_to_utf16 failed.");

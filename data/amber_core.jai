@@ -3,7 +3,7 @@ panic :: inline (fmt := "", args : ..Any, location := #caller_location)
 	// Prevent assert ()->...->assert ()->...->assert ()->...->assert () infinite loop (format_string might assert for example)
 	if context.handling_assertion_failure then return;
 	context.handling_assertion_failure = true;
-	context.assertion_failed (location, fstring (temp_allocator, fmt, ..args));
+	context.assertion_failed (location, fstring (TEMP, fmt, ..args));
 	context.handling_assertion_failure = false;
 }
 
@@ -14,14 +14,14 @@ assert :: inline (assertion : bool, fmt := "", args : ..Any, location := #caller
 		// Prevent assert ()->...->assert ()->...->assert ()->...->assert () infinite loop (format_string might assert for example)
 		if context.handling_assertion_failure then return;
 		context.handling_assertion_failure = true;
-		context.assertion_failed (location, fstring (temp_allocator, fmt, ..args));
+		context.assertion_failed (location, fstring (TEMP, fmt, ..args));
 		context.handling_assertion_failure = false;
 	}
 }
 
 offset_of :: inline ($T : Type, $member : string) -> s64 #must
 {
-	#insert #run fstring (heap_allocator, BODY, member);
+	#insert #run fstring (HEAP, BODY, member);
 
 	BODY :: #string END
 		dummy : T = ---;
@@ -462,7 +462,7 @@ free_pages :: (storage : *Temporary_Storage)
 
 #scope_export
 
-temp_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void
+TEMP :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void
 {
 	ALIGNMENT :: 8;
 
@@ -515,10 +515,10 @@ reset_temporary_storage :: ()
 // On allocation failure, the result is null.
 // Resizing a null block of memory to a non-zero size is the same as allocating one.
 // Resizing a non null block of memory to zero size is the same as freeing it.
-// A resized memory block might be moved if necessary. (old_ptr == heap_allocator (.RESIZE, new_size, old_size, old_ptr, null) is not always true).
+// A resized memory block might be moved if necessary. (old_ptr == HEAP (.RESIZE, new_size, old_size, old_ptr, null) is not always true).
 // If the OS's heap reallocation routine fails, we free the block and allocate a new one ourselves, copying the bytes to the new location.
 // Freeing a null pointer is a no-op.
-heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void		// We can't #must because we ignore the return value when mode == .FREE
+HEAP :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void		// We can't #must because we ignore the return value when mode == .FREE
 {
 	HEAP_ALLOCATOR_ALIGNMENT :: 8;
 
@@ -541,8 +541,8 @@ heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : 
 
 	case .RESIZE;
 		assert (size >= 0, "Invalid size (got %, expected size >= 0).", size);
-		if !old_ptr then return heap_allocator (.ALLOCATE, size, 0, null, allocator_data);
-		if size == 0 then return heap_allocator (.FREE, 0, 0, old_ptr, allocator_data);
+		if !old_ptr then return HEAP (.ALLOCATE, size, 0, null, allocator_data);
+		if size == 0 then return HEAP (.FREE, 0, 0, old_ptr, allocator_data);
 
 		needed    := size + HEAP_ALLOCATOR_ALIGNMENT;		// For alignment
 		aligned   := cast (*u8) old_ptr;
@@ -562,9 +562,9 @@ heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : 
 		}
 
 		// platform_heap_realloc failed, free then allocate ourselves
-		new_ptr = cast (*u8) heap_allocator (.ALLOCATE, size, 0, null, allocator_data);
+		new_ptr = cast (*u8) HEAP (.ALLOCATE, size, 0, null, allocator_data);
 		memcpy (new_ptr, old_ptr, min (old_size, size));
-		heap_allocator (.FREE, 0, 0, old_ptr, allocator_data);
+		HEAP (.FREE, 0, 0, old_ptr, allocator_data);
 
 		return new_ptr;
 
@@ -586,61 +586,61 @@ trap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : 
 	return null;
 }
 
-alloc :: (size : s64, allocator : Allocator, allocator_data := null) -> *void #must
+alloc :: (size : s64, allocator : Allocator) -> *void #must
 {
-	assert (allocator != null, "Allocator is null.");
+	assert (allocator.proc != null, "Allocator is null.");
 	if size == 0 then return null;
 	
-	return allocator (.ALLOCATE, size, 0, null, allocator_data);
+	return allocator.proc (.ALLOCATE, size, 0, null, allocator.data);
 }
 
-realloc :: (ptr : *void, old_size : s64, new_size : s64, allocator : Allocator, allocator_data := null) -> *void #must
+realloc :: (ptr : *void, old_size : s64, new_size : s64, allocator : Allocator) -> *void #must
 {
-	assert (allocator != null, "Allocator is null.");
-	if !ptr then return alloc (new_size, allocator, allocator_data);
+	assert (allocator.proc != null, "Allocator is null.");
+	if !ptr then return alloc (new_size, allocator);
 	
 	if new_size == 0
 	{
-		free (ptr, allocator, allocator_data);
+		free (ptr, allocator);
 	
 		return null;
 	}
 
-	return allocator (.RESIZE, new_size, old_size, ptr, allocator_data);
+	return allocator.proc (.RESIZE, new_size, old_size, ptr, allocator.data);
 }
 
-free :: (ptr : *void, allocator : Allocator, allocator_data := null)
+free :: (ptr : *void, allocator : Allocator)
 {
-	assert (allocator != null, "Allocator is null.");
-	if ptr then allocator (.FREE, 0, 0, ptr, allocator_data);
+	assert (allocator.proc != null, "Allocator is null.");
+	if ptr then allocator.proc (.FREE, 0, 0, ptr, allocator.data);
 }
 
-free :: (array : []$T, allocator : Allocator, allocator_data := null)
+free :: (array : []$T, allocator : Allocator)
 {
-	inline free (array.data, allocator, allocator_data);
+	inline free (array.data, allocator);
 }
 
-free :: (str : string, allocator : Allocator, allocator_data := null)
+free :: (str : string, allocator : Allocator)
 {
-	inline free (str.data, allocator, allocator_data);
+	inline free (str.data, allocator);
 }
 
-alloc_item :: ($T : Type, allocator : Allocator, allocator_data := null, $initialize := true) -> *T #must
+alloc_item :: ($T : Type, allocator : Allocator $initialize := true) -> *T #must
 {
-	ptr := cast (*T) alloc (size_of (T), allocator, allocator_data);
+	ptr := cast (*T) alloc (size_of (T), allocator);
 #if initialize then initialize_item (ptr);
 
 	return ptr;
 }
 
 // Allocating an array of 0 elements returns an array with a null data pointer and count = 0.
-alloc_array :: inline ($T : Type, count : s64, allocator : Allocator, allocator_data := null, $initialize := true) -> []T #must
+alloc_array :: inline ($T : Type, count : s64, allocator : Allocator, $initialize := true) -> []T #must
 {
 	assert (count >= 0, "Invalid count (got %, expected count >= 0).", count);
 
 	result : []T = ---;
 	result.count = count;
-	result.data  = cast (*T) alloc (size_of (T) * count, allocator, allocator_data);
+	result.data  = cast (*T) alloc (size_of (T) * count, allocator);
 
 	if count > 0
 	{
@@ -662,9 +662,9 @@ alloc_array :: inline ($T : Type, count : s64, allocator : Allocator, allocator_
 	return result;
 }
 
-alloc_string :: inline (count : s64, allocator : Allocator, allocator_data := null, $initialize := false) -> string #must
+alloc_string :: inline (count : s64, allocator : Allocator, $initialize := false) -> string #must
 {
-	array := inline alloc_array (u8, count, allocator, allocator_data, initialize);
+	array := inline alloc_array (u8, count, allocator, initialize);
 	result : string = ---;
 	result.count = array.count;
 	result.data  = array.data;
@@ -674,14 +674,13 @@ alloc_string :: inline (count : s64, allocator : Allocator, allocator_data := nu
 
 // Array
 
-init_array :: inline (array : *[..]$T, capacity : s64, allocator : Allocator, allocator_data := null)
+init_array :: inline (array : *[..]$T, capacity : s64, allocator : Allocator)
 {
 	assert (capacity >= 0);
 	array.data = alloc (size_of (T) * capacity, allocator, allocator_data);
 	array.count = 0;
 	array.allocated = capacity;
 	array.allocator = allocator;
-	array.allocator_data = allocator_data;
 }
 
 clear_array :: inline (array : *[..]$T)
@@ -691,7 +690,7 @@ clear_array :: inline (array : *[..]$T)
 
 reset_array :: inline (array : *[..]$T)
 {
-	free (array.data, array.allocator, array.allocator_data);
+	free (array.data, array.allocator);
 	array.data = null;
 	array.count = 0;
 	array.allocated = 0;
@@ -699,9 +698,10 @@ reset_array :: inline (array : *[..]$T)
 
 grow_array :: inline (array : *[..]$T, additional_elements : s64)
 {
-	assert (array.allocator != null, "Array is not initialized (allocator is null). In the modules provided with the Jai compiler, a null allocator is treated as the context's allocator, but we prefer being explicit with what allocators are used.");
+	assert (array.allocator.proc != null,
+		"Array is not initialized (allocator is null). In the modules provided with the Jai compiler, a null allocator is treated as the context's allocator, but we prefer being explicit with what allocators are used, so you should specify it explicitly on initialization.");
 	new_capacity := array.allocated + additional_elements;
-	new_data := realloc (array.data, size_of (T) * array.allocated, size_of (T) * new_capacity, array.allocator, array.allocator_data);
+	new_data := realloc (array.data, size_of (T) * array.allocated, size_of (T) * new_capacity, array.allocator);
 	array.data = new_data;
 	array.allocated = new_capacity;
 }
@@ -869,34 +869,34 @@ to_string :: (char : u8) -> string #expand
 	return result;
 }
 
-clone_string :: (cstr : *u8, allocator : Allocator, allocator_data := null) -> string #must
+clone_string :: (cstr : *u8, allocator : Allocator) -> string #must
 {
-	return inline clone_string (to_string (cstr), allocator, allocator_data);
+	return inline clone_string (to_string (cstr), allocator);
 }
 
-clone_string :: (str : string, allocator : Allocator, allocator_data := null) -> string #must
+clone_string :: (str : string, allocator : Allocator) -> string #must
 {
 	result : string;
-	result.data  = cast (*u8) alloc (str.count, allocator, allocator_data);
+	result.data  = cast (*u8) alloc (str.count, allocator);
 	result.count = str.count;
 	memcpy (result.data, str.data, str.count);
 
 	return result;
 }
 
-clone_to_array :: (str : string, allocator : Allocator, allocator_data := null) -> []u8 #must
+clone_to_array :: (str : string, allocator : Allocator) -> []u8 #must
 {
 	result : []u8;
-	result.data  = cast (*u8) alloc (str.count, allocator, allocator_data);
+	result.data  = cast (*u8) alloc (str.count, allocator);
 	result.count = str.count;
 	memcpy (result.data, str.data, str.count);
 
 	return result;
 }
 
-clone_to_cstring :: (str : string, allocator : Allocator, allocator_data := null) -> *u8 #must
+clone_to_cstring :: (str : string, allocator : Allocator) -> *u8 #must
 {
-	result := cast (*u8) alloc (str.count + 1, allocator, allocator_data);
+	result := cast (*u8) alloc (str.count + 1, allocator);
 	memcpy (result, str.data, str.count);
 	result[str.count] = 0;
 
@@ -931,17 +931,17 @@ to_lower :: inline (str : string)
 	}
 }
 
-clone_to_upper :: inline (str : string, allocator : Allocator, allocator_data := null) -> string #must
+clone_to_upper :: inline (str : string, allocator : Allocator) -> string #must
 {
-	result := clone_string (str, allocator, allocator_data);
+	result := clone_string (str, allocator);
 	to_upper (result);
 
 	return result;
 }
 
-clone_to_lower :: inline (str : string, allocator : Allocator, allocator_data := null) -> string #must
+clone_to_lower :: inline (str : string, allocator : Allocator) -> string #must
 {
-	result := clone_string (str, allocator, allocator_data);
+	result := clone_string (str, allocator);
 	to_lower (result);
 
 	return result;
@@ -1035,13 +1035,13 @@ starts_with :: (str : string, other : string) -> bool #must
 	return temp == other;
 }
 
-join :: (allocator : Allocator, allocator_data : *void, args : ..string) -> string #must
+join :: (allocator : Allocator, args : ..string) -> string #must
 {
 	count : s64;
 	for args
 		count += it.count;
 
-	result := alloc_string (count, allocator, allocator_data);
+	result := alloc_string (count, allocator);
 	offset : s64;
 	for args
 	{
@@ -1052,14 +1052,7 @@ join :: (allocator : Allocator, allocator_data : *void, args : ..string) -> stri
 	return result;
 }
 
-/*
-join :: (allocator : Allocator, args : ..string) -> string #must
-{
-	return inline join (allocator, null, ..args);
-}
-*/
-
-join_with_separator :: (allocator : Allocator, allocator_data : *void, separator : string, args : ..string) -> string #must
+join_with_separator :: (allocator : Allocator, separator : string, args : ..string) -> string #must
 {
 	count := 0;
 	for args
@@ -1068,8 +1061,8 @@ join_with_separator :: (allocator : Allocator, allocator_data : *void, separator
 		if it_index != args.count - 1 then count += separator.count;
 	}
 
-	result := alloc_string (count, allocator, allocator_data);
-	
+	result := alloc_string (count, allocator);
+
 	i := 0;
 	for args
 	{
@@ -1082,20 +1075,13 @@ join_with_separator :: (allocator : Allocator, allocator_data : *void, separator
 	return result;
 }
 
-/*
-join_with_separator :: (allocator : Allocator, separator : string, args : ..string) -> string #must
-{
-	return inline join_with_separator (allocator, null, separator, ..args);
-}
-*/
-
 // String Builder
 
 String_Builder :: [..]u8;
 
-init_string_builder :: inline (builder : *String_Builder, capacity : s64, allocator : Allocator, allocator_data := null)
+init_string_builder :: inline (builder : *String_Builder, capacity : s64, allocator : Allocator)
 {
-	inline init_array (builder, capacity, allocator, allocator_data);
+	inline init_array (builder, capacity, allocator);
 }
 
 reset_string_builder :: inline (builder : *String_Builder)
@@ -1127,12 +1113,12 @@ to_string :: inline (builder : String_Builder) -> string #must
 	return builder_to_string (builder);
 }
 
-builder_clone_to_string :: inline (builder : String_Builder, allocator : Allocator, allocator_data := null, $null_terminate := true) -> string #must
+builder_clone_to_string :: inline (builder : String_Builder, allocator : Allocator, $null_terminate := true) -> string #must
 {
 	result : string;
 #if null_terminate count := builder.count + 1;
 else               count := builder.count;
-	result.data  = cast (*u8) alloc (count, allocator, allocator_data);
+	result.data  = cast (*u8) alloc (count, allocator);
 	memcpy (result.data, builder.data, builder.count);
 	result.count = builder.count;
 #if null_terminate result.data[result.count] = 0;
@@ -1140,10 +1126,10 @@ else               count := builder.count;
 	return result;
 }
 
-builder_clone_to_cstring :: inline (builder : String_Builder, allocator : Allocator, allocator_data := null) -> *u8 #must
+builder_clone_to_cstring :: inline (builder : String_Builder, allocator : Allocator) -> *u8 #must
 {
 	result : *u8;
-	result = cast (*u8) alloc (builder.count + 1, allocator, allocator_data);
+	result = cast (*u8) alloc (builder.count + 1, allocator);
 	memcpy (result, builder.data, builder.count);
 	result[builder.count] = 0;
 
@@ -1312,7 +1298,7 @@ print_f64_to_builder :: (builder : *String_Builder, value : f64, digits_after_de
 {
 	buffer : [100]u8;
 	fmt : *u8;
-	if digits_after_decimal != -1 then fmt = format_string_to_cstring (temp_allocator, "%%.%f", digits_after_decimal);
+	if digits_after_decimal != -1 then fmt = format_string_to_cstring (TEMP, "%%.%f", digits_after_decimal);
 	else fmt = "%f";
 	stbsp_snprintf (buffer.data, buffer.count, fmt, value);
 	print_cstring_to_builder (builder, buffer.data);
@@ -1735,7 +1721,7 @@ print_line_to_builder :: (builder : *String_Builder, fmt : string, args : ..Any)
 
 print :: (fmt : string, args : ..Any)
 {
-	formatted := format_string (temp_allocator, fmt, ..args);
+	formatted := format_string (TEMP, fmt, ..args);
 	write_string (formatted);
 }
 
@@ -1756,37 +1742,24 @@ println :: (val : Any)
 }
 
 fstring :: format_string;
-format_string :: (allocator : Allocator, allocator_data : *void, fmt : string, args : ..Any) -> string #must
+format_string :: (allocator : Allocator, fmt : string, args : ..Any) -> string #must
 {
 	builder : String_Builder;
-	init_string_builder (*builder, fmt.count + 128, allocator, allocator_data);
+	init_string_builder (*builder, fmt.count + 10 * args.count, allocator);
 	print_to_builder (*builder, fmt, ..args);
 
 	return builder_to_string (builder);
 }
 
-// @Note (stefan): We have this version because the two allocators we use most of the time is heap_allocator and temp_allocator and they don't need allocator_data.
-// @Compiler_Bug (stefan): The compiler (beta 80) can't resolve between the overload above and the one below when trying to match the one above. It's fine for now because
-// we never use the first one, but if we end up needing it then we'll have to wait until the bug is fixed.
-format_string :: (allocator : Allocator, fmt : string, args : ..Any) -> string #must
-{
-	return inline format_string (allocator, null, fmt, ..args);
-}
-
 fcstring :: format_string_to_cstring;
-format_string_to_cstring :: (allocator : Allocator, allocator_data : *void, fmt : string, args : ..Any) -> *u8 #must
+format_string_to_cstring :: (allocator : Allocator, fmt : string, args : ..Any) -> *u8 #must
 {
 	builder : String_Builder;
-	init_string_builder (*builder, fmt.count + 128, allocator, allocator_data);
+	init_string_builder (*builder, fmt.count + 10 * arg.count, allocator);
 	print_to_builder (*builder, fmt, ..args);
 	print_char_to_builder (*builder, 0);
 
 	return builder.data;
-}
-
-format_string_to_cstring :: (allocator : Allocator, fmt : string, args : ..Any) -> *u8 #must
-{
-	return inline format_string_to_cstring (allocator, null, fmt, ..args);
 }
 
 // Any
@@ -2144,7 +2117,7 @@ default_hash :: (val : $T) -> u32 #must
 
 // Hash map
 
-init_map :: (map : *Hash_Map, capacity : s64, allocator : Allocator, allocator_data := null)
+init_map :: (map : *Hash_Map, capacity : s64, allocator : Allocator)
 {
 	capacity = next_power_of_two (capacity);
 	capacity = min (capacity, map.MIN_CAPACITY);
@@ -2153,15 +2126,14 @@ init_map :: (map : *Hash_Map, capacity : s64, allocator : Allocator, allocator_d
 	map.occupied = 0;
 	map.allocated = capacity;
 	map.allocator = allocator;
-	map.allocator_data = allocator_data;
-	map.entries = alloc_array (map.Entry, capacity, allocator, allocator_data);
+	map.entries = alloc_array (map.Entry, capacity, allocator);
 	for * map.entries
 		it.hash = map.NEVER_OCCUPIED_HASH;
 }
 
 reset_map :: (using map : *Hash_Map)
 {
-	free (entries.data, allocator, allocator_data);
+	free (entries.data, allocator);
 	entries.data = null;
 	entries.count = 0;
 	count = 0;
@@ -2183,7 +2155,7 @@ expand_map :: (map : *Hash_Map)
 	new_capacity := map.allocated * 2;
 	new_capacity = max (new_capacity, map.MIN_CAPACITY);
 	
-	map.entries = alloc_array (map.Entry, new_capacity, map.allocator, map.allocator_data);
+	map.entries = alloc_array (map.Entry, new_capacity, map.allocator);
 	map.count = 0;
 	map.occupied = 0;
 	map.allocated = new_capacity;
@@ -2192,7 +2164,7 @@ expand_map :: (map : *Hash_Map)
 		if entry.hash >= map.FIRST_OCCUPIED_HASH
 			insert_into_map (map, entry.key, entry.value);
 	}
-	free (old_entries.data, map.allocator, map.allocator_data);
+	free (old_entries.data, map.allocator);
 }
 
 insert_into_map :: (map : *Hash_Map, key : map.TKey, $initialize := true) -> *map.TVal #must, was_present : bool

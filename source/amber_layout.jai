@@ -76,9 +76,9 @@ text_layout_exists :: inline (id : Text_Layout_ID) -> bool #must
 text_layout_init :: inline (layout_id : Text_Layout_ID, capacity : s64)
 {
 	using layout := get_text_layout (layout_id);
-	init_array (*rects, capacity, heap_allocator);
-	init_array (*wrapped_lines, capacity / 100, heap_allocator);
-	init_array (*colors, capacity / 10, heap_allocator);
+	init_array (*rects, capacity, HEAP);
+	init_array (*wrapped_lines, capacity / 100, HEAP);
+	init_array (*colors, capacity / 10, HEAP);
 }
 
 text_layout_reset :: inline (layout_id : Text_Layout_ID)

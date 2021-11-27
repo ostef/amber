@@ -2,15 +2,15 @@
 // on, we might make it a more complex data structure that is more efficient.
 String_Builder :: [..]u8;
 
-init_string_builder :: (builder : *String_Builder, capacity : s64, allocator : Allocator, allocator_data := null)
+init_string_builder :: (builder : *String_Builder, capacity : s64, allocator : Allocator)
 {
-	inline init_array (builder, capacity, allocator, allocator_data);
+	inline init_array (builder, capacity, allocator);
 }
 
 // @Note (stefan): We could use #bake_arguments here...
-make_string_builder :: (capacity : s64, allocator : Allocator, allocator_data := null) -> String_Builder #must
+make_string_builder :: (capacity : s64, allocator : Allocator) -> String_Builder #must
 {
-	return inline make_array (u8, capacity, allocator, allocator_data);
+	return inline make_array (u8, capacity, allocator);
 }
 
 // For us, reset means "free the data and set everything to 0 except the allocator".
@@ -50,12 +50,12 @@ builder_to_cstring :: (builder : *String_Builder) -> *u8 #must
 	return builder.data;
 }
 
-builder_clone_to_string :: (builder : String_Builder, allocator : Allocator, allocator_data := null, $null_terminate := true) -> string #must
+builder_clone_to_string :: (builder : String_Builder, allocator : Allocator, $null_terminate := true) -> string #must
 {
 	result : string;
 #if null_terminate count := builder.count + 1;
 else               count := builder.count;
-	result.data  = cast (*u8) alloc (count, allocator, allocator_data);
+	result.data  = cast (*u8) alloc (count, allocator);
 	memcpy (result.data, builder.data, builder.count);
 	result.count = builder.count;
 #if null_terminate result.data[result.count] = 0;
@@ -63,10 +63,10 @@ else               count := builder.count;
 	return result;
 }
 
-builder_clone_to_cstring :: (builder : String_Builder, allocator : Allocator, allocator_data := null) -> *u8 #must
+builder_clone_to_cstring :: (builder : String_Builder, allocator : Allocator) -> *u8 #must
 {
 	result : *u8;
-	result = cast (*u8) alloc (builder.count + 1, allocator, allocator_data);
+	result = cast (*u8) alloc (builder.count + 1, allocator);
 	memcpy (result, builder.data, builder.count);
 	result[builder.count] = 0;
 

@@ -33,7 +33,7 @@ get_hooks :: inline (extension_id : Extension_ID) -> *Amber_Hooks #must
 load_extension :: (filename : string) -> bool, Extension_ID
 {
 	if !filename then return false, 0;
-	if !extensions.allocator then extensions.allocator = heap_allocator;
+	if !extensions.allocator.proc then extensions.allocator = HEAP;
 	extension : *Extension;
 	extension_id : Extension_ID;
 	

@@ -1,10 +1,3 @@
-// @Note (stefan): Basic array procedures. This kind of thing is provided in the
-// Basic module, but we have our naming conventions and slightly different ways
-// of doing things. For example, we want procedures that allocate or need an allocator
-// to take a non default argument Allocator as parameter. Since this will be the
-// fundations of our biggest projects, we want it to be clear, and unambiguous, which
-// to me is often not the case in (beta) Basic.
-
 slice :: (array : []$T, start : s64, count : s64) -> []T #must
 {
 	if array.count == 0
@@ -38,32 +31,31 @@ advance :: (array : []$T, count := 1) -> []T #must
 	return result;
 }
 
-clone_array_as_resizable :: (array : []$T, capacity : int, allocator : Allocator, allocator_data := null) -> [..]T #must
+clone_array_as_resizable :: (array : []$T, capacity : int, allocator : Allocator) -> [..]T #must
 {
 	assert (capacity >= 0, "Invalid capacity (got %, expected capacity >= 0).", capacity);
 
 	count := array.count;
 	if capacity < count then count = capacity;
 	result : [..]T;
-	result.data           = cast (*T) alloc (capacity * size_of (T), allocator, allocator_data);
+	result.data           = cast (*T) alloc (capacity * size_of (T), allocator);
 	memcpy (result.data, array.data, count * size_of (T));
 	result.count          = count;
 	result.allocated      = capacity;
 	result.allocator      = allocator;
-	result.allocator_data = allocator_data;
 
 	return result;
 }
 
-clone_array_as_resizable :: (array : []$T, allocator : Allocator, allocator_data := null) -> [..]T #must
+clone_array_as_resizable :: (array : []$T, allocator : Allocator) -> [..]T #must
 {
-	return inline clone_array_as_resizable (array, array.count, allocator, allocator_data);
+	return inline clone_array_as_resizable (array, array.count, allocator);
 }
 
-clone_array :: (array : []$T, allocator : Allocator, allocator_data := null) -> []T #must
+clone_array :: (array : []$T, allocator : Allocator) -> []T #must
 {
 	result : []T;
-	result.data  = cast (*T) alloc (array.count * size_of (T), allocator, allocator_data);
+	result.data  = cast (*T) alloc (array.count * size_of (T), allocator);
 	memcpy (result.data, array.data, array.count * size_of (T));
 	result.count = array.count;
 
@@ -77,21 +69,20 @@ copy_array :: (destination : *[..]$T, source : []T)
 	destination.count = source.count;
 }
 
-init_array :: (array : *[..]$T, capacity : int, allocator : Allocator, allocator_data := null)
+init_array :: (array : *[..]$T, capacity : int, allocator : Allocator)
 {
 	assert (capacity >= 0, "Invalid capacity (got %, expected capacity >= 0).", capacity);
 
-	array.data           = cast (*T) alloc (capacity * size_of (T), allocator, allocator_data);
+	array.data           = cast (*T) alloc (capacity * size_of (T), allocator);
 	array.count          = 0;
 	array.allocated      = capacity;
 	array.allocator      = allocator;
-	array.allocator_data = allocator_data;
 }
 
-make_array :: ($T : Type, capacity : int, allocator : Allocator, allocator_data := null) -> [..]T #must
+make_array :: ($T : Type, capacity : int, allocator : Allocator) -> [..]T #must
 {
 	result : [..]T = ---;
-	inline init_array (*result, capacity, allocator, allocator_data);
+	inline init_array (*result, capacity, allocator);
 
 	return result;
 }
@@ -100,7 +91,7 @@ make_array :: ($T : Type, capacity : int, allocator : Allocator, allocator_data 
 // remove all elements without deallocating.
 reset_array :: (array : *[..]$T)
 {
-	free (array.data, array.allocator, array.allocator_data);
+	free (array.data, array.allocator);
 	array.data      = null;
 	array.count     = 0;
 	array.allocated = 0;
@@ -252,7 +243,7 @@ pop_off_array :: (array : *[..]$T) -> T
 
 resize_array :: (array : *[..]$T, new_capacity : int)
 {
-	assert (array.allocator != null, "Array is not initialized.");
+	assert (array.allocator.proc != null, "Array is not initialized.");
 	assert (new_capacity >= 0, "Invalid new_capacity (got %, expected new_capacity >= 0).", new_capacity);
 	if new_capacity == array.allocated then return;
 
@@ -262,7 +253,7 @@ resize_array :: (array : *[..]$T, new_capacity : int)
 	}
 	else
 	{
-		array.data      = cast (*T) realloc (array.data, size_of (T) * array.allocated, size_of (T) * new_capacity, array.allocator, array.allocator_data);
+		array.data      = cast (*T) realloc (array.data, size_of (T) * array.allocated, size_of (T) * new_capacity, array.allocator);
 		array.count     = min (array.count, new_capacity);
 		array.allocated = new_capacity;
 	}

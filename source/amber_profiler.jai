@@ -53,9 +53,9 @@ find_or_add_profiled_block :: (block_name : string) -> *Profiled_Block #must
 	line           := context.stack_trace.info.location.line_number;
 	id : string;
 	if block_name
-		id = fstring (temp_allocator, "%:%:%:%", filepath, procedure_name, line, block_name);
+		id = fstring (TEMP, "%:%:%:%", filepath, procedure_name, line, block_name);
 	else
-		id = fstring (temp_allocator, "%:%:%", filepath, procedure_name, line);
+		id = fstring (TEMP, "%:%:%", filepath, procedure_name, line);
 	
 	ptr := get_pointer (*profiled_blocks, id);
 	if !ptr
@@ -73,7 +73,7 @@ profile :: (block_name := "") #expand
 {
 #if ENABLE_PROFILING
 {
-	assert (profiled_blocks.allocator != null, "Profiler is not initialized.");
+	assert (profiled_blocks.allocator.proc != null, "Profiler is not initialized.");
 	procedure_info := context.stack_trace.info;
 	`__profiled_block := find_or_add_profiled_block (block_name);
 	__profiled_block.number_of_times_profiled += 1;

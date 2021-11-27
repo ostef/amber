@@ -57,41 +57,41 @@ C_PREPROCESSOR_DIRECTIVES :: string.[ "include", "if", "else", "elif", "endif", 
 	nl :: print_newline_to_builder;
 	
 	builder : String_Builder;
-	init_string_builder (*builder, 1000, temp_allocator);
+	init_string_builder (*builder, 1000, TEMP);
 	ln (*builder, "C_Control_Keyword :: enum\n{");
 	for C_CONTROL_KEYWORDS
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
 	ln (*builder, "C_Storage_Type_Keyword :: enum\n{");
 	for C_STORAGE_TYPE_KEYWORDS
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
 	ln (*builder, "C_Type_Keyword :: enum\n{");
 	for C_TYPE_KEYWORDS
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
 	
 	ln (*builder, "C_Function_Keyword :: enum\n{");
 	for C_FUNCTION_KEYWORDS
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
 	ln (*builder, "C_Keyword :: enum\n{");
 	for C_OTHER_KEYWORDS
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
 	ln (*builder, "C_Preprocessor_Directive :: enum\n{");
 	for C_PREPROCESSOR_DIRECTIVES
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	

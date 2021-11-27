@@ -213,7 +213,7 @@ main :: ()
 		platform_open_error_box ("Could not load font '%'.", FONT_NAME);
 		return;
 	}
-	str := platform_read_entire_file ("some_file.txt", heap_allocator);
+	str := platform_read_entire_file ("some_file.txt", HEAP);
 	buffer : Buffer;
 	start := platform_get_time ();
 	init_buffer (*buffer, str.count * 2);
@@ -229,8 +229,8 @@ main :: ()
 	layout.buffer = *buffer;
 	layout.font = *font;
 	layout.font_height = 16;
-	init_array (*layout.rects, buffer.allocated, heap_allocator);
-	init_array (*layout.wrapped_lines, buffer.lines.allocated, heap_allocator);
+	init_array (*layout.rects, buffer.allocated, HEAP);
+	init_array (*layout.wrapped_lines, buffer.lines.allocated, HEAP);
 
 	cursor_index := 0;
 	draw_set_clear_color (rgba (10, 10, 10, 255));
@@ -322,7 +322,7 @@ main :: ()
 			*font,
 			16,
 			vec2f (0, xx (viewport.height - (page.ascent - page.descent))),
-			fstring (temp_allocator, "Ln %, Col % ~ % line(s)", buffer.line_index + 1, buffer.column_index + 1, buffer.lines.count),
+			fstring (TEMP, "Ln %, Col % ~ % line(s)", buffer.line_index + 1, buffer.column_index + 1, buffer.lines.count),
 			RGBA_BLACK
 		);
 		draw_flush ();

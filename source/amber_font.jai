@@ -75,7 +75,7 @@ font_init :: inline ()
 {
 	ft_error := FT_Init_FreeType (*ft);
 	assert (ft_error == FT_Err_Ok, "Could not initialize FreeType.");
-	init_slot_array (*fonts, 10, heap_allocator);
+	init_slot_array (*fonts, 10, HEAP);
 	glyph_shader = create_shader (VERTEX_SHADER, GLYPH_FRAGMENT_SHADER);
 	assert (glyph_shader != 0, "Could not create glyph shader.");
 }
@@ -83,7 +83,7 @@ font_init :: inline ()
 font_load_from_file :: (filename : string) -> bool, Font_ID
 {
 	ft_face : FT_Face;
-	ft_error := FT_New_Face (ft, clone_to_cstring (filename, temp_allocator), 0, *ft_face);
+	ft_error := FT_New_Face (ft, clone_to_cstring (filename, TEMP), 0, *ft_face);
 	if ft_error != FT_Err_Ok
 	{
 		//log_error ("Could not load font '%': (FreeType) '%'.", filename, ft_error);
@@ -92,9 +92,9 @@ font_load_from_file :: (filename : string) -> bool, Font_ID
 	}
 	font, index := insert_into_slot_array (*fonts);
 	font.id = cast (Font_ID) index + 1;
-	font.filename = clone_string (filename, heap_allocator);
+	font.filename = clone_string (filename, HEAP);
 	font.ft_face = ft_face;
-	init_map (*font.pages, 10, heap_allocator);
+	init_map (*font.pages, 10, HEAP);
 
 	return true, cast (Font_ID) index + 1;
 }
@@ -102,7 +102,7 @@ font_load_from_file :: (filename : string) -> bool, Font_ID
 
 cleanup_font :: (using font : *Font)
 {
-	free (filename, heap_allocator);
+	free (filename, HEAP);
 	filename = "";
 	FT_Done_Face (ft_face);
 	ft_face = null;
@@ -123,8 +123,8 @@ load_page :: (using font : *Font, height : u32) -> *Font_Page
 	
 	page.font   = font;
 	page.height = height;
-	init_array (*page.atlases, 3, heap_allocator);
-	init_map (*page.glyphs, 512, heap_allocator);
+	init_array (*page.atlases, 3, HEAP);
+	init_map (*page.glyphs, 512, HEAP);
 	space_glyph := load_glyph (page, #char " ");
 	page.ascent        = xx (ft_face.size.metrics.ascender >> 6);
 	page.descent       = xx (ft_face.size.metrics.descender >> 6);

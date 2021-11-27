@@ -14,10 +14,10 @@ programs_data : [..]Amber_Program_Data;
 amber_add_workspace :: (workspace : Workspace)
 {
 	if !programs_data.data
-		init_array (*programs_data, 10, temp_allocator);
+		init_array (*programs_data, 10, TEMP);
 	data := push_into_array (*programs_data, initialize = true);
 	data.workspace = workspace;
-	init_array (*data.command_headers, 50, temp_allocator);
+	init_array (*data.command_headers, 50, TEMP);
 }
 
 amber_handle_compiler_message :: (message : *Compiler.Message)
@@ -90,7 +90,7 @@ generate_command_wrapper :: (header : *Compiler.Code_Procedure_Header) -> string
 	first_optional_argument := get_first_optional_argument (header);
 	
 	builder : String_Builder;
-	init_string_builder (*builder, 1000, temp_allocator);
+	init_string_builder (*builder, 1000, TEMP);
 	pr :: print_to_builder;
 	ln :: print_line_to_builder;
 	nl :: print_newline_to_builder;
@@ -136,7 +136,7 @@ generate_command_wrapper :: (header : *Compiler.Code_Procedure_Header) -> string
 		case .STRING;	typename = "string";
 		case;
 			Compiler.compiler_report (Compiler.get_filename (header), header.l0, header.c0,
-				fstring (temp_allocator, "Command procedure has arguments with type that we don't handle. Argument type is %. Handled argument types are: INTEGER, BOOL, FLOAT and STRING.", arg.type));
+				fstring (TEMP, "Command procedure has arguments with type that we don't handle. Argument type is %. Handled argument types are: INTEGER, BOOL, FLOAT and STRING.", arg.type));
 		}
 
 		if is_optional
@@ -170,7 +170,7 @@ generate_command_wrapper :: (header : *Compiler.Code_Procedure_Header) -> string
 generate_register_all_commands_proc :: (using data : *Amber_Program_Data) -> string #must
 {
 	builder : String_Builder;
-	init_string_builder (*builder, 1000, temp_allocator);
+	init_string_builder (*builder, 1000, TEMP);
 	pr :: print_to_builder;
 	ln :: print_line_to_builder;
 	nl :: print_newline_to_builder;

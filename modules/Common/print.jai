@@ -26,7 +26,7 @@ Print_Proc :: #type (builder : *String_Builder, item : Any, format : string);
 
 add_print_procedure :: ($T : Type, proc : Print_Proc) -> bool
 {
-	if !custom_print_procs.allocator then custom_print_procs.allocator = heap_allocator;
+	if !custom_print_procs.allocator.proc then custom_print_procs.allocator = HEAP;
 	
 	info := type_info (T);
 	if info.type != .STRUCT then return false;
@@ -65,8 +65,8 @@ cprintln :: (str : *u8) #c_call
 
 print :: (fmt : string, args : ..Any)
 {
-	formatted := format_string (heap_allocator, fmt, ..args);	// @Note (stefan): I've had problems with the temporary storage overflowing when printing a lot
-	defer free (formatted, heap_allocator);
+	formatted := format_string (HEAP, fmt, ..args);	// @Note (stefan): I've had problems with the temporary storage overflowing when printing a lot
+	defer free (formatted, HEAP);
 	write_string (formatted);
 }
 
@@ -87,34 +87,23 @@ println :: (val : Any)
 }
 
 fstring :: format_string;	// Had the idea to use this name because format_string is quite long
-format_string :: (allocator : Allocator, allocator_data : *void, fmt : string, args : ..Any) -> string #must
+format_string :: (allocator : Allocator, fmt : string, args : ..Any) -> string #must
 {
-	//if args.count == 0 then return clone_string (fmt, allocator, allocator_data);
+	//if args.count == 0 then return clone_string (fmt, allocator);
 
-	builder := make_string_builder (fmt.count + 128, allocator, allocator_data);
+	builder := make_string_builder (fmt.count + 128, allocator);
 	print_to_builder (*builder, fmt, ..args);
 
 	return builder_to_string (builder);
 }
 
-// @Note (stefan): We have this version because the two allocators we use most of the time is heap_allocator and temp_allocator and they don't need allocator_data.
-format_string :: (allocator : Allocator, fmt : string, args : ..Any) -> string #must
-{
-	return inline format_string (allocator, null, fmt, ..args);
-}
-
 fcstring :: format_string_to_cstring;
-format_string_to_cstring :: (allocator : Allocator, allocator_data : *void, fmt : string, args : ..Any) -> *u8 #must
+format_string_to_cstring :: (allocator : Allocator, fmt : string, args : ..Any) -> *u8 #must
 {
-	builder := make_string_builder (fmt.count + 128, allocator, allocator_data);
+	builder := make_string_builder (fmt.count + 128, allocator);
 	print_to_builder (*builder, fmt, ..args);
 
 	return builder_to_cstring (*builder);
-}
-
-format_string_to_cstring :: (allocator : Allocator, fmt : string, args : ..Any) -> *u8 #must
-{
-	return inline format_string_to_cstring (allocator, null, fmt, ..args);
 }
 
 print_char_to_builder :: (builder : *String_Builder, char : u8)
@@ -279,7 +268,7 @@ print_f64_to_builder :: (builder : *String_Builder, value : f64, digits_after_de
 {
 	buffer : [100]u8;
 	fmt : *u8;
-	if digits_after_decimal != -1 then fmt = format_string_to_cstring (temp_allocator, "%%.%f", digits_after_decimal);
+	if digits_after_decimal != -1 then fmt = format_string_to_cstring (TEMP, "%%.%f", digits_after_decimal);
 	else fmt = "%f";
 	stbsp_snprintf (buffer.data, buffer.count, fmt, value);
 	print_cstring_to_builder (builder, buffer.data);

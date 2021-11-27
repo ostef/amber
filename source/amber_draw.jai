@@ -7,7 +7,7 @@
 create_texture_from_file :: inline (filename : string, keep_bound := false) -> Texture_Handle #must
 {
 	width, height, channels : s32;
-	data := stbi_load (clone_to_cstring (filename, temp_allocator), *width, *height, *channels, 4);
+	data := stbi_load (clone_to_cstring (filename, TEMP), *width, *height, *channels, 4);
 	if !data then return 0;
 	
 	return create_texture (xx width, xx height, 4, data, keep_bound);
@@ -117,12 +117,12 @@ create_shader :: (vertex_src : string, fragment_src : string) -> Shader_Handle #
 {
 	vso := glCreateShader (GL_VERTEX_SHADER);
 	defer glDeleteShader (vso);
-	glShaderSource (vso, 1, *clone_to_cstring (vertex_src, temp_allocator), null);
+	glShaderSource (vso, 1, *clone_to_cstring (vertex_src, TEMP), null);
 	glCompileShader (vso);
 
 	fso := glCreateShader (GL_FRAGMENT_SHADER);
 	defer glDeleteShader (fso);
-	glShaderSource (fso, 1, *clone_to_cstring (fragment_src, temp_allocator), null);
+	glShaderSource (fso, 1, *clone_to_cstring (fragment_src, TEMP), null);
 	glCompileShader (fso);
 
 	shader := glCreateProgram ();

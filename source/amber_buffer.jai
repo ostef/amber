@@ -77,23 +77,23 @@ buffer_init :: (buffer_id : Buffer_ID, capacity : s64)
 	using buffer := get_buffer (buffer_id);
 	initialize_item (buffer);
 	id = buffer_id;
-	data = alloc (size_of (u32) * capacity, heap_allocator);
+	data = alloc (size_of (u32) * capacity, HEAP);
 	gap       = capacity;
 	allocated = capacity;
-	init_array (*other_cursors, 20, heap_allocator);
-	init_array (*lines, 5000, heap_allocator);
+	init_array (*other_cursors, 20, HEAP);
+	init_array (*lines, 5000, HEAP);
 	push_into_array (*lines, 0);
 	
-	init_array (*history.edits, 1000, heap_allocator);
-	init_array (*history.edit_buffer, capacity, heap_allocator);
+	init_array (*history.edits, 1000, HEAP);
+	init_array (*history.edit_buffer, capacity, HEAP);
 }
 
 buffer_reset :: (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
-	free (filename, heap_allocator);
-	free (name, heap_allocator);
-	free (data, heap_allocator);
+	free (filename, HEAP);
+	free (name, HEAP);
+	free (data, HEAP);
 	reset_array (*other_cursors);
 	reset_array (*lines);
 	reset_array (*history.edits);
@@ -110,11 +110,11 @@ buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
 	back  := count - offset;
 	new_capacity := allocated + additional_capacity;
 	new_gap  := new_capacity - count;
-	new_data := cast (*u32) alloc (size_of (u32) * new_capacity, heap_allocator);
+	new_data := cast (*u32) alloc (size_of (u32) * new_capacity, HEAP);
 	memcpy (new_data, data, offset * size_of (u32));
 	memcpy (new_data + offset + new_gap, data + offset + gap, back * size_of (u32));
 	
-	free (data, heap_allocator);
+	free (data, HEAP);
 	data      = new_data;
 	allocated = new_capacity;
 	gap       = new_gap;
@@ -124,8 +124,8 @@ buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
 {
 	// @Note (stefan): We always use the full filename because the working directory
 	// might change later.
-	full_filename := platform_get_full_filename (filename, heap_allocator);
-	str, ok := platform_read_entire_file (full_filename, temp_allocator);
+	full_filename := platform_get_full_filename (filename, HEAP);
+	str, ok := platform_read_entire_file (full_filename, TEMP);
 	if !ok then return false;
 	buffer_clear (buffer_id);
 	utf8_str := utf8 (str);
@@ -146,7 +146,7 @@ buffer_write_to_file :: inline (buffer_id : Buffer_ID) -> bool
 	utf8_str : string;
 	for buffer
 		utf8_str.count += utf8_codepoint_size (it);
-	utf8_str.data = alloc (utf8_str.count, temp_allocator);
+	utf8_str.data = alloc (utf8_str.count, TEMP);
 	byte_offset := 0;
 	for buffer
 		byte_offset += utf8_encode (advance (to_array (utf8_str), byte_offset), it);
@@ -229,36 +229,36 @@ buffer_set_language :: inline (buffer_id : Buffer_ID, language_id : Language_ID)
 }
 @Amber_API
 
-buffer_get_filename :: inline (buffer_id : Buffer_ID, allocator : Allocator, allocator_data := null) -> string #must
+buffer_get_filename :: inline (buffer_id : Buffer_ID, allocator : Allocator) -> string #must
 {
 	using buffer := get_buffer (buffer_id);
 	
-	return clone_string (filename, allocator, allocator_data);
+	return clone_string (filename, allocator);
 }
 @Amber_API
 
 buffer_set_filename :: inline (buffer_id : Buffer_ID, new_filename : string)
 {
 	using buffer := get_buffer (buffer_id);
-	free (filename, heap_allocator);
-	filename = clone_string (new_filename, heap_allocator);
+	free (filename, HEAP);
+	filename = clone_string (new_filename, HEAP);
 	buffer_set_language (buffer_id, language_detect (filename));
 }
 @Amber_API
 
-buffer_get_name :: inline (buffer_id : Buffer_ID, allocator : Allocator, allocator_data := null) -> string #must
+buffer_get_name :: inline (buffer_id : Buffer_ID, allocator : Allocator) -> string #must
 {
 	using buffer := get_buffer (buffer_id);
 	
-	return clone_string (name, allocator, allocator_data);
+	return clone_string (name, allocator);
 }
 @Amber_API
 
 buffer_set_name :: inline (buffer_id : Buffer_ID, name : string)
 {
 	buffer := get_buffer (buffer_id);
-	free (buffer.name, heap_allocator);
-	buffer.name = clone_string (name, heap_allocator);
+	free (buffer.name, HEAP);
+	buffer.name = clone_string (name, HEAP);
 }
 @Amber_API
 

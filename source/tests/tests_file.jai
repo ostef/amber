@@ -19,11 +19,11 @@ main :: ()
 	}
 	
 	println ("Beginning file tests.");
-	root := platform_list_files_in_directory ("dir", temp_allocator);
+	root := platform_list_files_in_directory ("dir", TEMP);
 	assert (root != null, "Root was null.");
 	assert (root.first_child != null, "first child was null.");
 	builder : String_Builder;
-	builder.allocator = temp_allocator;
+	builder.allocator = TEMP;
 	print_tree (*builder, root);
 	print (to_string (builder));
 	assert (to_string (builder) == EXPECTED_RESULT, "Expected\n%\n, got\n%\n", EXPECTED_RESULT, to_string (builder));

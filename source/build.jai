@@ -31,7 +31,7 @@ amber_api_procedures  : [..]*Compiler.Code_Procedure_Header;
 
 report_error :: (fmt : string, args : ..Any, location := #caller_location)
 {
-	str := fstring (temp_allocator, fmt, ..args);
+	str := fstring (TEMP, fmt, ..args);
 	Compiler.compiler_report (str, location);
 }
 
@@ -64,9 +64,9 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 	Compiler.compiler_begin_intercept (workspace);
 	for files
 		Compiler.add_build_file (it, workspace);
-	Compiler.add_build_string (fstring (temp_allocator, "ENABLE_PROFILING :: %;", profile), workspace);
-	Compiler.add_build_string (fstring (temp_allocator, "RELEASE :: %;", release), workspace);
-	Compiler.add_build_string (fstring (temp_allocator, "DEBUG   :: %;", !release), workspace);
+	Compiler.add_build_string (fstring (TEMP, "ENABLE_PROFILING :: %;", profile), workspace);
+	Compiler.add_build_string (fstring (TEMP, "RELEASE :: %;", release), workspace);
+	Compiler.add_build_string (fstring (TEMP, "DEBUG   :: %;", !release), workspace);
 	Compiler.add_build_string ("IS_IN_METAPROGRAM :: false;", workspace);
 	
 	while true
@@ -109,11 +109,12 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 				{
 					Sort.quick_sort (amber_api_procedures, (a, b) => compare_strings (a.name, b.name));
 
-					builder := make_string_builder (5000, temp_allocator);
+					builder := make_string_builder (5000, TEMP);
 					ln (*builder, "// This file was automatically generated.");
 					nl (*builder);
 					ln (*builder, "Amber_Hooks :: struct #type_info_none\n{");
 					ln (*builder, "\tusing callbacks : Extension_Callbacks;");
+					ln (*builder, "\tHEAP : Allocator;");
 					nl (*builder);
 					
 					for header : amber_api_procedures
@@ -124,6 +125,7 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 
 					nl (*builder);
 					ln (*builder, "load_api :: (hooks : *Amber_Hooks)\n{");
+					ln (*builder, "hooks.HEAP = HEAP;");
 					for header : amber_api_procedures
 						ln (*builder, "\thooks.% = %;", header.name, header.name);
 					ln (*builder, "}");
@@ -153,14 +155,14 @@ build :: ()
 		}
 	}
 	
-	program_args := make_array (string, 10, temp_allocator);
+	program_args := make_array (string, 10, TEMP);
 	is_build_dir, is_int_dir, is_program_arg := false;
 	for user_args
 	{
 		if is_build_dir
 		{
 			if it[it.count - 1] != #char "/"
-				build_dir = join (temp_allocator, it, "/");
+				build_dir = join (TEMP, it, "/");
 			else
 				build_dir = it;
 			println ("Changed build directory to '%'.", build_dir);
@@ -169,7 +171,7 @@ build :: ()
 		else if is_int_dir
 		{
 			if it[it.count - 1] != #char "/"
-				int_dir = join (temp_allocator, it, "/");
+				int_dir = join (TEMP, it, "/");
 			else
 				int_dir = it;
 			println ("Changed intermediate directory to '%'.", int_dir);
@@ -202,16 +204,16 @@ build :: ()
 	if target ==
 	{
 	case .WINDOWS;
-		build_dir = join (temp_allocator, build_dir, "win");
-		int_dir   = join (temp_allocator, int_dir, "win");
+		build_dir = join (TEMP, build_dir, "win");
+		int_dir   = join (TEMP, int_dir, "win");
 	
 	case .LINUX;
-		build_dir = join (temp_allocator, build_dir, "linux");
-		int_dir   = join (temp_allocator, int_dir, "linux");
+		build_dir = join (TEMP, build_dir, "linux");
+		int_dir   = join (TEMP, int_dir, "linux");
 	
 	case .MACOS;
-		build_dir = join (temp_allocator, build_dir, "macos");
-		int_dir   = join (temp_allocator, int_dir, "macos");
+		build_dir = join (TEMP, build_dir, "macos");
+		int_dir   = join (TEMP, int_dir, "macos");
 	
 	case;
 		report_error ("Unsupported target OS %.", target);
@@ -219,23 +221,23 @@ build :: ()
 	
 	if release
 	{
-		build_dir = join (temp_allocator, build_dir, "_release");
-		int_dir   = join (temp_allocator, int_dir, "_release");
+		build_dir = join (TEMP, build_dir, "_release");
+		int_dir   = join (TEMP, int_dir, "_release");
 	}
 	else
 	{
-		build_dir = join (temp_allocator, build_dir, "_debug");
-		int_dir   = join (temp_allocator, int_dir, "_debug");
+		build_dir = join (TEMP, build_dir, "_debug");
+		int_dir   = join (TEMP, int_dir, "_debug");
 	}
 
 	if profile
 	{
-		build_dir = join (temp_allocator, build_dir, "_profile");
-		int_dir   = join (temp_allocator, int_dir, "_profile");
+		build_dir = join (TEMP, build_dir, "_profile");
+		int_dir   = join (TEMP, int_dir, "_profile");
 	}
 
-	build_dir = join (temp_allocator, build_dir, "/");
-	int_dir   = join (temp_allocator, int_dir, "/");
+	build_dir = join (TEMP, build_dir, "/");
+	int_dir   = join (TEMP, int_dir, "/");
 	println ("Build        directory: '%'.", build_dir);
 	println ("Intermediate directory: '%'.", int_dir);
 	print ("\n");
@@ -245,7 +247,7 @@ build :: ()
 	// #filepath is 'something/source/', we want 'something/'
 	set_working_directory (strip_filename_from_path (#filepath));
 
-	init_array (*amber_api_procedures, 100, temp_allocator);
+	init_array (*amber_api_procedures, 100, TEMP);
 	app := Compiler.compiler_create_workspace (APP_OUTPUT_NAME);
 	{
 		options := Compiler.get_build_options (app);
@@ -275,7 +277,7 @@ build :: ()
 	all_extensions_build_success := true;
 	for workspace, i : extension_workspaces
 	{
-		extensions_build_success[i] = compile_workspace (workspace, join (temp_allocator, "source/", EXTENSIONS[i], ".jai"));
+		extensions_build_success[i] = compile_workspace (workspace, join (TEMP, "source/", EXTENSIONS[i], ".jai"));
 		all_extensions_build_success &= extensions_build_success[i];
 	}
 	
@@ -291,7 +293,7 @@ build :: ()
 
 	if app_build_success && !partial_build
 	{
-		exe_filename := join (temp_allocator, build_dir, APP_OUTPUT_NAME, ".exe");
+		exe_filename := join (TEMP, build_dir, APP_OUTPUT_NAME, ".exe");
 		print ("Setting icon to '%' for executable '%' - ", ICON_FILENAME, exe_filename);
 		ok := Windows_Resources.set_icon_by_filename (exe_filename, ICON_FILENAME);
 		if ok then println ("OK");
@@ -304,10 +306,10 @@ build :: ()
 
 		if run_on_success
 		{
-			working_directory := get_working_directory (temp_allocator);
+			working_directory := get_working_directory (TEMP);
 			set_working_directory (build_dir);
 			defer set_working_directory (working_directory);
-			cmd := join (temp_allocator, ..program_args);
+			cmd := join (TEMP, ..program_args);
 			println ("Running %\n", cmd);
 			os_run_command (cmd);
 		}

@@ -111,41 +111,41 @@ JAI_ASM_SIZE_KEYWORDS :: string.[ "b", "w", "d", "q", "x", "y", "z" ];
 	nl :: print_newline_to_builder;
 	
 	builder : String_Builder;
-	init_string_builder (*builder, 1000, temp_allocator);
+	init_string_builder (*builder, 1000, TEMP);
 	ln (*builder, "Jai_Control_Keyword :: enum\n{");
 	for JAI_CONTROL_KEYWORDS
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
 	ln (*builder, "Jai_Storage_Type_Keyword :: enum\n{");
 	for JAI_STORAGE_TYPE_KEYWORDS
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
 	ln (*builder, "Jai_Type_Keyword :: enum\n{");
 	for JAI_TYPE_KEYWORDS
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
 	
 	ln (*builder, "Jai_Function_Keyword :: enum\n{");
 	for JAI_FUNCTION_KEYWORDS
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
 	ln (*builder, "Jai_Keyword :: enum\n{");
 	for JAI_OTHER_KEYWORDS
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
 	ln (*builder, "Jai_Compiler_Directive :: enum\n{");
 	for JAI_COMPILER_DIRECTIVES
-		ln (*builder, "\t%;", clone_to_upper (it, temp_allocator));
+		ln (*builder, "\t%;", clone_to_upper (it, TEMP));
 	ln (*builder, "}");
 	nl (*builder);
 	
@@ -155,7 +155,7 @@ JAI_ASM_SIZE_KEYWORDS :: string.[ "b", "w", "d", "q", "x", "y", "z" ];
 #program_export
 init_extension :: (using hooks : *Amber_Hooks, extension_id : Extension_ID) -> bool
 {
-	context.allocator = heap_allocator;
+	context.allocator = HEAP;
 #if ENABLE_PROFILING
 	init_profiler ();
 
@@ -175,7 +175,7 @@ terminate_extension :: (using hooks : *Amber_Hooks)
 #if ENABLE_PROFILING
 {
 	builder : String_Builder;
-	init_string_builder (*builder, 5000, temp_allocator);
+	init_string_builder (*builder, 5000, TEMP);
 	write_profiling_data_to_builder (*builder);
 	platform_write_to_file ("jai_profiling.txt", to_string (builder));
 }

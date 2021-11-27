@@ -32,21 +32,21 @@ log_message :: (fmt : string, args : ..Any, info : Log_Info)
 
 	if context.stack_trace
 	{
-		message_fmt := format_string (context.allocator, context.allocator_data, "%: %\n", context.stack_trace.next.info.name, fmt);
-		defer free (message_fmt, context.allocator, context.allocator_data);
+		message_fmt := fstring (context.allocator, "%: %\n", context.stack_trace.next.info.name, fmt);
+		defer free (message_fmt, context.allocator);
 	
-		formatted := format_string (context.allocator, context.allocator_data, message_fmt, ..args);
-		defer free (formatted, context.allocator, context.allocator_data);
+		formatted := fstring (context.allocator, message_fmt, ..args);
+		defer free (formatted, context.allocator);
 
 		context.logger (formatted, context.logger_data, info);
 	}
 	else
 	{
-		message_fmt := format_string (context.allocator, context.allocator_data, "%\n", context.stack_trace.next.info.name, fmt);
-		defer free (message_fmt, context.allocator, context.allocator_data);
+		message_fmt := fstring (context.allocator, "%\n", context.stack_trace.next.info.name, fmt);
+		defer free (message_fmt, context.allocator);
 	
-		formatted := format_string (context.allocator, context.allocator_data, message_fmt, ..args);
-		defer free (formatted, context.allocator, context.allocator_data);
+		formatted := fstring (context.allocator, message_fmt, ..args);
+		defer free (formatted, context.allocator);
 
 		context.logger (formatted, context.logger_data, info);
 	}

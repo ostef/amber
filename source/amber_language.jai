@@ -26,40 +26,40 @@ language_get_extension :: inline (language_id : Language_ID) -> Extension_ID #mu
 }
 @Amber_API
 
-language_get_name :: inline (language_id : Language_ID, allocator : Allocator, allocator_data := null) -> string #must
+language_get_name :: inline (language_id : Language_ID, allocator : Allocator) -> string #must
 {
 	if language_id == PLAIN_TEXT
-		return clone_string ("Plain Text", allocator, allocator_data);
+		return clone_string ("Plain Text", allocator);
 	language := get_language (language_id);
 	
-	return clone_string (language.name, allocator, allocator_data);
+	return clone_string (language.name, allocator);
 }
 @Amber_API
 
-language_get_associated_filenames :: inline (language_id : Language_ID, allocator : Allocator, allocator_data := null) -> []string #must
+language_get_associated_filenames :: inline (language_id : Language_ID, allocator : Allocator) -> []string #must
 {
 	if language_id == PLAIN_TEXT
 		return string.[];
 	language := get_language (language_id);
-	result := clone_array (language.associated_filenames, allocator, allocator_data);
+	result := clone_array (language.associated_filenames, allocator);
 	for * result
 	{
-		<<it = clone_string (<<it, allocator, allocator_data);
+		<<it = clone_string (<<it, allocator);
 	}
 	
 	return result;
 }
 @Amber_API
 
-language_get_associated_file_extensions :: inline (language_id : Language_ID, allocator : Allocator, allocator_data := null) -> []string #must
+language_get_associated_file_extensions :: inline (language_id : Language_ID, allocator : Allocator) -> []string #must
 {
 	if language_id == PLAIN_TEXT
 		return string.[];
 	language := get_language (language_id);
-	result := clone_array (language.associated_file_extensions, allocator, allocator_data);
+	result := clone_array (language.associated_file_extensions, allocator);
 	for * result
 	{
-		<<it = clone_string (<<it, allocator, allocator_data);
+		<<it = clone_string (<<it, allocator);
 	}
 	
 	return result;
@@ -84,7 +84,7 @@ language_detect :: inline (filename : string) -> Language_ID
 
 language_register :: inline (language : Language) -> bool, Language_ID
 {
-	if !languages.allocator then languages.allocator = heap_allocator;
+	if !languages.allocator.proc then languages.allocator = HEAP;
 	if !language.name || !language.process_buffer
 		return false, 0;
 	for languages
@@ -96,16 +96,16 @@ language_register :: inline (language : Language) -> bool, Language_ID
 	inserted.id = cast (Language_ID) (index + 1);
 	// @Note (stefan): We don't make assumptions about where the memory for the
 	// following members comes from, so we allocate new memory for them.
-	inserted.name = clone_string (language.name, heap_allocator);
-	inserted.associated_filenames  = clone_array (language.associated_filenames, heap_allocator);
+	inserted.name = clone_string (language.name, HEAP);
+	inserted.associated_filenames  = clone_array (language.associated_filenames, HEAP);
 	for * inserted.associated_filenames
 	{
-		<<it = clone_string (<<it, heap_allocator);
+		<<it = clone_string (<<it, HEAP);
 	}
-	inserted.associated_file_extensions = clone_array (language.associated_file_extensions, heap_allocator);
+	inserted.associated_file_extensions = clone_array (language.associated_file_extensions, HEAP);
 	for * inserted.associated_file_extensions
 	{
-		<<it = clone_string (<<it, heap_allocator);
+		<<it = clone_string (<<it, HEAP);
 	}
 	
 	return true, inserted.id;
@@ -117,13 +117,13 @@ language_unregister :: inline (language_id : Language_ID)
 	assert (language_exists (language_id), "Invalid language id (%).", language_id);
 	
 	using language := get_language (language_id);
-	free (name, heap_allocator);
+	free (name, HEAP);
 	for associated_filenames
-		free (it, heap_allocator);
-	free (associated_filenames, heap_allocator);
+		free (it, HEAP);
+	free (associated_filenames, HEAP);
 	for associated_file_extensions
-		free (it, heap_allocator);
-	free (associated_file_extensions, heap_allocator);
+		free (it, HEAP);
+	free (associated_file_extensions, HEAP);
 	remove_from_slot_array (*languages, cast (s64) language_id - 1);
 }
 @Amber_API

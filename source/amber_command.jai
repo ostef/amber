@@ -25,7 +25,7 @@ command_register :: (
 	using info : Command_Info
 ) -> bool
 {
-	if !commands.allocator then commands.allocator = heap_allocator;
+	if !commands.allocator.proc then commands.allocator = HEAP;
 	if !name || !proc
 		return false;
 	for commands
@@ -37,7 +37,7 @@ command_register :: (
 	// @Note (stefan): We don't make assumptions about where the memory for name and
 	// combination comes from, so we allocate new memory for them.
 	pushed.extension_id = extension_id;
-	pushed.name = clone_string (name, heap_allocator);
+	pushed.name = clone_string (name, HEAP);
 	pushed.proc = proc;
 	pushed.arg_count = arg_count;
 	pushed.first_optional_argument = first_optional_argument;
@@ -52,7 +52,7 @@ command_unregister_for_extension :: (extension_id : Extension_ID)
 	{
 		if it.extension_id == extension_id
 		{
-			free (it.name, heap_allocator);
+			free (it.name, HEAP);
 			remove it;
 		}
 	}
@@ -65,7 +65,7 @@ parse_command_line :: (cmd_line : []u32) -> []Command_Args #must
 	
 	utf32 := cmd_line;
 	result : [..]Command_Args;
-	init_array (*result, 5, temp_allocator);
+	init_array (*result, 5, TEMP);
 	while utf32.count
 	{
 		while utf32.count && is_space (utf32[0])
@@ -78,9 +78,9 @@ parse_command_line :: (cmd_line : []u32) -> []Command_Args #must
 		
 		// Parse arguments
 		args : [..]string;
-		init_array (*args, 10, temp_allocator);
+		init_array (*args, 10, TEMP);
 		current_arg : [..]u32;
-		init_array (*current_arg, 20, temp_allocator);
+		init_array (*current_arg, 20, TEMP);
 		while utf32.count
 		{
 			clear_array (*current_arg);
@@ -106,7 +106,7 @@ parse_command_line :: (cmd_line : []u32) -> []Command_Args #must
 					utf32 = advance (utf32);
 				}
 				utf32 = advance (utf32);
-				push_into_array (*args, utf32_to_utf8 (current_arg, temp_allocator));
+				push_into_array (*args, utf32_to_utf8 (current_arg, TEMP));
 			}
 			else
 			{
@@ -115,14 +115,14 @@ parse_command_line :: (cmd_line : []u32) -> []Command_Args #must
 					push_into_array (*current_arg, utf32[0]);
 					utf32 = advance (utf32);
 				}
-				push_into_array (*args, utf32_to_utf8 (current_arg, temp_allocator));
+				push_into_array (*args, utf32_to_utf8 (current_arg, TEMP));
 			}
 		}
 		
 		if utf32_name.count != 0
 		{
 			cmd := push_into_array (*result);
-			cmd.name = utf32_to_utf8 (utf32_name, temp_allocator);
+			cmd.name = utf32_to_utf8 (utf32_name, TEMP);
 			cmd.args = args;
 		}
 	}

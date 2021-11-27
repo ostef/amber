@@ -11,6 +11,8 @@ HEAP_ALLOCATOR_ALIGNMENT :: 8;
 
 #scope_export
 
+HEAP :: Allocator.{ heap_allocator_proc, null };
+
 // Use the OS's heap allocator to allocate, reallocate or free memory.
 // The memory is aligned to 8 bytes.
 // When allocating a 0 sized block of memory, the procedure returns null.
@@ -18,10 +20,10 @@ HEAP_ALLOCATOR_ALIGNMENT :: 8;
 // On allocation failure, the result is null.
 // Resizing a null block of memory to a non-zero size is the same as allocating one.
 // Resizing a non null block of memory to zero size is the same as freeing it.
-// A resized memory block might be moved if necessary. (old_ptr == heap_allocator (.RESIZE, new_size, old_size, old_ptr, null) is not always true).
+// A resized memory block might be moved if necessary. (old_ptr == HEAP (.RESIZE, new_size, old_size, old_ptr, null) is not always true).
 // If the OS's heap reallocation routine fails, we free the block and allocate a new one ourselves, copying the bytes to the new location.
 // Freeing a null pointer won't do anything and is paerfectly valid.
-heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void		// We can't #must because we ignore the return value when mode == .FREE
+heap_allocator_proc :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void		// We can't #must because we ignore the return value when mode == .FREE
 {
 	if #complete mode ==
 	{
@@ -42,8 +44,8 @@ heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : 
 
 	case .RESIZE;
 		assert (size >= 0, "Invalid size (got %, expected size >= 0).", size);
-		if !old_ptr then return heap_allocator (.ALLOCATE, size, 0, null, allocator_data);
-		if size == 0 then return heap_allocator (.FREE, 0, 0, old_ptr, allocator_data);
+		if !old_ptr then return heap_allocator_proc (.ALLOCATE, size, 0, null, allocator_data);
+		if size == 0 then return heap_allocator_proc (.FREE, 0, 0, old_ptr, allocator_data);
 
 		needed    := size + HEAP_ALLOCATOR_ALIGNMENT;		// For alignment
 		aligned   := cast (*u8) old_ptr;
@@ -63,9 +65,9 @@ heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : 
 		}
 
 		// platform_heap_realloc failed, free then allocate ourselves
-		new_ptr = cast (*u8) heap_allocator (.ALLOCATE, size, 0, null, allocator_data);
+		new_ptr = cast (*u8) heap_allocator_proc (.ALLOCATE, size, 0, null, allocator_data);
 		memcpy (new_ptr, old_ptr, min (old_size, size));
-		heap_allocator (.FREE, 0, 0, old_ptr, allocator_data);
+		heap_allocator_proc (.FREE, 0, 0, old_ptr, allocator_data);
 
 		return new_ptr;
 
@@ -80,7 +82,9 @@ heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : 
 	return null;
 }
 
-trap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void		// We can't #must because we ignore the return value when mode == .FREE
+TRAP :: Allocator.{ trap_allocator_proc, null };
+
+trap_allocator_proc :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void		// We can't #must because we ignore the return value when mode == .FREE
 {
 	assert (false, "Called trap_allocator with parameters mode=%, size=%, old_size=%, old_ptr=%, allocator_data=%.", mode, size, old_size, old_ptr, allocator_data);
 
@@ -93,7 +97,7 @@ Basic :: #import "Basic";	// For __temporary_allocator stuff
 
 #scope_export
 
-temp_allocator          :: Basic.__temporary_allocator;
+TEMP                    :: Basic.temp;
 reset_temporary_storage :: Basic.reset_temporary_storage;
 
 Temporary_Storage_State :: Basic.Temporary_Storage_State;
@@ -110,71 +114,51 @@ setup_local_storage :: () #expand
 // @Note (stefan): Should we specify the behaviour for size == 0 and ptr == null before calling the Allocator when allocating/reallocating/freeing ?
 // Or should this be handled by the Allocator, and we don't care about possibly having a different behaviour for each Allocator ?
 
-alloc :: (size : s64, allocator : Allocator, allocator_data := null) -> *void #must
+alloc :: (size : s64, allocator : Allocator) -> *void #must
 {
-	if allocator == null
-	{
-		allocator      = context.allocator;
-		allocator_data = context.allocator_data;
-	}
-
-	return allocator (.ALLOCATE, size, 0, null, allocator_data);
+	return allocator.proc (.ALLOCATE, size, 0, null, allocator.data);
 }
 
-alloc :: ($T : Type, count : s64, allocator : Allocator, allocator_data := null) -> *T #must
+alloc :: ($T : Type, count : s64, allocator : Allocator) -> *T #must
 {
-	return cast (*T) alloc (count * size_of (T), allocator, allocator_data);
+	return cast (*T) alloc (count * size_of (T), allocator);
 }
 
-// @Note (stefan): Should we have a typed realloc like the alloc above ? This would make existing code break,
-// and might be confusing.
-realloc :: (ptr : *void, old_size : s64, new_size : s64, allocator : Allocator, allocator_data := null) -> *void #must
+realloc :: (ptr : *void, old_size : s64, new_size : s64, allocator : Allocator) -> *void #must
 {
-	if allocator == null
-	{
-		allocator      = context.allocator;
-		allocator_data = context.allocator_data;
-	}
-
-	return allocator (.RESIZE, new_size, old_size, ptr, allocator_data);
+	return allocator.proc (.RESIZE, new_size, old_size, ptr, allocator.data);
 }
 
-free :: (memory : *void, allocator : Allocator, allocator_data := null)
+free :: (memory : *void, allocator : Allocator)
 {
-	if allocator == null
-	{
-		allocator = context.allocator;
-		allocator_data = context.allocator_data;
-	}
-
-	allocator (.FREE, 0, 0, memory, allocator_data);
+	allocator.proc (.FREE, 0, 0, memory, allocator.data);
 }
 
-free :: (array : []$T, allocator : Allocator, allocator_data := null)
+free :: (array : []$T, allocator : Allocator)
 {
-	inline free (array.data, allocator, allocator_data);
+	inline free (array.data, allocator);
 }
 
-free :: (str : string, allocator : Allocator, allocator_data := null)
+free :: (str : string, allocator : Allocator)
 {
-	inline free (str.data, allocator, allocator_data);
+	inline free (str.data, allocator);
 }
 
-alloc_item :: ($T : Type, allocator : Allocator, allocator_data := null, $initialize := true) -> *T #must
+alloc_item :: ($T : Type, allocator : Allocator, $initialize := true) -> *T #must
 {
-	ptr := cast (*T) alloc (size_of (T), allocator, allocator_data);
+	ptr := cast (*T) alloc (size_of (T), allocator);
 #if initialize inline initialize_item (ptr);
 
 	return ptr;
 }
 
 // Allocating an array of 0 elements returns an array with a null data pointer and count = 0.
-alloc_array :: ($T : Type, count : s64, allocator : Allocator, allocator_data := null, $initialize := true) -> []T #must
+alloc_array :: ($T : Type, count : s64, allocator : Allocator, $initialize := true) -> []T #must
 {
 	assert (count >= 0, "Invalid count (got %, expected count >= 0).", count);
 
 	result : []T = ---;
-	result.data  = cast (*T) alloc (size_of (T) * count, allocator, allocator_data);
+	result.data  = cast (*T) alloc (size_of (T) * count, allocator);
 	result.count = count;
 
 	if count > 0
@@ -200,7 +184,7 @@ alloc_array :: ($T : Type, count : s64, allocator : Allocator, allocator_data :=
 	return result;
 }
 
-alloc_string :: (count : s64, allocator : Allocator, allocator_data := null, $initialize := false) -> string #must
+alloc_string :: (count : s64, allocator : Allocator, $initialize := false) -> string #must
 {
-	return to_string (inline alloc_array (u8, count, allocator, allocator_data, initialize));
+	return to_string (inline alloc_array (u8, count, allocator, initialize));
 }

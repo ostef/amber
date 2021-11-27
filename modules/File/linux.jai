@@ -8,27 +8,27 @@
 
 File :: *FILE;
 
-get_executable_path :: (allocator : Allocator, allocator_data := null) -> string #must
+get_executable_path :: (allocator : Allocator) -> string #must
 {
 	buffer : [4096]u8;
 	count := readlink ("/proc/self/exe", buffer.data, buffer.count);
 	if count == 0 then return "";
 
-	return clone_string (to_string (buffer.data), allocator, allocator_data);
+	return clone_string (to_string (buffer.data), allocator);
 }
 
-get_full_path :: (path : string, allocator : Allocator, allocator_data := null) -> string #must
+get_full_path :: (path : string, allocator : Allocator) -> string #must
 {
 	buffer : [4096]u8;
-	realpath (clone_to_cstring (path, temp_allocator), buffer.data);
+	realpath (clone_to_cstring (path, TEMP), buffer.data);
 
-	return clone_string (to_string (buffer.data), allocator, allocator_data);
+	return clone_string (to_string (buffer.data), allocator);
 }
 
 path_leads_to_directory :: (path : string) -> bool #must
 {
 	result : stat_t;
-	stat (clone_to_cstring (path, temp_allocator), *result);
+	stat (clone_to_cstring (path, TEMP), *result);
 
 	return S_ISDIR (result.st_mode);
 }
@@ -36,19 +36,19 @@ path_leads_to_directory :: (path : string) -> bool #must
 path_leads_to_file :: (path : string) -> bool #must
 {
 	result : stat_t;
-	stat (clone_to_cstring (path, temp_allocator), *result);
+	stat (clone_to_cstring (path, TEMP), *result);
 
 	return S_ISREG (result.st_mode);
 }
 
 file_exists :: (filename : string) -> bool #must
 {
-	return access (clone_to_cstring (filename, temp_allocator), 0) == 0;
+	return access (clone_to_cstring (filename, TEMP), 0) == 0;
 }
 
 create_file :: (filename : string, flags : File_Flags, create_tree := true) -> File #must, bool
 {
-	cfilename := clone_to_cstring (filename, temp_allocator);
+	cfilename := clone_to_cstring (filename, TEMP);
 	result : File;
 	if flags == .WRITE
 		result = fopen (cfilename, "wb");
@@ -60,7 +60,7 @@ create_file :: (filename : string, flags : File_Flags, create_tree := true) -> F
 
 open_file :: (filename : string, flags : File_Flags) -> File #must, bool
 {
-	cfilename := clone_to_cstring (filename, temp_allocator);
+	cfilename := clone_to_cstring (filename, TEMP);
 	result : File;
 	if flags == .READ_WRITE
 		result = fopen (cfilename, "rb+");
@@ -74,7 +74,7 @@ open_file :: (filename : string, flags : File_Flags) -> File #must, bool
 
 delete_file :: (filename : string) -> bool
 {
-	cfilename := clone_to_cstring (filename, temp_allocator);
+	cfilename := clone_to_cstring (filename, TEMP);
 
 	return _remove (cfilename) == 0;
 }
@@ -85,8 +85,8 @@ set_file_attributes :: (filename : string, attr : File_Attributes)
 
 move_file :: (filename : string, new_name : string) -> bool
 {
-	cfilename := clone_to_cstring (filename, temp_allocator);
-	cnew_name := clone_to_cstring (new_name, temp_allocator);
+	cfilename := clone_to_cstring (filename, TEMP);
+	cnew_name := clone_to_cstring (new_name, TEMP);
 
 	return rename (cfilename, cnew_name) == 0;
 }
@@ -154,39 +154,39 @@ write_file :: (file : File, buffer : *void, count : s64) -> written : s64, succe
 
 copy_file :: (source : string, dest : string, override_if_exists := false) -> bool
 {
-	file_contents, ok := read_entire_file (source, temp_allocator);
+	file_contents, ok := read_entire_file (source, TEMP);
 	if !ok then return false;
 	written, success := write_to_file (dest, file_contents);
 
 	return success;
 }
 
-get_working_directory :: (allocator : Allocator, allocator_data := null) -> string #must
+get_working_directory :: (allocator : Allocator) -> string #must
 {
 	buffer : [4096]u8;
 	getcwd (buffer.data, buffer.count);
-	result := clone_string (to_string (buffer.data), allocator, allocator_data);
+	result := clone_string (to_string (buffer.data), allocator);
 	
 	return result;
 }
 
 set_working_directory :: (path : string) -> bool
 {
-	cpath := clone_to_cstring (path, temp_allocator);
+	cpath := clone_to_cstring (path, TEMP);
 
 	return chdir (cpath) == 0;
 }
 
 create_directory :: (dirname : string) -> bool
 {
-	result := mkdir (clone_to_cstring (dirname, temp_allocator), 0x1ff);
+	result := mkdir (clone_to_cstring (dirname, TEMP), 0x1ff);
 	
 	return result == 0 || errno () == EEXIST;
 }
 
 delete_empty_directory :: (dirname : string) -> bool
 {
-	return rmdir (clone_to_cstring (dirname, temp_allocator)) == 0;
+	return rmdir (clone_to_cstring (dirname, TEMP)) == 0;
 }
 
 // Copied from File_Utilities
@@ -194,12 +194,12 @@ inspect_directory :: (dirname : string, recurse : bool, user_data : $T, proc : (
 {
 	if !proc then return true;
 
-	dirs := make_array (string, 10, heap_allocator);
-	push_to_array (*dirs, clone_string (dirname, heap_allocator));
+	dirs := make_array (string, 10, HEAP);
+	push_to_array (*dirs, clone_string (dirname, HEAP));
 	defer
 	{
 		for dirs
-			free (it, heap_allocator);
+			free (it, HEAP);
 		reset_array (*dirs);
 	}
 
@@ -210,7 +210,7 @@ inspect_directory :: (dirname : string, recurse : bool, user_data : $T, proc : (
 		current_dir := dirs[current];
 		current += 1;
 
-		dirp := opendir (clone_to_cstring (current_dir, temp_allocator));
+		dirp := opendir (clone_to_cstring (current_dir, TEMP));
 		if !dirp then continue;
 		defer closedir (dirp);
 		
@@ -221,11 +221,11 @@ inspect_directory :: (dirname : string, recurse : bool, user_data : $T, proc : (
 			if visit_symlinks || !info.is_symlink
 			{
 				name := to_string (entry.d_name.data);
-				full_name := make_path (heap_allocator, current_dir, "/", name);
-				defer free (full_name, heap_allocator);
+				full_name := make_path (HEAP, current_dir, "/", name);
+				defer free (full_name, HEAP);
 				
 				stats : stat_t;
-				if stat (clone_to_cstring (full_name, temp_allocator), *stats) != 0
+				if stat (clone_to_cstring (full_name, TEMP), *stats) != 0
 				{
 					error := errno ();
 					log_error ("File", "Unable to stat file '%': %.", full_name, error);
@@ -249,7 +249,7 @@ inspect_directory :: (dirname : string, recurse : bool, user_data : $T, proc : (
 						}
 					}
 
-					if info.descend_into_directory then push_to_array (*dirs, clone_string (full_name, heap_allocator));
+					if info.descend_into_directory then push_to_array (*dirs, clone_string (full_name, HEAP));
 				}
 				else if visit_files
 				{

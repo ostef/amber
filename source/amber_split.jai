@@ -69,7 +69,7 @@ split_exists :: inline (id : Split_ID) -> bool #must
 split_init :: inline (split_id : Split_ID)
 {
 	using split := get_split (split_id);
-	init_array (*opened_buffer_ids, 20, heap_allocator);
+	init_array (*opened_buffer_ids, 20, HEAP);
 }
 
 split_reset :: inline (split_id : Split_ID)
@@ -359,7 +359,7 @@ split_get_tab_rect :: (split_id : Split_ID, buffer_index : s64) -> Rectf #must
 	tab_x : f32;
 	for buffer_id : opened_buffer_ids
 	{
-		buffer_name := buffer_get_name (buffer_id, temp_allocator);
+		buffer_name := buffer_get_name (buffer_id, TEMP);
 		extents := font_get_text_extents (1, 14, buffer_name);
 		space_advance := font_get_space_advance (1, 14);
 		line_height := font_get_line_height (1, 14);
@@ -614,7 +614,7 @@ split_draw :: (split_id : Split_ID)
 	prev_clip_rect := draw_push_clip_rect (recti (tab_area));
 	for buffer_id : opened_buffer_ids
 	{
-		buffer_name := buffer_get_name (buffer_id, temp_allocator);
+		buffer_name := buffer_get_name (buffer_id, TEMP);
 		space_advance := font_get_space_advance (1, 14);
 		line_height := font_get_line_height (1, 14);
 		rect := split_get_tab_rect (split_id, it_index);
@@ -677,14 +677,14 @@ split_draw :: (split_id : Split_ID)
 	draw_rect (scrollbar_rect, rgba (RGBA_WHITE, split.scrollbar_alpha), rect_width (scrollbar_rect) * 0.5);
 	draw_rect (xywhf (layout_area.x2 - SCROLLBAR_WIDTH, layout_area.y1 + cursor_view_position, SCROLLBAR_WIDTH, 2), rgba (RGBA_WHITE, split.cursor_view_alpha));
 
-	language_name := language_get_name (buffer_get_language (active_buffer_id), temp_allocator);
+	language_name := language_get_name (buffer_get_language (active_buffer_id), TEMP);
 	draw_rect (rectf (split.area.x1, split.area.y2 - line_height, split.area.x2, split.area.y2), RGBA_WHITE);
 	draw_text (
 		text_layout_get_font (active_layout_id),
 		text_layout_get_font_height (active_layout_id),
 		vec2f (split.area.x1, split.area.y2 - line_height),
 		fstring (
-			temp_allocator,
+			TEMP,
 			"Ln %, Col % ~ % line(s) ~ %",
 			buffer_get_line_index (active_buffer_id) + 1,
 			buffer_get_column_index (active_buffer_id) + 1,

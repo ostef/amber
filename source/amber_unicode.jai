@@ -152,12 +152,12 @@ utf8_codepoint_size :: (codepoint : u32) -> size : s64 #must
 	return 0;
 }
 
-utf8_to_utf16  :: (utf8_str : string, allocator : Allocator, allocator_data := null, null_terminate := false) -> []u16 #must
+utf8_to_utf16  :: (utf8_str : string, allocator : Allocator, null_terminate := false) -> []u16 #must
 {
 	utf16_str : []u16;
 	for utf8 (utf8_str)
 		utf16_str.count += utf16_codepoint_size (it);
-	utf16_str.data = alloc (size_of (u16) * (utf16_str.count + xx null_terminate), allocator, allocator_data);
+	utf16_str.data = alloc (size_of (u16) * (utf16_str.count + xx null_terminate), allocator);
 	byte_offset := 0;
 	for utf8 (utf8_str)
 		byte_offset += utf16_encode (advance (utf16_str, byte_offset), it);
@@ -166,11 +166,11 @@ utf8_to_utf16  :: (utf8_str : string, allocator : Allocator, allocator_data := n
 	return utf16_str;
 }
 
-utf8_to_utf32  :: (utf8_str : string, allocator : Allocator, allocator_data := null, null_terminate := false) -> []u32 #must
+utf8_to_utf32  :: (utf8_str : string, allocator : Allocator, null_terminate := false) -> []u32 #must
 {
 	len := utf8_string_length (utf8_str);
 	result : []u32 = ---;
-	result.data  = alloc (size_of (u32) * (len + xx null_terminate), allocator, allocator_data);
+	result.data  = alloc (size_of (u32) * (len + xx null_terminate), allocator);
 	result.count = len;
 	for utf8 (utf8_str)
 		result[it_index] = it;
@@ -255,12 +255,12 @@ utf16_codepoint_size :: (codepoint : u32) -> size : s64
 		return 2;
 }
 
-utf16_to_utf8  :: (utf16_str : []u16, allocator : Allocator, allocator_data := null, null_terminate := false) -> string #must
+utf16_to_utf8  :: (utf16_str : []u16, allocator : Allocator, null_terminate := false) -> string #must
 {
 	utf8_str : string;
 	for utf16 (utf16_str)
 		utf8_str.count += utf8_codepoint_size (it);
-	utf8_str.data = alloc (utf8_str.count + xx null_terminate, allocator, allocator_data);
+	utf8_str.data = alloc (utf8_str.count + xx null_terminate, allocator);
 	byte_offset := 0;
 	for utf16 (utf16_str)
 		byte_offset += utf8_encode (advance (to_array (utf8_str), byte_offset), it);
@@ -269,11 +269,11 @@ utf16_to_utf8  :: (utf16_str : []u16, allocator : Allocator, allocator_data := n
 	return utf8_str;
 }
 
-utf16_to_utf32 :: (utf16_str : []u16, allocator : Allocator, allocator_data := null, null_terminate := false) -> []u32 #must
+utf16_to_utf32 :: (utf16_str : []u16, allocator : Allocator, null_terminate := false) -> []u32 #must
 {
 	len := utf16_string_length (utf16_str);
 	result : []u32 = ---;
-	result.data  = alloc (size_of (u32) * (len + xx null_terminate), allocator, allocator_data);
+	result.data  = alloc (size_of (u32) * (len + xx null_terminate), allocator);
 	result.count = len;
 	for utf16 (utf16_str)
 		result[it_index] = it;
@@ -282,12 +282,12 @@ utf16_to_utf32 :: (utf16_str : []u16, allocator : Allocator, allocator_data := n
 	return result;
 }
 
-utf32_to_utf8  :: (utf32_str : []u32, allocator : Allocator, allocator_data := null, null_terminate := false) -> string #must
+utf32_to_utf8  :: (utf32_str : []u32, allocator : Allocator, null_terminate := false) -> string #must
 {
 	utf8_str : string;
 	for utf32_str
 		utf8_str.count += utf8_codepoint_size (it);
-	utf8_str.data = alloc (utf8_str.count + xx null_terminate, allocator, allocator_data);
+	utf8_str.data = alloc (utf8_str.count + xx null_terminate, allocator);
 	byte_offset := 0;
 	for utf32_str
 		byte_offset += utf8_encode (advance (to_array (utf8_str), byte_offset), it);
@@ -296,12 +296,12 @@ utf32_to_utf8  :: (utf32_str : []u32, allocator : Allocator, allocator_data := n
 	return utf8_str;
 }
 
-utf32_to_utf16 :: (utf32_str : []u32, allocator : Allocator, allocator_data := null, null_terminate := false) -> []u16 #must
+utf32_to_utf16 :: (utf32_str : []u32, allocator : Allocator, null_terminate := false) -> []u16 #must
 {
 	utf16_str : []u16;
 	for utf32_str
 		utf16_str.count += utf16_codepoint_size (it);
-	utf16_str.data = alloc (size_of (u16) * (utf16_str.count + xx null_terminate), allocator, allocator_data);
+	utf16_str.data = alloc (size_of (u16) * (utf16_str.count + xx null_terminate), allocator);
 	byte_offset := 0;
 	for utf32_str
 		byte_offset += utf16_encode (advance (utf16_str, byte_offset), it);

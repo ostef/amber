@@ -124,18 +124,18 @@ amber_terminate :: ()
 }
 @Amber_API
 
-amber_get_executable_path :: (allocator : Allocator, allocator_data := null) -> string #must
+amber_get_executable_path :: (allocator : Allocator) -> string #must
 {
-	return clone_string (executable_path, allocator, allocator_data);
+	return clone_string (executable_path, allocator);
 }
 @Amber_API
 
 main :: ()
 {
 	FONT_NAME :: "fonts/jetbrainsmono/JetBrainsMono-Regular.ttf";
-	context.allocator = heap_allocator;
+	context.allocator = HEAP;
 
-	executable_path = platform_get_module_filename (heap_allocator);
+	executable_path = platform_get_module_filename (HEAP);
 	executable_dir  = filename_remove_basename (executable_path);
 
 #if ENABLE_PROFILING
@@ -144,10 +144,10 @@ main :: ()
 	viewport_size = platform_get_viewport_size ();
 	draw_init ();
 	font_init ();
-	init_array (*command_buffer.data, 100, heap_allocator);
-	init_slot_array (*buffers, 20, heap_allocator);
-	init_slot_array (*text_layouts, 20, heap_allocator);
-	init_slot_array (*splits, 10, heap_allocator);
+	init_array (*command_buffer.data, 100, HEAP);
+	init_slot_array (*buffers, 20, HEAP);
+	init_slot_array (*text_layouts, 20, HEAP);
+	init_slot_array (*splits, 10, HEAP);
 	command_buffer_set_prompt (">");
 	if !load_extension ("amber_default.dll") then println ("Could not load extension 'amber_default'.");
 	load_extension ("amber_test_extension.dll");
@@ -221,7 +221,7 @@ main :: ()
 #if ENABLE_PROFILING
 {
 	builder : String_Builder;
-	init_string_builder (*builder, 5000, temp_allocator);
+	init_string_builder (*builder, 5000, TEMP);
 	write_profiling_data_to_builder (*builder);
 	platform_write_to_file ("profiling.txt", to_string (builder));
 }
@@ -270,8 +270,8 @@ draw_text :: (font_id : Font_ID, height : u32, position : Vec2f, text : string, 
 
 command_buffer_set_prompt :: inline (prompt : string)
 {
-	free (command_prompt, heap_allocator);
-	command_prompt = clone_string (prompt, heap_allocator);
+	free (command_prompt, HEAP);
+	command_prompt = clone_string (prompt, HEAP);
 }
 @Amber_API
 

@@ -1,6 +1,6 @@
 #if OS == .WINDOWS then #load "amber_win32.jai";
 
-platform_read_entire_file :: (filename : string, allocator : Allocator, allocator_data := null) -> string #must, bool
+platform_read_entire_file :: (filename : string, allocator : Allocator) -> string #must, bool
 {
 	file := platform_open_file (filename, File_Open_Flags.ACCESS_READ | .OPEN_IF_EXISTS);
 	if !file then return "", false;
@@ -8,11 +8,11 @@ platform_read_entire_file :: (filename : string, allocator : Allocator, allocato
 	platform_set_file_cursor (file, 0, .END);
 	size := platform_get_file_cursor (file);
 	platform_set_file_cursor (file, 0, .BEGIN);
-	buffer := alloc_string (size, allocator, allocator_data);
+	buffer := alloc_string (size, allocator);
 	read, ok := platform_read_file (file, buffer.data, buffer.count);
 	if !ok
 	{
-		free (buffer, allocator, allocator_data);
+		free (buffer, allocator);
 		
 		return "", false;
 	}
@@ -36,7 +36,7 @@ platform_write_to_file :: (filename : string, buffer : string) -> written : s64,
 
 platform_purge_directory :: (dirname : string) -> bool
 {
-	root := platform_list_files_in_directory (dirname, temp_allocator);
+	root := platform_list_files_in_directory (dirname, TEMP);
 	if !root then return false;
 	
 	current : *File_Info = root.first_child;
@@ -61,16 +61,18 @@ platform_delete_directory :: (dirname : string) -> bool
 }
 @Amber_API
 
+HEAP :: Allocator.{ heap_allocator_proc, null };
+
 // Use the OS's heap allocator to allocate, reallocate or free memory.
 // The memory is aligned to 8 bytes.
 // When allocating a 0 sized block of memory, the procedure returns null.
 // On allocation failure, the result is null.
 // Resizing a null block of memory to a non-zero size is the same as allocating one.
 // Resizing a non null block of memory to zero size is the same as freeing it.
-// A resized memory block might be moved if necessary. (old_ptr == heap_allocator (.RESIZE, new_size, old_size, old_ptr, null) is not always true).
+// A resized memory block might be moved if necessary. (old_ptr == HEAP (.RESIZE, new_size, old_size, old_ptr, null) is not always true).
 // If the OS's heap reallocation routine fails, we free the block and allocate a new one ourselves, copying the bytes to the new location.
 // Freeing a null pointer is a no-op.
-heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void		// We can't #must because we ignore the return value when mode == .FREE
+heap_allocator_proc :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void		// We can't #must because we ignore the return value when mode == .FREE
 {
 	HEAP_ALLOCATOR_ALIGNMENT :: 8;
 
@@ -93,8 +95,8 @@ heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : 
 
 	case .RESIZE;
 		assert (size >= 0, "Invalid size (got %, expected size >= 0).", size);
-		if !old_ptr then return heap_allocator (.ALLOCATE, size, 0, null, allocator_data);
-		if size == 0 then return heap_allocator (.FREE, 0, 0, old_ptr, allocator_data);
+		if !old_ptr then return heap_allocator_proc (.ALLOCATE, size, 0, null, allocator_data);
+		if size == 0 then return heap_allocator_proc (.FREE, 0, 0, old_ptr, allocator_data);
 
 		needed    := size + HEAP_ALLOCATOR_ALIGNMENT;		// For alignment
 		aligned   := cast (*u8) old_ptr;
@@ -114,9 +116,9 @@ heap_allocator :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : 
 		}
 
 		// platform_heap_realloc failed, free then allocate ourselves
-		new_ptr = cast (*u8) heap_allocator (.ALLOCATE, size, 0, null, allocator_data);
+		new_ptr = cast (*u8) heap_allocator_proc (.ALLOCATE, size, 0, null, allocator_data);
 		memcpy (new_ptr, old_ptr, min (old_size, size));
-		heap_allocator (.FREE, 0, 0, old_ptr, allocator_data);
+		heap_allocator_proc (.FREE, 0, 0, old_ptr, allocator_data);
 
 		return new_ptr;
 
