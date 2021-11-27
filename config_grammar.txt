@@ -1,0 +1,14 @@
+alpha		:= [ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]
+digit		:= [0123456789]
+alphanum	:= [<alpha><digit>_]
+identifier	:= [<alpha>_]<alphanum>*
+uint		:= [<digit>^0]<digit>*
+int			:= [-+]<uint>
+float		:= [-+]?<uint>((.<uint>)|(e[-+]?<uint>)|(.<uint>e[-+]?<uint>))
+string		:= (".*")|('.*')
+bool		:= (true|false)
+lvalue		:= <identifier>(\[<uint>\])?(.<lvalue>)?
+rvalue		:= (<identifier>|<uint>|<int>|<float>|<string>|<bool>|<compound>)
+compound	:= {<rvalue>(,<rvalue>)*,?}
+assignment	:= <lvalue>=<rvalue>
+entry		:= <assignment>;
