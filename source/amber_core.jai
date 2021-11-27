@@ -1068,6 +1068,39 @@ join_with_separator :: (allocator : Allocator, separator : string, args : ..stri
 }
 */
 
+split :: (str : string, separator : u8, allocator : Allocator, allocator_data := null) -> []string #must
+{
+	result : [..]string;
+	init_array (*result, max (str.count / 10, 4), allocator, allocator_data);
+	
+	start : s64;
+	end   : s64;
+	while end < str.count
+	{
+		if str[end] == separator
+		{
+			if end > start
+			{
+				part : string = ---;
+				part.data = str.data + start;
+				part.count = end - start;
+				push_into_array (*result, part);
+			}
+			start = end + 1;
+		}
+		end += 1;
+	}
+	if end > start
+	{
+		part : string = ---;
+		part.data = str.data + start;
+		part.count = end - start;
+		push_into_array (*result, part);
+	}
+	
+	return result;
+}
+
 // String Builder
 
 String_Builder :: [..]u8;
