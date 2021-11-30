@@ -4,11 +4,11 @@ alphanum	:= [<alpha><digit>_]
 identifier	:= [<alpha>_]<alphanum>*
 uint		:= [<digit>^0]<digit>*
 int			:= [-+]<uint>
+bool		:= (true|false)
 float		:= [-+]?<uint>((.<uint>)|(e[-+]?<uint>)|(.<uint>e[-+]?<uint>))
 string		:= (".*")|('.*')
-bool		:= (true|false)
 lvalue		:= <identifier>(\[<uint>\])?(.<lvalue>)?
-rvalue		:= (<identifier>|<uint>|<int>|<float>|<string>|<bool>|<compound>)
-compound	:= {<rvalue>(,<rvalue>)*,?}
-assignment	:= <lvalue>=<rvalue>
-entry		:= <assignment>;
+rvalue		:= (<lvalue>|<uint>|<int>|<float>|<string>|<bool>|<compound>)
+compound	:= {<compound_element>(,<compound_element>)*,?}
+compound_element := (.(<identifier>|<uint>))?=<rvalue>
+assignment	:= <lvalue>=<rvalue>;

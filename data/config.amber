@@ -1,0 +1,23 @@
+# This is a comment
+a = 10;		# This is another comment
+b = "Hello Sailor!\n";
+a.b[10].c.d[5].e = b;
+extensions = {
+	"amber_default",
+	"amber_jai"
+};
+shortcuts = {
+	{
+		.command = "open",
+		.combination = "CTRL+O"
+	},
+	{
+		.command = "new",
+		.combination = "CTRL+N"
+	},
+	{
+		.0 = 10,
+		.1 = { 123 }
+	}
+};
+array[10] = "String";

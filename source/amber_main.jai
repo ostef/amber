@@ -12,6 +12,7 @@
 #load "amber_command.jai";
 #load "amber_extension.jai";
 #load "amber_profiler.jai";
+#load "amber_config.jai";
 
 CURSOR_ROUNDING :: 3.0;
 
@@ -137,6 +138,14 @@ main :: ()
 
 	executable_path = platform_get_module_filename (HEAP);
 	executable_dir  = filename_remove_basename (executable_path);
+
+	parser : Config_Parser;
+	{
+		file_contents, ok := platform_read_entire_file ("config.amber", TEMP);
+		config_parser_init (*parser, "config.amber", file_contents);
+		config_parse (*parser);
+		config_print (*parser.root);
+	}
 
 #if ENABLE_PROFILING
 	init_profiler ();

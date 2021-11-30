@@ -89,8 +89,8 @@ Amber_Hooks :: struct #type_info_none
 	draw_line : (Vec2 (T = f32), Vec2 (T = f32), RGBA, f32);
 	draw_push_clip_rect : (Rect (T = s32)) -> Rect (T = s32);
 	draw_quad : (Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32), RGBA, Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32), Vec2 (T = f32));
-	draw_rect_outline : (Rect (T = f32), RGBA, f32, f32, Rectangle_Corners, Rect (T = f32));
 	draw_rect : (Rect (T = f32), RGBA, f32, Rectangle_Corners, Rect (T = f32));
+	draw_rect_outline : (Rect (T = f32), RGBA, f32, f32, Rectangle_Corners, Rect (T = f32));
 	draw_reserve_vertices : (s64) -> *Vertex;
 	draw_semi_circle : (Vec2 (T = f32), f32, f32, f32, RGBA, s64, Vec2 (T = f32), f32);
 	draw_semi_circle_outline : (Vec2 (T = f32), f32, f32, f32, RGBA, f32, s64, Vec2 (T = f32), f32);
@@ -122,8 +122,8 @@ Amber_Hooks :: struct #type_info_none
 	language_get_extension : (Language_ID) -> Extension_ID;
 	language_get_name : (Language_ID, Allocator) -> string;
 	language_register : (Language) -> (bool, Language_ID);
-	language_unregister : (Language_ID);
 	language_unregister_for_extension : (Extension_ID);
+	language_unregister : (Language_ID);
 	platform_close_file : (*void);
 	platform_create_directory : (string) -> bool;
 	platform_delete_directory : (string) -> bool;
@@ -178,8 +178,8 @@ Amber_Hooks :: struct #type_info_none
 	split_get_active_buffer_index : (Split_ID) -> s64;
 	split_get_active_text_layout : (Split_ID) -> Text_Layout_ID;
 	split_get_area : (Split_ID) -> Rect (T = f32);
-	split_get_buffer_count : (Split_ID) -> s64;
 	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
+	split_get_buffer_count : (Split_ID) -> s64;
 	split_get_scrollbar_rect : (Split_ID) -> Rect (T = f32);
 	split_get_tab_rect : (Split_ID, s64) -> Rect (T = f32);
 	split_get_text_layout_area : (Split_ID) -> Rect (T = f32);
@@ -197,8 +197,8 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_get_closest_character : (Text_Layout_ID, Vec2 (T = f32)) -> s64;
 	text_layout_get_column_width : (Text_Layout_ID) -> f32;
 	text_layout_get_extents : (Text_Layout_ID) -> Vec2 (T = f32);
-	text_layout_get_font_height : (Text_Layout_ID) -> u32;
 	text_layout_get_font : (Text_Layout_ID) -> Font_ID;
+	text_layout_get_font_height : (Text_Layout_ID) -> u32;
 	text_layout_get_line_height : (Text_Layout_ID) -> f32;
 	text_layout_get_line_range : (Text_Layout_ID, s64) -> Range (T = s64);
 	text_layout_get_max_scroll : (Text_Layout_ID) -> Vec2 (T = f32);
