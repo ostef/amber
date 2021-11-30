@@ -2043,6 +2043,66 @@ string_to_string :: inline (str : string) -> string, bool
 	return str, true;
 }
 
+// Filename utils
+
+filename_get_basename :: inline (filename : string) -> string #must
+{
+	result := filename;
+	result.data += result.count;
+	result.count = 0;
+	if result.count != filename.count && (result.data[-1] == #char "/" || result.data[-1] == #char "\\")
+	{
+		result.data -= 1;
+		result.count += 1;
+	}
+	while result.count != filename.count
+	{
+		if result.data[-1] == #char "/" || result.data[-1] == #char "\\"
+			break;
+		result.data  -= 1;
+		result.count += 1;
+	}
+	
+	return result;
+}
+
+filename_get_extension :: inline (filename : string) -> string #must
+{
+	result := filename;
+	result.data += result.count;
+	result.count = 0;
+	while result.count != filename.count
+	{
+		if result.data[-1] == #char "."
+			break;
+		if result.data[-1] == #char "/" || result.data[-1] == #char "\\"
+			return "";
+		result.data  -= 1;
+		result.count += 1;
+	}
+	
+	return result;
+}
+
+filename_remove_basename :: inline (filename : string) -> string #must
+{
+	basename := filename_get_basename (filename);
+	result := filename;
+	result.count = basename.data - filename.data;
+	
+	return result;
+}
+
+filename_remove_extension :: inline (filename : string) -> string #must
+{
+	extension := filename_get_extension (filename);
+	if !extension then return filename;
+	result := filename;
+	result.count = extension.data - filename.data - 1;
+	
+	return result;
+}
+
 // Vec2
 
 vec2f :: make_vec2f;
@@ -3145,62 +3205,159 @@ remove_from_slot_array :: inline (using array : *Slot_Array, index : s64)
 	}
 }
 
-// Filename utils
+// Bucket array
 
-filename_get_basename :: inline (filename : string) -> string #must
+Bucket_Array :: struct (T : Type, bucket_size : s64)
 {
-	result := filename;
-	result.data += result.count;
-	result.count = 0;
-	if result.count != filename.count && (result.data[-1] == #char "/" || result.data[-1] == #char "\\")
+	Bucket :: struct
 	{
-		result.data -= 1;
-		result.count += 1;
+		data  : [bucket_size]T;
+		slots : [bucket_size]bool;
+		count : s64;
 	}
-	while result.count != filename.count
+
+	buckets : [..]*Bucket;
+	count   : s64;
+}
+
+Bucket_Array_Index :: struct
+{
+	bucket : s32;
+	slot   : s32;
+}
+
+init_bucket_array :: inline (using array : *Bucket_Array, capacity : s64, allocator : Allocator)
+{
+	bucket_count := capacity / bucket_size;
+	if capacity % array.bucket_size != 0 then bucket_count += 1;
+	init_array (*buckets, bucket_count, allocator);
+	for i : 0..bucket_count - 1
+		add_bucket_to_bucket_array (array);
+}
+
+reset_bucket_array :: inline (using array : *Bucket_Array)
+{
+	for bucket, bucket_index : buckets
+		free (bucket, buckets.allocator);
+	reset_array (*buckets);
+	count = 0;
+}
+
+clear_bucket_array :: inline (using array : *Bucket_Array)
+{
+	for bucket, bucket_index : buckets
 	{
-		if result.data[-1] == #char "/" || result.data[-1] == #char "\\"
+		for * slot, slot_index : bucket.slots
+		{
+			<<slot = false;
+		}
+		bucket.count = 0;
+	}
+	count = 0;
+}
+
+add_bucket_to_bucket_array :: inline (using array : *Bucket_Array) -> *array.Bucket, bucket_index : s32
+{
+	bucket := alloc_item (Bucket, buckets.allocator);
+	bucket.count  = 0;
+	push_into_array (*buckets, bucket);
+	for * slot, slot_index : bucket.slots
+	{
+		<<slot = false;
+	}
+
+	return bucket, xx (buckets.count - 1);
+}
+
+add_to_bucket_array :: (using array : *Bucket_Array, $initialize := true) -> *array.T #must, Bucket_Array_Index
+{
+	bucket       : *Bucket;
+	bucket_index : s32;
+	if count == bucket_size * buckets.count
+	{
+		bucket, bucket_index = add_bucket_to_bucket_array (array);
+	}
+	else
+	{
+		for b, bi : buckets
+		{
+			if b.count != bucket_size
+			{
+				bucket       = b;
+				bucket_index = xx bi;
+				
+				break;
+			}
+		}
+	}
+
+	slot_index : s32;
+	for s, si : bucket.slots
+	{
+		if !s
+		{
+			slot_index = xx si;
+
 			break;
-		result.data  -= 1;
-		result.count += 1;
+		}
 	}
-	
-	return result;
+
+	bucket.slots[slot_index] = true;
+	bucket.count += 1;
+	count        += 1;
+	index : Bucket_Array_Index = ---;
+	index.bucket = bucket_index;
+	index.slot   = slot_index;
+	result := *bucket.data[slot_index];
+#if initialize
+{
+	initialize_item (result);
 }
 
-filename_get_extension :: inline (filename : string) -> string #must
+	return result, index;
+}
+
+add_to_bucket_array :: inline (array : *Bucket_Array, item : array.T) -> *array.T, Bucket_Array_Index
 {
-	result := filename;
-	result.data += result.count;
-	result.count = 0;
-	while result.count != filename.count
+	ptr, index := add_to_bucket_array (array);
+	<<ptr = item;
+
+	return ptr, index;
+}
+
+remove_from_bucket_array :: (using array : *Bucket_Array, index : Bucket_Array_Index)
+{
+	assert (index.bucket >= 0 && index.bucket < array.buckets.count, "Invalid bucket index (got %, expected [0, %]).", index.bucket, array.buckets.count);
+	assert (index.slot   >= 0 && index.slot   < array.bucket_size,   "Invalid slot index (got %, expected [0, %]).", index.slot, array.bucket_size);
+
+	bucket := buckets[index.bucket];
+	assert (bucket.count > 0, "Bucket is empty.");
+	assert (bucket.slots[index.slot], "Slot is not occupied.");
+	bucket.slots[index.slot] = false;
+	bucket.count -= 1;
+	count        -= 1;
+}
+
+for_expansion :: (array : *Bucket_Array, body : Code, flags : For_Flags) #expand
+{
+	`it_index := -1;
+	for bucket, bucket_index : array.buckets
 	{
-		if result.data[-1] == #char "."
-			break;
-		if result.data[-1] == #char "/" || result.data[-1] == #char "\\"
-			return "";
-		result.data  -= 1;
-		result.count += 1;
+		for *=((flags & .POINTER) == .POINTER) `it, slot_index : bucket.data
+		{
+			if !bucket.slots[slot_index] then continue;
+			it_index += 1;
+			
+			#insert (
+				break = break bucket,
+				remove =
+				{
+					index : Bucket_Array_Index = ---;
+					index.bucket = xx bucket_index;
+					index.slot = xx slot_index;
+					remove_from_bucket_array (array, index);
+				}
+			) body;
+		}
 	}
-	
-	return result;
-}
-
-filename_remove_basename :: inline (filename : string) -> string #must
-{
-	basename := filename_get_basename (filename);
-	result := filename;
-	result.count = basename.data - filename.data;
-	
-	return result;
-}
-
-filename_remove_extension :: inline (filename : string) -> string #must
-{
-	extension := filename_get_extension (filename);
-	if !extension then return filename;
-	result := filename;
-	result.count = extension.data - filename.data - 1;
-	
-	return result;
 }
