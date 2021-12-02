@@ -728,6 +728,8 @@ buffer_skip_word_forward :: (buffer_id : Buffer_ID, stop_at_word_separators : bo
 	
 	first := buffer_get_codepoint (buffer_id, cursor.offset);
 	moved |= buffer_move_cursor_forward (buffer_id, cursor_id, select);
+	if cursor.offset == buffer_get_count (buffer_id)
+		return moved;
 	codepoint := buffer_get_codepoint (buffer_id, cursor.offset);
 	while !is_space (codepoint)
 	{
@@ -735,6 +737,7 @@ buffer_skip_word_forward :: (buffer_id : Buffer_ID, stop_at_word_separators : bo
 		if codepoint == #char "_" && stop_at_word_separators then break;
 		if buffer_cursor_is_at_eol (buffer_id, cursor_id) then break;
 		moved |= buffer_move_cursor_forward (buffer_id, cursor_id, select);
+		if cursor.offset == buffer_get_count (buffer_id) then break;
 		codepoint = buffer_get_codepoint (buffer_id, cursor.offset);
 	}
 	
@@ -767,9 +770,11 @@ buffer_skip_word_backward :: (buffer_id : Buffer_ID, stop_at_word_separators : b
 	
 	while !buffer_cursor_is_at_bol (buffer_id, cursor_id) && is_space (buffer_get_codepoint (buffer_id, cursor.offset - 1))
 		moved |= buffer_move_cursor_backward (buffer_id, cursor_id, select);
+	if cursor.offset == 0
+		return moved;
 	first := buffer_get_codepoint (buffer_id, cursor.offset - 1);
 	moved |= buffer_move_cursor_backward (buffer_id, cursor_id, select);
-	while !is_space (buffer_get_codepoint (buffer_id, cursor.offset - 1))
+	while cursor.offset > 0 && !is_space (buffer_get_codepoint (buffer_id, cursor.offset - 1))
 	{
 		if is_alpha_num (first) != is_alpha_num (buffer_get_codepoint (buffer_id, cursor.offset - 1))
 			break;
