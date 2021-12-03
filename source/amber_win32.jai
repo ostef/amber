@@ -407,6 +407,12 @@ win32_cursors : struct
 	type : [11]HANDLE;
 }
 
+win32_icon : struct
+{
+	small : HANDLE;
+	big : HANDLE;
+};
+
 window_class : WNDCLASSEXW;
 window : struct
 {
@@ -442,6 +448,12 @@ platform_init_window_and_gl :: ()
 		resize_vertical   = LoadCursorW (null, cast (*u16) IDC_SIZENS);
 	}
 	
+	// Load window icon
+	{
+		win32_icon.small = LoadImageW (null, utf8_to_wide ("icon.ico", TEMP), IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+		win32_icon.big   = LoadImageW (null, utf8_to_wide ("icon.ico", TEMP), IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
+	}
+
 	// Register window class
 	{
 		using window_class;
@@ -547,6 +559,9 @@ platform_init_window_and_gl :: ()
 		
 		hglrc = wglCreateContext (hdc);
 		wglMakeCurrent (hdc, hglrc);
+		// Set window icon
+		SendMessageW (hwnd, WM_SETICON, ICON_SMALL, cast (LPARAM) win32_icon.small);
+		SendMessageW (hwnd, WM_SETICON, ICON_BIG, cast (LPARAM) win32_icon.big);
 		ShowWindow (hwnd, SW_SHOWDEFAULT);
 		SetFocus (hwnd);
 	}
@@ -686,7 +701,6 @@ platform_get_window_title :: (allocator : Allocator) -> string #must
 platform_set_window_title :: (title : string)
 platform_get_mouse_wheel_state :: () -> Vec2f #must
 platform_get_window_position :: () -> Vec2i #must
-*/
 
 LOGFONTW :: struct
 {
@@ -819,6 +833,7 @@ platform_enum_font_families :: (allocator : Allocator) -> []Font_Info #must
 	
 	return result;
 }
+*/
 
 #scope_file
 
@@ -1320,11 +1335,29 @@ SW_SHOWDEFAULT : s32 : 10;
 
 PM_REMOVE : u32 : 1;
 
+ICON_SMALL : WPARAM : 0;
+ICON_BIG   : WPARAM : 1;
+
 HIWORD_W :: (wparam: WPARAM) -> s16 #expand { return cast, no_check (s16) ((cast, no_check (s32) (wparam) >> 16) & 0xffff); }
 LOWORD_W :: (wparam: WPARAM) -> s16 #expand { return cast, no_check (s16) (wparam); }
 HIWORD_L :: (lparam: LPARAM) -> s16 #expand { return cast, no_check (s16) ((cast, no_check (s32) (lparam) >> 16) & 0xffff); }
 LOWORD_L :: (lparam: LPARAM) -> s16 #expand { return cast, no_check (s16) (lparam); }
 
+IMAGE_BITMAP : u32 : 0;
+IMAGE_ICON   : u32 : 1;
+IMAGE_CURSOR : u32 : 2;
+
+LR_CREATEDIBSECTION : u32 : 0x2000;
+LR_DEFAULTCOLOR     : u32 : 0x00;
+LR_DEFAULTSIZE      : u32 : 0x40;
+LR_LOADFROMFILE     : u32 : 0x10;
+LR_LOADMAP3DCOLORS  : u32 : 0x1000;
+LR_LOADTRANSPARENT  : u32 : 0x20;
+LR_MONOCHROME       : u32 : 0x01;
+LR_SHARED           : u32 : 0x8000;
+LR_VGACOLOR         : u32 : 0x80;
+
+LoadImageW :: (hInst : HANDLE, name : *u16, type : u32, cx : s32, cy : s32, fuLoad : u32) -> HANDLE #foreign user32;
 RegisterClassExW :: (class : *WNDCLASSEXW) -> WORD #foreign user32;
 CreateWindowExW :: (
 	dwExStyle : DWORD,
@@ -1348,6 +1381,7 @@ SetCursor :: (hCursor : HANDLE) -> HANDLE #foreign user32;
 ChoosePixelFormat :: (hdc : HANDLE, ppfd : *PIXELFORMATDESCRIPTOR) -> s32 #foreign gdi32;
 SetPixelFormat :: (hdc : HANDLE, format : s32, ppfd : *PIXELFORMATDESCRIPTOR) -> BOOL #foreign gdi32;
 ShowWindow :: (hWnd : HANDLE, nShowCmd : s32) -> BOOL #foreign user32;
+SendMessageW :: (hWnd : HANDLE, Msg : u32, wParam : WPARAM, lParam : LPARAM) -> LRESULT #foreign user32;
 PeekMessageW :: (lpMsg : *MSG, hWnd : HANDLE, wMsgFilterMin : u32, wMsgFilterMax : u32, wRemoveMsg : u32) -> BOOL #foreign user32;
 TranslateMessage :: (lpMsg : *MSG) -> BOOL #foreign user32;
 DispatchMessageW :: (lpMsg : *MSG) -> LRESULT #foreign user32;
