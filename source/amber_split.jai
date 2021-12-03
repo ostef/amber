@@ -397,6 +397,18 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 	case .KEY_REPEAT;
 		if event.key_code ==
 		{
+		case .Z;
+			if event.mods == .CONTROL
+			{
+				buffer_modified = buffer_undo_last_edit (active_buffer_id);
+				scroll_to_cursor = true;
+			}
+			else if event.mods == Mods.CONTROL | .SHIFT
+			{
+				buffer_modified = buffer_redo_last_edit (active_buffer_id);
+				scroll_to_cursor = true;
+			}
+		
 		case .ESCAPE;
 			buffer_clear_cursors (active_buffer_id);
 			buffer_clear_selection (active_buffer_id);

@@ -30,23 +30,36 @@ Buffer_Cursor_ID :: #type, distinct s64;
 ALL_CURSORS : Buffer_Cursor_ID : -1;
 WRITE_HEAD  : Buffer_Cursor_ID : 0;
 
+Buffer_Edit_Kind :: enum
+{
+	INSERT :: 0;
+	BACKSPACE :: 1;
+	DELETE    :: 2;
+	MOVE_LINES_UP   :: 3;
+	MOVE_LINES_DOWN :: 4;
+	
+	MOVE_CURSOR   :: 10;
+	ADD_CURSOR    :: 11;
+	REMOVE_CURSOR :: 12;
+
+	BATCH_BEGIN :: 100;
+	BATCH_END   :: 101;
+}
+
 Buffer_Edit :: struct
 {
-	Kind :: enum
-	{
-		INSERT :: 0;
-		BACKSPACE :: 1;
-		DELETE    :: 2;
-		MOVE_LINES_UP   :: 3;
-		MOVE_LINES_DOWN :: 4;
-		
-		BATCH_BEGIN :: 10;
-		BATCH_END   :: 11;
-	}
-	
-	kind : Kind;
+	kind : Buffer_Edit_Kind;
+	line_index : s64;
+	cursor_id : Buffer_Cursor_ID;
 	cursor : Buffer_Cursor;
 	offset_in_edit_buffer : s64;
+}
+
+History_Buffering :: enum
+{
+	DONT_BUFFER :: 0;
+	PUSH_TEXT   :: 1;
+	PUSH_EDIT   :: 2;
 }
 
 // Command
