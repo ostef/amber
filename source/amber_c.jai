@@ -369,7 +369,7 @@ read_next_token :: (using hooks : *Amber_Hooks, using lexer : *C_Lexer) -> C_Tok
 
 peek_codepoint :: inline (using hooks : *Amber_Hooks, using lexer : *C_Lexer, peek_offset := 0) -> u32 #must
 {
-	assert (offset + peek_offset < count);
+	if offset + peek_offset >= count then return 0;
 	
 	return buffer_get_codepoint (buffer_id, offset + peek_offset);
 }
