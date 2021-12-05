@@ -13,5 +13,4 @@
 * command history
 
 # Bugs:
-* multi-cursor delete selection does not work properly
 * multi-cursor delete selection at end of file causes an array bounds check failure
