@@ -183,3 +183,23 @@ command_line :: (using hooks : *Amber_Hooks, line : s64) -> bool
 	return true;
 }
 @Amber_Command
+
+command_undo :: (using hooks : *Amber_Hooks) -> bool
+{
+	buffer_id := get_active_buffer ();
+	if buffer_id == NULL_BUFFER
+		return false;
+	
+	return buffer_undo_last_edit (buffer_id);
+}
+@Amber_Command
+
+command_redo :: (using hooks : *Amber_Hooks) -> bool
+{
+	buffer_id := get_active_buffer ();
+	if buffer_id == NULL_BUFFER
+		return false;
+	
+	return buffer_redo_last_edit (buffer_id);
+}
+@Amber_Command
