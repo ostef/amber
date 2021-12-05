@@ -423,6 +423,57 @@ window : struct
 
 #scope_export
 
+platform_clear_clipboard :: inline () -> bool
+{
+	if OpenClipboard (window.hwnd)
+	{
+		EmptyClipboard ();
+		CloseClipboard ();
+
+		return true;
+	}
+
+	return false;
+}
+@Amber_API
+
+platform_get_clipboard_text :: inline (allocator : Allocator) -> string #must
+{
+	if OpenClipboard (window.hwnd)
+	{
+		data := GetClipboardData (CF_UNICODETEXT);
+		GlobalLock (data);
+		result := wide_to_utf8 (cast (*u16) data, allocator);
+		GlobalUnlock (data);
+		CloseClipboard ();
+	
+		return result;
+	}
+
+	return "";
+}
+@Amber_API
+
+platform_set_clipboard_text :: inline (str : string) -> bool
+{
+	if OpenClipboard (window.hwnd)
+	{
+		EmptyClipboard ();
+		wide_str, ok, size := utf8_to_wide(str, TEMP);
+		buffer := GlobalAlloc (0, size + 2);
+		GlobalLock (buffer);
+		memcpy (buffer, wide_str, size + 2);
+		GlobalUnlock (buffer);
+		SetClipboardData (CF_UNICODETEXT, buffer);
+		CloseClipboard ();
+
+		return true;
+	}
+	
+	return false;
+}
+@Amber_API
+
 platform_open_error_box :: inline (fmt : string, args : ..Any)
 {
 	message := fstring (TEMP, fmt, ..args);
@@ -1342,6 +1393,17 @@ HIWORD_W :: (wparam: WPARAM) -> s16 #expand { return cast, no_check (s16) ((cast
 LOWORD_W :: (wparam: WPARAM) -> s16 #expand { return cast, no_check (s16) (wparam); }
 HIWORD_L :: (lparam: LPARAM) -> s16 #expand { return cast, no_check (s16) ((cast, no_check (s32) (lparam) >> 16) & 0xffff); }
 LOWORD_L :: (lparam: LPARAM) -> s16 #expand { return cast, no_check (s16) (lparam); }
+
+CF_UNICODETEXT : u32 : 13;
+
+OpenClipboard :: (hWndNewOwner : HANDLE) -> BOOL #foreign user32;
+CloseClipboard :: () -> BOOL #foreign user32;
+EmptyClipboard :: () -> BOOL #foreign user32;
+GetClipboardData :: (uFormat : u32) -> HANDLE #foreign user32;
+SetClipboardData :: (uFormat : u32, hMem : HANDLE) -> HANDLE #foreign user32;
+GlobalLock :: (hMem : HANDLE) -> *void #foreign kernel32;
+GlobalUnlock :: (hMem : HANDLE) -> BOOL #foreign kernel32;
+GlobalAlloc :: (uFlags : u32, dwBytes : s64) -> HANDLE #foreign kernel32;
 
 IMAGE_BITMAP : u32 : 0;
 IMAGE_ICON   : u32 : 1;

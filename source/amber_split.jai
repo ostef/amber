@@ -397,6 +397,18 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 	case .KEY_REPEAT;
 		if event.key_code ==
 		{
+		case .V;
+			if event.mods == .CONTROL
+			{
+				clipboard_text := platform_get_clipboard_text (TEMP);
+				if clipboard_text.count
+				{
+					buffer_insert_utf8_text_at_cursor (active_buffer_id, clipboard_text, ALL_CURSORS);
+					buffer_modified = true;
+					scroll_to_cursor = true;
+				}
+			}
+
 		case .Z;
 			if event.mods == .CONTROL
 			{

@@ -1079,6 +1079,21 @@ buffer_insert_text_at_cursor :: (buffer_id : Buffer_ID, text : []u32, cursor_id 
 }
 @Amber_API
 
+buffer_insert_utf8_text_at_cursor :: (buffer_id : Buffer_ID, text : string, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT)
+{
+	using buffer := get_buffer (buffer_id);
+	if history_buffering ==
+	{
+	case .PUSH_EDIT;
+		buffer_push_edit (buffer_id, .INSERT, cursor_id);
+		history_buffering = .PUSH_TEXT;
+	}
+
+	for utf8 (text)
+		buffer_insert_at_cursor (buffer_id, it, cursor_id, history_buffering);
+}
+@Amber_API
+
 buffer_delete_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT) -> bool
 {
 	delete_helper :: inline (using buffer : *Buffer)
