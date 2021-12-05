@@ -1131,11 +1131,14 @@ buffer_delete_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID,
 	prev_offset    := offset;
 	prev_selection := selection;
 	if cursor_id != WRITE_HEAD
+	{
 		buffer_move_cursor_to_offset (buffer_id, cursor.offset, WRITE_HEAD);
-	
+		selection = cursor.selection;
+	}
+
 	if history_buffering == .PUSH_TEXT
 	{
-		if cursor.selection == 0
+		if selection == 0
 			push_into_array (*history.edit_buffer, buffer_get_codepoint (buffer_id, offset));
 		else
 			for :selected_text codepoint, i : buffer
@@ -1176,8 +1179,11 @@ buffer_delete_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID,
 		it := buffer_get_cursor_ptr (buffer_id, xx i);
 		if it.offset >= cursor.offset - 1
 		{
+			prev_selection := it.selection;
+			it.selection = 0;
 			for 0..count - 1
 				buffer_move_cursor_backward (buffer_id, xx i);
+			it.selection = prev_selection;
 		}
 	}
 
