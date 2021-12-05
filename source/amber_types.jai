@@ -30,6 +30,9 @@ Buffer_Cursor_ID :: #type, distinct s64;
 ALL_CURSORS : Buffer_Cursor_ID : -1;
 WRITE_HEAD  : Buffer_Cursor_ID : 0;
 
+// @Note (stefan): I would like to put this inside the Buffer_Edit struct,
+// but I need to be able to print the full type when generating hooks,
+// and for now I don't know how to get the namespace of a type.
 Buffer_Edit_Kind :: enum
 {
 	INSERT :: 0;
