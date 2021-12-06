@@ -130,7 +130,7 @@ buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
 	buffer_clear (buffer_id);
 	utf8_str := utf8 (str);
 	for utf8_str
-		buffer_insert_at_cursor (buffer_id, it, WRITE_HEAD, .DONT_BUFFER);
+		buffer_insert_at_cursor (buffer_id, it, WRITE_HEAD, .DONT_PUSH);
 	buffer_set_filename (buffer_id, full_filename);
 	buffer_set_name (buffer_id, filename_get_basename (full_filename));
 
@@ -340,6 +340,15 @@ buffer_get_line_count :: inline (buffer_id : Buffer_ID) -> s64 #must
 }
 @Amber_API
 
+buffer_get_line_length :: inline (buffer_id : Buffer_ID, line_index : s64) -> s64 #must
+{
+	buffer := get_buffer (buffer_id);
+	assert (line_index >= 0 && line_index < buffer.lines.count,
+		"Invalid line index (got %, max is %).", line_index, buffer.lines.count - 1);
+
+	return buffer.lines[line_index];
+}
+
 buffer_get_eol_sequence :: inline (buffer_id : Buffer_ID) -> EOL_Sequence #must
 {
 	using buffer := get_buffer (buffer_id);
@@ -477,7 +486,7 @@ buffer_move_cursor_to_offset :: (buffer_id : Buffer_ID, new_offset : s64, cursor
 buffer_move_write_head_to_line_and_column :: inline (buffer_id : Buffer_ID, new_line : s64, new_column : s64, select := false) -> bool
 {
 	moved := buffer_move_write_head_to_line (buffer_id, new_line, select);
-	moved |= buffer_move_write_head_to_column (buffer_id, new_column, select);
+	moved |= buffer_move_cursor_to_column (buffer_id, new_column, WRITE_HEAD, select);
 	
 	return moved;
 }
@@ -539,7 +548,7 @@ buffer_move_cursor_to_eol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_I
 }
 @Amber_API
 
-buffer_move_write_head_to_column :: inline (buffer_id : Buffer_ID, column : s64, select := false) -> bool
+buffer_move_cursor_to_column :: inline (buffer_id : Buffer_ID, column : s64, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
 	using buffer := get_buffer (buffer_id);
 	moved := false;
@@ -549,12 +558,51 @@ buffer_move_write_head_to_column :: inline (buffer_id : Buffer_ID, column : s64,
 		moved = true;
 	}
 	
-	while !buffer_cursor_is_at_eol (buffer_id, WRITE_HEAD) && column_index < column
-		moved |= buffer_move_cursor_forward (buffer_id, WRITE_HEAD, select);
-	while column_index > 0 && column_index > column
-		moved |= buffer_move_cursor_backward (buffer_id, WRITE_HEAD, select);
-	
+	cursor_column_index := buffer_get_cursor_column_index (buffer_id, cursor_id);
+	while !buffer_cursor_is_at_eol (buffer_id, cursor_id) && cursor_column_index < column
+	{
+		moved |= buffer_move_cursor_forward (buffer_id, cursor_id, select);
+		cursor_column_index += 1;
+	}
+	while cursor_column_index > 0 && cursor_column_index > column
+	{
+		moved |= buffer_move_cursor_backward (buffer_id, cursor_id, select);
+		cursor_column_index -= 1;
+	}
+
 	return moved;
+}
+@Amber_API
+
+buffer_get_cursor_line_index :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> s64 #must
+{
+	buffer := get_buffer (buffer_id);
+	if cursor_id == WRITE_HEAD
+		return buffer.line_index;
+	cursor := buffer_get_cursor (buffer_id, cursor_id);
+	counter := 0;
+	for line_length, line_index : buffer.lines
+	{
+		counter += line_length;
+		if cursor.offset <= counter then return line_index;
+	}
+
+	return buffer.lines.count - 1;
+}
+
+buffer_get_cursor_column_index :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> s64 #must
+{
+	buffer := get_buffer (buffer_id);
+	if cursor_id == WRITE_HEAD
+		return buffer.column_index;
+	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
+	start_offset := cursor.offset;
+	buffer_move_cursor_to_bol (buffer_id, cursor_id, true);
+	column_index := start_offset - cursor.offset;
+	while cursor.offset != start_offset
+		buffer_move_cursor_forward (buffer_id, cursor_id, true);
+	
+	return column_index;
 }
 @Amber_API
 
@@ -846,6 +894,13 @@ buffer_merge_duplicate_cursors :: (buffer_id : Buffer_ID)
 }
 @Amber_API
 
+buffer_sort_cursors_by_offset :: (buffer_id : Buffer_ID)
+{
+	using buffer := get_buffer (buffer_id);
+	quick_sort (other_cursors, (left, right) => (left.offset - right.offset));
+}
+@Amber_API
+
 buffer_add_cursor_at_offset :: (buffer_id : Buffer_ID, target_offset : s64) -> bool
 {
 	using buffer := get_buffer (buffer_id);
@@ -972,7 +1027,7 @@ merge_current_line_with_next_one :: inline (using buffer : *Buffer)
 
 #scope_export
 
-buffer_push_edit :: inline (buffer_id : Buffer_ID, kind : Buffer_Edit_Kind, cursor_id := ALL_CURSORS) -> *Buffer_Edit
+buffer_history_push_edit :: inline (buffer_id : Buffer_ID, kind : Buffer_Edit_Kind, cursor_id := ALL_CURSORS) -> *Buffer_Edit
 {
 	using buffer := get_buffer (buffer_id);
 	buffer_clear_redo_history (buffer_id);
@@ -989,15 +1044,30 @@ buffer_push_edit :: inline (buffer_id : Buffer_ID, kind : Buffer_Edit_Kind, curs
 }
 @Amber_API
 
+buffer_history_push_char :: inline (buffer_id : Buffer_ID, codepoint : u32)
+{
+	using buffer := get_buffer (buffer_id);
+	push_into_array (*history.edit_buffer, codepoint);
+}
+@Amber_API
+
+buffer_history_push_text :: inline (buffer_id : Buffer_ID, text : []u32)
+{
+	using buffer := get_buffer (buffer_id);
+	for text
+		push_into_array (*history.edit_buffer, it);
+}
+@Amber_API
+
 buffer_begin_batch_edit :: inline (buffer_id : Buffer_ID)
 {
-	buffer_push_edit (buffer_id, .BATCH_BEGIN);
+	buffer_history_push_edit (buffer_id, .BATCH_BEGIN);
 }
 @Amber_API
 
 buffer_end_batch_edit :: inline (buffer_id : Buffer_ID)
 {
-	buffer_push_edit (buffer_id, .BATCH_END);
+	buffer_history_push_edit (buffer_id, .BATCH_END);
 }
 @Amber_API
 
@@ -1008,11 +1078,11 @@ buffer_insert_at_cursor :: (buffer_id : Buffer_ID, codepoint : u32, cursor_id : 
 	if cursor_id == ALL_CURSORS
 	{
 		if history_buffering == .PUSH_EDIT
-			buffer_push_edit (buffer_id, .BATCH_BEGIN);
+			buffer_history_push_edit (buffer_id, .BATCH_BEGIN);
 		for i : 0..other_cursors.count
 			buffer_insert_at_cursor (buffer_id, codepoint, xx i, history_buffering);
 		if history_buffering == .PUSH_EDIT
-			buffer_push_edit (buffer_id, .BATCH_END);
+			buffer_history_push_edit (buffer_id, .BATCH_END);
 		
 		return;
 	}
@@ -1020,7 +1090,7 @@ buffer_insert_at_cursor :: (buffer_id : Buffer_ID, codepoint : u32, cursor_id : 
 	if history_buffering ==
 	{
 	case .PUSH_EDIT;
-		buffer_push_edit (buffer_id, .INSERT, cursor_id);
+		buffer_history_push_edit (buffer_id, .INSERT, cursor_id);
 		#through;
 
 	case .PUSH_TEXT;
@@ -1070,7 +1140,7 @@ buffer_insert_text_at_cursor :: (buffer_id : Buffer_ID, text : []u32, cursor_id 
 	if history_buffering ==
 	{
 	case .PUSH_EDIT;
-		buffer_push_edit (buffer_id, .INSERT, cursor_id);
+		buffer_history_push_edit (buffer_id, .INSERT, cursor_id);
 		history_buffering = .PUSH_TEXT;
 	}
 
@@ -1085,7 +1155,7 @@ buffer_insert_utf8_text_at_cursor :: (buffer_id : Buffer_ID, text : string, curs
 	if history_buffering ==
 	{
 	case .PUSH_EDIT;
-		buffer_push_edit (buffer_id, .INSERT, cursor_id);
+		buffer_history_push_edit (buffer_id, .INSERT, cursor_id);
 		history_buffering = .PUSH_TEXT;
 	}
 
@@ -1122,7 +1192,7 @@ buffer_delete_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID,
 	
 	if history_buffering == .PUSH_EDIT
 	{
-		edit := buffer_push_edit (buffer_id, .DELETE, cursor_id);
+		edit := buffer_history_push_edit (buffer_id, .DELETE, cursor_id);
 		if cursor.selection < 0 then edit.cursor.offset += cursor.selection;
 		// Also push text
 		history_buffering = .PUSH_TEXT;
@@ -1211,7 +1281,7 @@ buffer_backspace_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 	if history_buffering ==
 	{
 	case .PUSH_EDIT;
-		buffer_push_edit (buffer_id, .BACKSPACE, cursor_id);
+		buffer_history_push_edit (buffer_id, .BACKSPACE, cursor_id);
 		#through;
 
 	case .PUSH_TEXT;
@@ -1254,6 +1324,74 @@ buffer_backspace_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 }
 @Amber_API
 
+buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT) -> bool
+{
+	if cursor_id == ALL_CURSORS
+	{
+		buffer := get_buffer (buffer_id);
+		last_line_moved := -1;
+		modified := false;
+		// @Note (stefan): We need to move the line for each cursor in
+		// line_index ascending order.
+		for :sorted_cursors cursor, cursor_id : buffer
+		{
+			line_index := buffer_get_cursor_line_index (buffer_id, cursor_id);
+			// Don't move the same line twice.
+			if line_index != last_line_moved
+				modified |= buffer_move_line_up (buffer_id, cursor_id, history_buffering);
+			last_line_moved = line_index;
+		}
+
+		return modified;
+	}
+
+	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
+	line_index := buffer_get_cursor_line_index (buffer_id, cursor_id);
+	if line_index == 0 then return false;
+	if history_buffering == .PUSH_EDIT
+		buffer_history_push_edit (buffer_id, .MOVE_LINE_UP, cursor_id);
+
+	line_buffer : [..]u32;
+	line_buffer.allocator = TEMP;
+	start_column_index := buffer_get_cursor_column_index (buffer_id, cursor_id);
+	is_last_line := line_index == buffer_get_line_count (buffer_id)- 1;
+	buffer_move_cursor_to_bol (buffer_id, cursor_id);
+
+	if buffer_get_line_length (buffer_id, line_index) != 0
+	{
+		eol := false;
+		while !eol
+		{
+			eol = buffer_cursor_is_at_eol (buffer_id, cursor_id);
+			if is_last_line && eol then break;
+			codepoint := buffer_get_codepoint (buffer_id, cursor.offset);
+			push_into_array (*line_buffer, codepoint);
+			if history_buffering == .PUSH_TEXT
+				buffer_history_push_char (buffer_id, codepoint);
+			buffer_delete_selection (buffer_id, cursor_id, .DONT_PUSH);
+		}
+	}
+
+	if is_last_line
+	{
+		push_into_array (*line_buffer, #char "\n");
+		if history_buffering == .PUSH_TEXT
+			buffer_history_push_char (buffer_id, #char "\n");
+		buffer_backspace_selection (buffer_id, cursor_id, .DONT_PUSH);
+		buffer_move_cursor_to_bol (buffer_id, cursor_id);
+	}
+	else
+	{
+		buffer_move_cursor_to_previous_line (buffer_id, cursor_id);
+	}
+
+	buffer_insert_text_at_cursor (buffer_id, line_buffer, cursor_id, .DONT_PUSH);
+	buffer_move_cursor_to_previous_line (buffer_id, cursor_id);
+	buffer_move_cursor_to_column (buffer_id, start_column_index, cursor_id);
+
+	return true;
+}
+
 buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 {
 	using buffer := get_buffer (buffer_id);
@@ -1272,7 +1410,7 @@ buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 		buffer_clear_cursors (buffer_id);
 		buffer_move_cursor_to_offset (buffer_id, edit.cursor.offset, WRITE_HEAD);
 		for 1..count
-			buffer_delete_selection (buffer_id, WRITE_HEAD, history_buffering = .DONT_BUFFER);
+			buffer_delete_selection (buffer_id, WRITE_HEAD, history_buffering = .DONT_PUSH);
 		
 	case .DELETE;
 		text : []u32 = ---;
@@ -1280,7 +1418,7 @@ buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 		text.count = count;
 		buffer_clear_cursors (buffer_id);
 		buffer_move_cursor_to_offset (buffer_id, edit.cursor.offset, WRITE_HEAD);
-		buffer_insert_text_at_cursor (buffer_id, text, WRITE_HEAD, .DONT_BUFFER);
+		buffer_insert_text_at_cursor (buffer_id, text, WRITE_HEAD, .DONT_PUSH);
 		buffer_move_cursor_to_offset (buffer_id, edit.cursor.offset, WRITE_HEAD);
 
 	case .BACKSPACE;
@@ -1289,7 +1427,7 @@ buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 		text.count = count;
 		buffer_clear_cursors (buffer_id);
 		buffer_move_cursor_to_offset (buffer_id, edit.cursor.offset - text.count, WRITE_HEAD);
-		buffer_insert_text_at_cursor (buffer_id, text, WRITE_HEAD, .DONT_BUFFER);
+		buffer_insert_text_at_cursor (buffer_id, text, WRITE_HEAD, .DONT_PUSH);
 
 	case .BATCH_END;
 		assert (history.index > 0, "Found a BATCH_END edit, but no matching BATCH_BEGIN edit was found.");
@@ -1328,19 +1466,19 @@ buffer_redo_last_edit :: (buffer_id : Buffer_ID) -> bool
 		text.count = count;
 		buffer_clear_cursors (buffer_id);
 		buffer_move_cursor_to_offset (buffer_id, edit.cursor.offset, WRITE_HEAD);
-		buffer_insert_text_at_cursor (buffer_id, text, WRITE_HEAD, .DONT_BUFFER);
+		buffer_insert_text_at_cursor (buffer_id, text, WRITE_HEAD, .DONT_PUSH);
 
 	case .DELETE;
 		buffer_clear_cursors (buffer_id);
 		buffer_move_cursor_to_offset (buffer_id, edit.cursor.offset, WRITE_HEAD);
 		for 1..count
-			buffer_delete_selection (buffer_id, WRITE_HEAD, .DONT_BUFFER);
+			buffer_delete_selection (buffer_id, WRITE_HEAD, .DONT_PUSH);
 
 	case .BACKSPACE;
 		buffer_clear_cursors (buffer_id);
 		buffer_move_cursor_to_offset (buffer_id, edit.cursor.offset, WRITE_HEAD);
 		for 1..count
-			buffer_backspace_selection (buffer_id, WRITE_HEAD, .DONT_BUFFER);
+			buffer_backspace_selection (buffer_id, WRITE_HEAD, .DONT_PUSH);
 
 	case .BATCH_BEGIN;
 		assert (history.index < history.edits.count, "Found a BATCH_BEGIN edit, but no matching BATCH_END edit was found.");
@@ -1395,6 +1533,36 @@ else
 else
 		it = buffer_get_cursor (buffer.id, it_index);
 		#insert (remove=sorted_remove_from_array (*buffer.other_cursors, i - 1)) body;
+	}
+}
+
+sorted_cursors :: (buffer : *Buffer, body : Code, flags : For_Flags) #expand
+{
+	`it : Buffer_Cursor;
+	`it_index : Buffer_Cursor_ID;
+
+	buffer_sort_cursors_by_offset (buffer.id);
+	iterated_on_write_head := false;
+	for i : 1..buffer.other_cursors.count
+	{
+		cursor_id := cast (Buffer_Cursor_ID) i;
+		cursor := buffer_get_cursor (buffer.id, cursor_id);
+		if !iterated_on_write_head && buffer.offset < cursor.offset
+		{
+			iterated_on_write_head = true;
+			it_index = WRITE_HEAD;
+			it = buffer.write_head;
+			#insert body;
+		}
+		it_index = cursor_id;
+		it = cursor;
+		#insert body;
+	}
+	if !iterated_on_write_head
+	{
+		it_index = WRITE_HEAD;
+		it = buffer.write_head;
+		#insert body;
 	}
 }
 

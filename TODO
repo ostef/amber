@@ -13,4 +13,8 @@
 * command history
 
 # Bugs:
+* multi-cursor move line up does not work properly with cursors on the same line
 * multi-cursor delete selection at end of file causes an array bounds check failure
+
+# Compiler bugs:
+* #through in if-case statements

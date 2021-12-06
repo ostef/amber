@@ -38,12 +38,8 @@ Buffer_Edit_Kind :: enum
 	INSERT :: 0;
 	BACKSPACE :: 1;
 	DELETE    :: 2;
-	MOVE_LINES_UP   :: 3;
-	MOVE_LINES_DOWN :: 4;
-	
-	MOVE_CURSOR   :: 10;
-	ADD_CURSOR    :: 11;
-	REMOVE_CURSOR :: 12;
+	MOVE_LINE_UP   :: 3;
+	MOVE_LINE_DOWN :: 4;
 
 	BATCH_BEGIN :: 100;
 	BATCH_END   :: 101;
@@ -60,9 +56,9 @@ Buffer_Edit :: struct
 
 History_Buffering :: enum
 {
-	DONT_BUFFER :: 0;
-	PUSH_TEXT   :: 1;
-	PUSH_EDIT   :: 2;
+	DONT_PUSH :: 0;
+	PUSH_TEXT :: 1;
+	PUSH_EDIT :: 2;
 }
 
 // Command

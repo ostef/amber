@@ -12,11 +12,11 @@ Amber_Hooks :: struct #type_info_none
 	buffer_add_cursor_on_previous_line : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_backspace_selection : (Buffer_ID, Buffer_Cursor_ID, History_Buffering) -> bool;
 	buffer_begin_batch_edit : (Buffer_ID);
-	buffer_clear : (Buffer_ID);
 	buffer_clear_cursors : (Buffer_ID);
 	buffer_clear_history : (Buffer_ID);
 	buffer_clear_redo_history : (Buffer_ID);
 	buffer_clear_selection : (Buffer_ID);
+	buffer_clear : (Buffer_ID);
 	buffer_cursor_is_at_bol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_cursor_is_at_eol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_delete_selection : (Buffer_ID, Buffer_Cursor_ID, History_Buffering) -> bool;
@@ -26,6 +26,7 @@ Amber_Hooks :: struct #type_info_none
 	buffer_get_column_index : (Buffer_ID) -> s64;
 	buffer_get_count : (Buffer_ID) -> s64;
 	buffer_get_cursor : (Buffer_ID, Buffer_Cursor_ID) -> Buffer_Cursor;
+	buffer_get_cursor_column_index : (Buffer_ID, Buffer_Cursor_ID) -> s64;
 	buffer_get_eol_sequence : (Buffer_ID) -> EOL_Sequence;
 	buffer_get_filename : (Buffer_ID, Allocator) -> string;
 	buffer_get_language : (Buffer_ID) -> Language_ID;
@@ -34,6 +35,9 @@ Amber_Hooks :: struct #type_info_none
 	buffer_get_name : (Buffer_ID, Allocator) -> string;
 	buffer_get_split : (Buffer_ID) -> Split_ID;
 	buffer_get_text_layout : (Buffer_ID) -> Text_Layout_ID;
+	buffer_history_push_char : (Buffer_ID, u32);
+	buffer_history_push_edit : (Buffer_ID, Buffer_Edit_Kind, Buffer_Cursor_ID) -> *Buffer_Edit;
+	buffer_history_push_text : (Buffer_ID, []u32);
 	buffer_insert_at_cursor : (Buffer_ID, u32, Buffer_Cursor_ID, History_Buffering);
 	buffer_insert_text_at_cursor : (Buffer_ID, []u32, Buffer_Cursor_ID, History_Buffering);
 	buffer_insert_utf8_text_at_cursor : (Buffer_ID, string, Buffer_Cursor_ID, History_Buffering);
@@ -43,15 +47,14 @@ Amber_Hooks :: struct #type_info_none
 	buffer_move_cursor_forward : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_beginning : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_bol : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
+	buffer_move_cursor_to_column : (Buffer_ID, s64, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_end : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_eol : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_next_line : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_offset : (Buffer_ID, s64, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_previous_line : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
-	buffer_move_write_head_to_column : (Buffer_ID, s64, bool) -> bool;
 	buffer_move_write_head_to_line : (Buffer_ID, s64, bool) -> bool;
 	buffer_move_write_head_to_line_and_column : (Buffer_ID, s64, s64, bool) -> bool;
-	buffer_push_edit : (Buffer_ID, Buffer_Edit_Kind, Buffer_Cursor_ID) -> *Buffer_Edit;
 	buffer_redo_last_edit : (Buffer_ID) -> bool;
 	buffer_remove_cursor : (Buffer_ID, Buffer_Cursor_ID);
 	buffer_set_eol_sequence : (Buffer_ID, EOL_Sequence);
@@ -61,6 +64,7 @@ Amber_Hooks :: struct #type_info_none
 	buffer_set_text_layout : (Buffer_ID, Text_Layout_ID);
 	buffer_skip_word_backward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
 	buffer_skip_word_forward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
+	buffer_sort_cursors_by_offset : (Buffer_ID);
 	buffer_undo_last_edit : (Buffer_ID) -> bool;
 	buffer_write_to_file : (Buffer_ID) -> bool;
 	command_buffer_backspace : ();
@@ -86,8 +90,8 @@ Amber_Hooks :: struct #type_info_none
 	destroy_framebuffer : (u32);
 	destroy_shader : (u32);
 	destroy_texture : (u32);
-	draw_circle : (Vec2 (T = f32), f32, RGBA, s64, Vec2 (T = f32), f32);
 	draw_circle_outline : (Vec2 (T = f32), f32, RGBA, f32, s64, Vec2 (T = f32), f32);
+	draw_circle : (Vec2 (T = f32), f32, RGBA, s64, Vec2 (T = f32), f32);
 	draw_get_clear_color : () -> RGBA;
 	draw_get_clip_rect : () -> Rect (T = s32);
 	draw_get_framebuffer : () -> u32;
@@ -100,8 +104,8 @@ Amber_Hooks :: struct #type_info_none
 	draw_rect : (Rect (T = f32), RGBA, f32, Rectangle_Corners, Rect (T = f32));
 	draw_rect_outline : (Rect (T = f32), RGBA, f32, f32, Rectangle_Corners, Rect (T = f32));
 	draw_reserve_vertices : (s64) -> *Vertex;
-	draw_semi_circle : (Vec2 (T = f32), f32, f32, f32, RGBA, s64, Vec2 (T = f32), f32);
 	draw_semi_circle_outline : (Vec2 (T = f32), f32, f32, f32, RGBA, f32, s64, Vec2 (T = f32), f32);
+	draw_semi_circle : (Vec2 (T = f32), f32, f32, f32, RGBA, s64, Vec2 (T = f32), f32);
 	draw_set_clear_color : (RGBA) -> RGBA;
 	draw_set_clip_rect : (Rect (T = s32)) -> Rect (T = s32);
 	draw_set_clipping : (bool) -> bool;
@@ -130,8 +134,8 @@ Amber_Hooks :: struct #type_info_none
 	language_get_extension : (Language_ID) -> Extension_ID;
 	language_get_name : (Language_ID, Allocator) -> string;
 	language_register : (Language) -> (bool, Language_ID);
-	language_unregister_for_extension : (Extension_ID);
 	language_unregister : (Language_ID);
+	language_unregister_for_extension : (Extension_ID);
 	platform_clear_clipboard : () -> bool;
 	platform_close_file : (*void);
 	platform_create_directory : (string) -> bool;
@@ -185,8 +189,8 @@ Amber_Hooks :: struct #type_info_none
 	split_create_left : (Split_ID) -> Split_ID;
 	split_create_right : (Split_ID) -> Split_ID;
 	split_exists : (Split_ID) -> bool;
-	split_get_active_buffer : (Split_ID) -> Buffer_ID;
 	split_get_active_buffer_index : (Split_ID) -> s64;
+	split_get_active_buffer : (Split_ID) -> Buffer_ID;
 	split_get_active_text_layout : (Split_ID) -> Text_Layout_ID;
 	split_get_area : (Split_ID) -> Rect (T = f32);
 	split_get_buffer_count : (Split_ID) -> s64;
@@ -226,10 +230,10 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_scroll_y : (Text_Layout_ID, f32);
 	text_layout_set_area : (Text_Layout_ID, Rect (T = f32));
 	text_layout_set_dirty : (Text_Layout_ID);
-	text_layout_set_font_height : (Text_Layout_ID, u32);
 	text_layout_set_font : (Text_Layout_ID, Font_ID);
-	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
+	text_layout_set_font_height : (Text_Layout_ID, u32);
 	text_layout_set_scroll_x : (Text_Layout_ID, f32);
+	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_set_scroll_y : (Text_Layout_ID, f32);
 	text_layout_set_visual_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_update_area : (Text_Layout_ID);

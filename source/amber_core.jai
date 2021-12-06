@@ -48,9 +48,11 @@ return cast (*void) (*dummy.%) - cast (*void) *dummy;
 END
 }
 
-swap :: inline (a : $T, b : T) -> b : T #must, a : T #must
+swap :: inline (a : *$T, b : *T)
 {
-	return b, a;
+	temp := <<a;
+	<<a = <<b;
+	<<b = temp;
 }
 
 // Math
@@ -3358,6 +3360,300 @@ for_expansion :: (array : *Bucket_Array, body : Code, flags : For_Flags) #expand
 					remove_from_bucket_array (array, index);
 				}
 			) body;
+		}
+	}
+}
+
+// Sorting
+
+quick_sort :: (array : []$T, compare_func : (T, T) -> $R)
+{
+	partition :: (array : *T, low_index : s64, high_index : s64, compare_func : (T, T) -> R) -> s64
+	{
+		x := array[high_index];
+		i := low_index - 1;
+
+		for j : low_index..high_index - 1
+		{
+			if compare_func (array[j], x) <= 0
+			{
+				i += 1;
+				swap (*array[i], *array[j]);
+			}
+		}
+		swap (*array[i + 1], *array[high_index]);
+
+		return i + 1;
+	}
+
+	helper :: (array : *T, low_index : s64, high_index : s64, compare_func : (T, T) -> R)
+	{
+		if low_index < high_index
+		{
+			p := partition (array, low_index, high_index, compare_func);
+			helper (array, low_index, p - 1, compare_func);
+			helper (array, p + 1, high_index, compare_func);
+		}
+	}
+
+	helper (array.data, 0, array.count - 1, compare_func);
+}
+
+quick_sort :: (array : []$T)
+{
+	compare_func :: inline (left : T, right : T) -> int
+	{
+		if left < right then return -1;
+		if left > right then return 1;
+
+		return 0;
+	}
+
+	quick_sort (array, compare_func);
+}
+
+// RTTI
+
+NULL_ANY :: Any.{ null, null };
+
+rtti_set_int :: inline (ptr : *void, info : *Type_Info_Integer, value : $T)
+{
+	if info.runtime_size ==
+	{
+	case 1;
+		if info.signed then
+			<<cast (*s8) ptr = xx value;
+		else
+			<<cast (*u8) ptr = xx value;
+	
+	case 2;
+		if info.signed then
+			<<cast (*s16) ptr = xx value;
+		else
+			<<cast (*u16) ptr = xx value;
+	
+	case 4;
+		if info.signed then
+			<<cast (*s32) ptr = xx value;
+		else
+			<<cast (*u32) ptr = xx value;
+	
+	case 8;
+		if info.signed then
+			<<cast (*s64) ptr = xx value;
+		else
+			<<cast (*u64) ptr = xx value;
+	}
+}
+
+rtti_get_s64 :: inline (ptr : *void, info : *Type_Info_Integer) -> s64 #must
+{
+	if info.runtime_size ==
+	{
+	case 1;
+		if info.signed then
+			return xx <<cast (*s8) ptr;
+		else
+			return xx <<cast (*u8) ptr;
+	
+	case 2;
+		if info.signed then
+			return xx <<cast (*s16) ptr;
+		else
+			return xx <<cast (*u16) ptr;
+	
+	case 4;
+		if info.signed then
+			return xx <<cast (*s32) ptr;
+		else
+			return xx <<cast (*u32) ptr;
+	
+	case 8;
+		if info.signed then
+			return xx <<cast (*s64) ptr;
+		else
+			return xx <<cast (*u64) ptr;
+	}
+
+	return 0;
+}
+
+rtti_set_bool :: inline (ptr : *void, info : *Type_Info, value : bool)
+{
+	<<cast (*bool) ptr = value;
+}
+
+rtti_get_bool :: inline (ptr : *void, info : *Type_Info) -> bool #must
+{
+	return <<cast (*bool) ptr;
+}
+
+rtti_set_string :: inline (ptr : *void, info : *Type_Info_String, value : string)
+{
+	// @Todo (stefan): Handle relative strings
+	<<cast (*string) ptr = value;
+}
+
+rtti_get_array_data :: inline (ptr : *void, info : *Type_Info_Array) -> *void #must
+{
+	if #complete info.array_type ==
+	{
+	case .FIXED;
+		return ptr;
+	
+	case .VIEW; #through;
+	case .RESIZABLE;
+		if info.relative_pointer_size
+			return <<cast (**void) (ptr + info.relative_pointer_size);
+		else
+			return <<cast (**void) (ptr + size_of (s64));
+	}
+
+	return null;
+}
+
+rtti_set_array_data :: inline (ptr : *void, info : *Type_Info_Array, data : *void)
+{
+	if #complete info.array_type ==
+	{
+	case .FIXED;
+		panic ("Cannot set the data pointer of a fixed size array.");
+	
+	case .VIEW; #through;
+	case .RESIZABLE;
+		data_ptr : **void = ---;
+		if info.relative_pointer_size
+			data_ptr = ptr + info.relative_pointer_size;
+		else
+			data_ptr = ptr + size_of (s64);
+		<<data_ptr = data;
+	}
+}
+
+rtti_get_array_count :: inline (ptr : *void, info : *Type_Info_Array) -> s64 #must
+{
+	if #complete info.array_type ==
+	{
+	case .FIXED;
+		return info.array_count;
+	
+	case .VIEW; #through;
+	case .RESIZABLE;
+		if info.relative_pointer_size == 0
+			return <<cast (*s64) ptr;
+		if info.relative_pointer_size ==
+		{
+		case 1;
+			return <<cast (*s8) ptr;
+		
+		case 2;
+			return <<cast (*s16) ptr;
+		
+		case 4;
+			return <<cast (*s32) ptr;
+		
+		case 8;
+			return <<cast (*s64) ptr;
+		}
+	}
+
+	return 0;
+}
+
+rtti_set_array_count :: inline (ptr : *void, info : *Type_Info_Array, count : s64)
+{
+	if #complete info.array_type ==
+	{
+	case .FIXED;
+		panic ("Cannot set the count of a fixed size array.");
+	
+	case .VIEW; #through;
+	case .RESIZABLE;
+		if info.relative_pointer_size ==
+		{
+		case 1;
+			<<cast (*s8) ptr = xx count;
+		
+		case 2;
+			<<cast (*s16) ptr = xx count;
+		
+		case 4;
+			<<cast (*s32) ptr = xx count;
+		
+		case 8; #through;
+		case 0;
+			<<cast (*s64) ptr = xx count;
+		}
+	}
+}
+
+rtti_is_assignable :: inline (left : *Type_Info, right : *Type_Info) -> bool
+{
+	if left.type == .STRUCT then return left == right;
+	if left.type == .ARRAY
+	{
+		if right.type != .ARRAY then return false;
+
+		return (cast (*Type_Info_Array) left).element_type == (cast (*Type_Info_Array) right).element_type;
+	}
+
+	return left.type == right.type;
+}
+
+rtti_assign :: inline (
+	left_ptr : *void,
+	left_info : *Type_Info,
+	right_ptr : *void,
+	right_info : *Type_Info
+)
+{
+	if left_info.type ==
+	{
+	case .INTEGER;
+		rtti_set_int (
+			left_ptr,
+			cast (*Type_Info_Integer) left_info,
+			rtti_get_s64 (
+				right_ptr,
+				cast (*Type_Info_Integer) right_info
+			)
+		);
+	
+	case .BOOL;
+		rtti_set_bool (
+			left_ptr,
+			left_info,
+			rtti_get_bool (
+				right_ptr,
+				right_info
+			)
+		);
+	
+	case .STRING;
+		str := <<cast (*string) right_ptr;
+		<<cast (*string) left_ptr = clone_string (str, context.allocator);
+	
+	case .FLOAT;
+	
+	case .ARRAY;
+		left_info_array := cast (*Type_Info_Array) left_info;
+		right_info_array := cast (*Type_Info_Array) right_info;
+		
+		if #complete left_info_array.array_type ==
+		{
+		case .VIEW;
+			size := rtti_get_array_count (right_ptr, right_info_array) * right_info_array.element_type.runtime_size;
+			data := alloc (size, context.allocator);
+			count := rtti_get_array_count (right_ptr, right_info_array);
+			memcpy (data, rtti_get_array_data (right_ptr, right_info_array), size);
+			rtti_set_array_data (left_ptr, left_info_array, data);
+			rtti_set_array_count (left_ptr, left_info_array, count);
+
+		case .FIXED;
+			panic ("Not yet implemented.");
+
+		case .RESIZABLE;
+			panic ("Not yet implemented.");
 		}
 	}
 }

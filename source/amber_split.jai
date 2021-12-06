@@ -444,54 +444,92 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 			buffer_merge_duplicate_cursors (active_buffer_id);
 			scroll_to_cursor = true;
 		
-		case .LEFT; #through;
-		case .RIGHT;
-			right := event.key_code == .RIGHT;
-			skip_word := ifx right then buffer_skip_word_forward else buffer_skip_word_backward;
-			move_cursor := ifx right then buffer_move_cursor_forward else buffer_move_cursor_backward;
+		case .LEFT;
 			if flagged (event.mods, .CONTROL) && !flagged (event.mods, .ALT)
-				skip_word (active_buffer_id, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+				buffer_skip_word_backward (active_buffer_id, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
 			else
-				move_cursor (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+				buffer_move_cursor_backward (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
 			buffer_merge_duplicate_cursors (active_buffer_id);
 			scroll_to_cursor = true;
 		
-		case .UP; #through;
-		case .DOWN;
-			down := event.key_code == .DOWN;
-			if event.mods == Mods.SHIFT | .ALT
+		case .RIGHT;
+			if flagged (event.mods, .CONTROL) && !flagged (event.mods, .ALT)
+				buffer_skip_word_forward (active_buffer_id, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+			else
+				buffer_move_cursor_forward (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+			buffer_merge_duplicate_cursors (active_buffer_id);
+			scroll_to_cursor = true;
+		
+		case .UP;
+			if event.mods == .ALT
 			{
-				add_cursor := ifx down then buffer_add_cursor_on_next_line else buffer_add_cursor_on_previous_line;
-				add_cursor (active_buffer_id, ALL_CURSORS);
+				buffer_modified = buffer_move_line_up (active_buffer_id, ALL_CURSORS);
+				buffer_merge_duplicate_cursors (active_buffer_id);
+				scroll_to_cursor = true;
+			}
+			else if event.mods == Mods.SHIFT | .ALT
+			{
+				buffer_add_cursor_on_previous_line (active_buffer_id, ALL_CURSORS);
 				scroll_to_cursor = true;
 			}
 			else if event.mods == Mods.CONTROL
 			{
-				text_layout_scroll_y (active_layout_id, cast (int) down * 2.0 - 1);
+				text_layout_scroll_y (active_layout_id, -1);
 				show_scrollbar = true;
 			}
 			else
 			{
-				move_cursor := ifx down then buffer_move_cursor_to_next_line else buffer_move_cursor_to_previous_line;
-				move_cursor (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+				buffer_move_cursor_to_previous_line (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
+				buffer_merge_duplicate_cursors (active_buffer_id);
+				scroll_to_cursor = true;
+			}
+
+		case .DOWN;
+			if event.mods == Mods.SHIFT | .ALT
+			{
+				buffer_add_cursor_on_next_line (active_buffer_id, ALL_CURSORS);
+				scroll_to_cursor = true;
+			}
+			else if event.mods == Mods.CONTROL
+			{
+				text_layout_scroll_y (active_layout_id, 1);
+				show_scrollbar = true;
+			}
+			else
+			{
+				buffer_move_cursor_to_next_line (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
 				buffer_merge_duplicate_cursors (active_buffer_id);
 				scroll_to_cursor = true;
 			}
 			
-		case .PAGE_UP; #through;
-		case .PAGE_DOWN;
-			down := event.key_code == .PAGE_DOWN;
+		case .PAGE_UP;
 			if remove_flag (event.mods, .SHIFT) == .CONTROL
 			{
-				text_layout_scroll_y (active_layout_id, 30 * (cast (int) down * 2.0 - 1));
+				text_layout_scroll_y (active_layout_id, -30);
 				show_scrollbar = true;
 			}
 			else
 			{
-				move_cursor := ifx down then buffer_move_cursor_to_next_line else buffer_move_cursor_to_previous_line;
 				for 1..30
 				{
-					if !move_cursor (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
+					if !buffer_move_cursor_to_previous_line (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
+						break;
+				}
+				buffer_merge_duplicate_cursors (active_buffer_id);
+				scroll_to_cursor = true;
+			}
+
+		case .PAGE_DOWN;
+			if remove_flag (event.mods, .SHIFT) == .CONTROL
+			{
+				text_layout_scroll_y (active_layout_id, 30);
+				show_scrollbar = true;
+			}
+			else
+			{
+				for 1..30
+				{
+					if !buffer_move_cursor_to_next_line (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
 						break;
 				}
 				buffer_merge_duplicate_cursors (active_buffer_id);
