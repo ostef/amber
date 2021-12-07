@@ -1136,9 +1136,20 @@ buffer_insert_at_cursor :: (buffer_id : Buffer_ID, codepoint : u32, cursor_id : 
 buffer_insert_text_at_cursor :: (buffer_id : Buffer_ID, text : []u32, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT)
 {
 	using buffer := get_buffer (buffer_id);
-	if history_buffering ==
+	if cursor_id == ALL_CURSORS
 	{
-	case .PUSH_EDIT;
+		if history_buffering == .PUSH_EDIT
+			buffer_history_push_edit (buffer_id, .BATCH_BEGIN);
+		for i : 0..other_cursors.count
+			buffer_insert_text_at_cursor (buffer_id, text, xx i, history_buffering);
+		if history_buffering == .PUSH_EDIT
+			buffer_history_push_edit (buffer_id, .BATCH_END);
+		
+		return;
+	}
+
+	if history_buffering == .PUSH_EDIT
+	{
 		buffer_history_push_edit (buffer_id, .INSERT, cursor_id);
 		history_buffering = .PUSH_TEXT;
 	}
@@ -1151,9 +1162,20 @@ buffer_insert_text_at_cursor :: (buffer_id : Buffer_ID, text : []u32, cursor_id 
 buffer_insert_utf8_text_at_cursor :: (buffer_id : Buffer_ID, text : string, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT)
 {
 	using buffer := get_buffer (buffer_id);
-	if history_buffering ==
+	if cursor_id == ALL_CURSORS
 	{
-	case .PUSH_EDIT;
+		if history_buffering == .PUSH_EDIT
+			buffer_history_push_edit (buffer_id, .BATCH_BEGIN);
+		for i : 0..other_cursors.count
+			buffer_insert_utf8_text_at_cursor (buffer_id, text, xx i, history_buffering);
+		if history_buffering == .PUSH_EDIT
+			buffer_history_push_edit (buffer_id, .BATCH_END);
+		
+		return;
+	}
+
+	if history_buffering == .PUSH_EDIT
+	{
 		buffer_history_push_edit (buffer_id, .INSERT, cursor_id);
 		history_buffering = .PUSH_TEXT;
 	}
@@ -1568,7 +1590,6 @@ buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 		next := history.edits[history.index - 1];
 		while next.kind != .BATCH_BEGIN
 		{
-			assert (next.kind != .BATCH_END, "Found a BATCH_END edit before the matching BATCH_BEGIN.");
 			assert (history.index > 0, "Found a BATCH_END edit, but no matching BATCH_BEGIN edit was found.");
 			buffer_undo_last_edit (buffer_id);
 			next = history.edits[history.index - 1];
@@ -1629,7 +1650,6 @@ buffer_redo_last_edit :: (buffer_id : Buffer_ID) -> bool
 		next := history.edits[history.index];
 		while next.kind != .BATCH_END
 		{
-			assert (next.kind != .BATCH_BEGIN, "Found a BATCH_BEGIN edit before the matching BATCH_END.");
 			assert (history.index < history.edits.count, "Found a BATCH_BEGIN edit, but no matching BATCH_END edit was found.");
 			buffer_redo_last_edit (buffer_id);
 			next = history.edits[history.index];
