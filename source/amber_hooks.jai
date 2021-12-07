@@ -23,15 +23,14 @@ Amber_Hooks :: struct #type_info_none
 	buffer_end_batch_edit : (Buffer_ID);
 	buffer_exists : (Buffer_ID) -> bool;
 	buffer_get_codepoint : (Buffer_ID, s64) -> u32;
-	buffer_get_column_index : (Buffer_ID) -> s64;
 	buffer_get_count : (Buffer_ID) -> s64;
 	buffer_get_cursor : (Buffer_ID, Buffer_Cursor_ID) -> Buffer_Cursor;
 	buffer_get_cursor_column_index : (Buffer_ID, Buffer_Cursor_ID) -> s64;
+	buffer_get_cursor_line_index : (Buffer_ID, Buffer_Cursor_ID) -> s64;
 	buffer_get_eol_sequence : (Buffer_ID) -> EOL_Sequence;
 	buffer_get_filename : (Buffer_ID, Allocator) -> string;
 	buffer_get_language : (Buffer_ID) -> Language_ID;
 	buffer_get_line_count : (Buffer_ID) -> s64;
-	buffer_get_line_index : (Buffer_ID) -> s64;
 	buffer_get_name : (Buffer_ID, Allocator) -> string;
 	buffer_get_split : (Buffer_ID) -> Split_ID;
 	buffer_get_text_layout : (Buffer_ID) -> Text_Layout_ID;
@@ -53,8 +52,8 @@ Amber_Hooks :: struct #type_info_none
 	buffer_move_cursor_to_next_line : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_offset : (Buffer_ID, s64, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_previous_line : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
-	buffer_move_write_head_to_line_and_column : (Buffer_ID, s64, s64, bool) -> bool;
 	buffer_move_write_head_to_line : (Buffer_ID, s64, bool) -> bool;
+	buffer_move_write_head_to_line_and_column : (Buffer_ID, s64, s64, bool) -> bool;
 	buffer_redo_last_edit : (Buffer_ID) -> bool;
 	buffer_remove_cursor : (Buffer_ID, Buffer_Cursor_ID);
 	buffer_set_eol_sequence : (Buffer_ID, EOL_Sequence);
@@ -193,8 +192,8 @@ Amber_Hooks :: struct #type_info_none
 	split_get_active_buffer : (Split_ID) -> Buffer_ID;
 	split_get_active_text_layout : (Split_ID) -> Text_Layout_ID;
 	split_get_area : (Split_ID) -> Rect (T = f32);
-	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
 	split_get_buffer_count : (Split_ID) -> s64;
+	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
 	split_get_scrollbar_rect : (Split_ID) -> Rect (T = f32);
 	split_get_tab_rect : (Split_ID, s64) -> Rect (T = f32);
 	split_get_text_layout_area : (Split_ID) -> Rect (T = f32);
@@ -232,9 +231,9 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_set_dirty : (Text_Layout_ID);
 	text_layout_set_font_height : (Text_Layout_ID, u32);
 	text_layout_set_font : (Text_Layout_ID, Font_ID);
+	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_set_scroll_x : (Text_Layout_ID, f32);
 	text_layout_set_scroll_y : (Text_Layout_ID, f32);
-	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_set_visual_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_update_area : (Text_Layout_ID);
 	toggle_command_input : ();

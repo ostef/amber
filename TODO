@@ -11,10 +11,30 @@
 * advanced clipboard (multi-cursor copy/pasting and such)
 * C extensions
 * command history
+* line endings
+* multi-cursor selection with mouse
+* try to cache the line_index and column_index of other cursors
+* encodings
 
 # Bugs:
-* multi-cursor move line up does not work properly with cursors on the same line
 * multi-cursor delete selection at end of file causes an array bounds check failure
 
 # Compiler bugs:
 * #through in if-case statements
+
+# Changing how cursors work:
+## Pros of relative offsets
+* Cursor edition is simpler (don't have to move cursors forward/backward when inserting/deleting)
+* 
+
+## Cons of relative offsets
+* Have to calculate the absolute offset when needed (not that big of a deal since most likely you don't have thousands of cursors)
+* Moving a single cursor means moving next cursors in the opposite direction
+* Sorting is harder
+
+## Pros of absolute offsets
+* Never need to calculate relative offsets, and absolute offsets are stored as is
+* Moving cursors is simpler
+
+## Cons of absolute offsets
+* Cursor edition is more complicated

@@ -279,10 +279,17 @@ buffer_get_count :: inline (buffer_id : Buffer_ID) -> s64 #must
 }
 @Amber_API
 
+buffer_cursor_exists :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool #must
+{
+	using buffer := get_buffer (buffer_id);
+
+	return cursor_id >= WRITE_HEAD && cursor_id <= xx other_cursors.count;
+}
+
 buffer_get_cursor :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> Buffer_Cursor #must
 {
 	using buffer := get_buffer (buffer_id);
-	assert (cursor_id >= WRITE_HEAD && cursor_id <= xx other_cursors.count, "Invalid cursor id (expected [0;%], got %).", other_cursors.count, cursor_id);
+	assert (buffer_cursor_exists (buffer_id, cursor_id), "Invalid cursor id.");
 	if cursor_id == WRITE_HEAD
 		return write_head;
 	
@@ -293,12 +300,45 @@ buffer_get_cursor :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID
 buffer_get_cursor_ptr :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> *Buffer_Cursor #must
 {
 	using buffer := get_buffer (buffer_id);
-	assert (cursor_id >= WRITE_HEAD && cursor_id <= xx other_cursors.count, "Invalid cursor id (expected [0;%], got %).", other_cursors.count, cursor_id);
+	assert (buffer_cursor_exists (buffer_id, cursor_id), "Invalid cursor id.");
 	if cursor_id == WRITE_HEAD
 		return *write_head;
 	
 	return *other_cursors[cast (s64) cursor_id - 1];
 }
+
+buffer_get_cursor_line_index :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> s64 #must
+{
+	buffer := get_buffer (buffer_id);
+	if cursor_id == WRITE_HEAD
+		return buffer.line_index;
+	cursor := buffer_get_cursor (buffer_id, cursor_id);
+	counter := 0;
+	for line_length, line_index : buffer.lines
+	{
+		counter += line_length;
+		if cursor.offset < counter then return line_index;
+	}
+
+	return buffer.lines.count - 1;
+}
+@Amber_API
+
+buffer_get_cursor_column_index :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> s64 #must
+{
+	buffer := get_buffer (buffer_id);
+	if cursor_id == WRITE_HEAD
+		return buffer.column_index;
+	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
+	start_offset := cursor.offset;
+	buffer_move_cursor_to_bol (buffer_id, cursor_id, true);
+	column_index := start_offset - cursor.offset;
+	while cursor.offset != start_offset
+		buffer_move_cursor_forward (buffer_id, cursor_id, true);
+	
+	return column_index;
+}
+@Amber_API
 
 buffer_cursor_is_at_bol :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool #must
 {
@@ -313,22 +353,6 @@ buffer_cursor_is_at_eol :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cur
 	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
 	
 	return cursor.offset == buffer_get_count (buffer_id) || buffer_get_codepoint (buffer_id, cursor.offset) == #char "\n";
-}
-@Amber_API
-
-buffer_get_line_index :: inline (buffer_id : Buffer_ID) -> s64 #must
-{
-	using buffer := get_buffer (buffer_id);
-	
-	return line_index;
-}
-@Amber_API
-
-buffer_get_column_index :: inline (buffer_id : Buffer_ID) -> s64 #must
-{
-	using buffer := get_buffer (buffer_id);
-	
-	return column_index;
 }
 @Amber_API
 
@@ -571,38 +595,6 @@ buffer_move_cursor_to_column :: inline (buffer_id : Buffer_ID, column : s64, cur
 	}
 
 	return moved;
-}
-@Amber_API
-
-buffer_get_cursor_line_index :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> s64 #must
-{
-	buffer := get_buffer (buffer_id);
-	if cursor_id == WRITE_HEAD
-		return buffer.line_index;
-	cursor := buffer_get_cursor (buffer_id, cursor_id);
-	counter := 0;
-	for line_length, line_index : buffer.lines
-	{
-		counter += line_length;
-		if cursor.offset <= counter then return line_index;
-	}
-
-	return buffer.lines.count - 1;
-}
-
-buffer_get_cursor_column_index :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> s64 #must
-{
-	buffer := get_buffer (buffer_id);
-	if cursor_id == WRITE_HEAD
-		return buffer.column_index;
-	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
-	start_offset := cursor.offset;
-	buffer_move_cursor_to_bol (buffer_id, cursor_id, true);
-	column_index := start_offset - cursor.offset;
-	while cursor.offset != start_offset
-		buffer_move_cursor_forward (buffer_id, cursor_id, true);
-	
-	return column_index;
 }
 @Amber_API
 
@@ -1326,9 +1318,9 @@ buffer_backspace_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 
 buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT) -> bool
 {
+	buffer := get_buffer (buffer_id);
 	if cursor_id == ALL_CURSORS
 	{
-		buffer := get_buffer (buffer_id);
 		last_line_moved := -1;
 		modified := false;
 		// @Note (stefan): We need to move the line for each cursor in
@@ -1336,6 +1328,10 @@ buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, his
 		for :sorted_cursors cursor, cursor_id : buffer
 		{
 			line_index := buffer_get_cursor_line_index (buffer_id, cursor_id);
+			// Don't move a line that is before the last line we moved, because
+			// it means the cursor is on the same line as the previous one.
+			if line_index < last_line_moved
+				continue;
 			// Don't move the same line twice.
 			if line_index != last_line_moved
 				modified |= buffer_move_line_up (buffer_id, cursor_id, history_buffering);
@@ -1351,10 +1347,30 @@ buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, his
 	if history_buffering == .PUSH_EDIT
 		buffer_history_push_edit (buffer_id, .MOVE_LINE_UP, cursor_id);
 
+	// @Note (stefan): I don't like the way we handle multiple cursors on the same line...
+	Same_Line :: struct
+	{
+		cursor_id : Buffer_Cursor_ID;
+		relative_offset : s64;
+	}
+
+	other_cursors_on_the_same_line : [..]Same_Line;
+	other_cursors_on_the_same_line.allocator = TEMP;
+	for :cursors other, other_id : buffer
+	{
+		if other_id == cursor_id then continue;
+		if buffer_get_cursor_line_index (buffer_id, other_id) == line_index
+		{
+			same_line := push_into_array (*other_cursors_on_the_same_line);
+			same_line.cursor_id = other_id;
+			same_line.relative_offset = other.offset - cursor.offset;
+		}
+	}
+
 	line_buffer : [..]u32;
 	line_buffer.allocator = TEMP;
 	start_column_index := buffer_get_cursor_column_index (buffer_id, cursor_id);
-	is_last_line := line_index == buffer_get_line_count (buffer_id)- 1;
+	is_last_line := line_index == buffer_get_line_count (buffer_id) - 1;
 	buffer_move_cursor_to_bol (buffer_id, cursor_id);
 
 	if buffer_get_line_length (buffer_id, line_index) != 0
@@ -1388,6 +1404,11 @@ buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, his
 	buffer_insert_text_at_cursor (buffer_id, line_buffer, cursor_id, .DONT_PUSH);
 	buffer_move_cursor_to_previous_line (buffer_id, cursor_id);
 	buffer_move_cursor_to_column (buffer_id, start_column_index, cursor_id);
+
+	// Move cursors that were on the same line so they keep the same relative offset
+	// as the cursor we just moved.
+	for other_cursors_on_the_same_line
+		buffer_move_cursor_to_offset (buffer_id, cursor.offset + it.relative_offset, it.cursor_id);
 
 	return true;
 }
@@ -1562,7 +1583,7 @@ sorted_cursors :: (buffer : *Buffer, body : Code, flags : For_Flags) #expand
 	{
 		it_index = WRITE_HEAD;
 		it = buffer.write_head;
-		#insert body;
+		#insert (continue={}, break={}) body;
 	}
 }
 
