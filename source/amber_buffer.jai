@@ -1030,10 +1030,12 @@ buffer_history_push_edit :: inline (buffer_id : Buffer_ID, kind : Buffer_Edit_Ki
 	buffer_clear_redo_history (buffer_id);
 	edit := push_into_array (*history.edits);
 	edit.kind = kind;
-	edit.line_index = line_index;
 	edit.cursor_id = cursor_id;
 	if cursor_id != ALL_CURSORS
+	{
+		edit.line_index = buffer_get_cursor_line_index (buffer_id, cursor_id);
 		edit.cursor = buffer_get_cursor (buffer_id, cursor_id);
+	}
 	edit.offset_in_edit_buffer = history.edit_buffer.count;
 	history.index = history.edits.count;
 
@@ -1551,6 +1553,16 @@ buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 		buffer_move_cursor_to_offset (buffer_id, edit.cursor.offset - text.count, WRITE_HEAD);
 		buffer_insert_text_at_cursor (buffer_id, text, WRITE_HEAD, .DONT_PUSH);
 
+	case .MOVE_LINE_UP;
+		buffer_clear_cursors (buffer_id);
+		buffer_move_write_head_to_line (buffer_id, edit.line_index - 1);
+		buffer_move_line_down (buffer_id, WRITE_HEAD, .DONT_PUSH);
+	
+	case .MOVE_LINE_DOWN;
+		buffer_clear_cursors (buffer_id);
+		buffer_move_write_head_to_line (buffer_id, edit.line_index + 1);
+		buffer_move_line_up (buffer_id, WRITE_HEAD, .DONT_PUSH);
+
 	case .BATCH_END;
 		assert (history.index > 0, "Found a BATCH_END edit, but no matching BATCH_BEGIN edit was found.");
 		next := history.edits[history.index - 1];
@@ -1601,6 +1613,16 @@ buffer_redo_last_edit :: (buffer_id : Buffer_ID) -> bool
 		buffer_move_cursor_to_offset (buffer_id, edit.cursor.offset, WRITE_HEAD);
 		for 1..count
 			buffer_backspace_selection (buffer_id, WRITE_HEAD, .DONT_PUSH);
+
+	case .MOVE_LINE_UP;
+		buffer_clear_cursors (buffer_id);
+		buffer_move_write_head_to_line (buffer_id, edit.line_index);
+		buffer_move_line_up (buffer_id, WRITE_HEAD, .DONT_PUSH);
+	
+	case .MOVE_LINE_DOWN;
+		buffer_clear_cursors (buffer_id);
+		buffer_move_write_head_to_line (buffer_id, edit.line_index);
+		buffer_move_line_down (buffer_id, WRITE_HEAD, .DONT_PUSH);
 
 	case .BATCH_BEGIN;
 		assert (history.index < history.edits.count, "Found a BATCH_BEGIN edit, but no matching BATCH_END edit was found.");
