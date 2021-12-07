@@ -12,11 +12,11 @@ Amber_Hooks :: struct #type_info_none
 	buffer_add_cursor_on_previous_line : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_backspace_selection : (Buffer_ID, Buffer_Cursor_ID, History_Buffering) -> bool;
 	buffer_begin_batch_edit : (Buffer_ID);
+	buffer_clear : (Buffer_ID);
 	buffer_clear_cursors : (Buffer_ID);
 	buffer_clear_history : (Buffer_ID);
 	buffer_clear_redo_history : (Buffer_ID);
 	buffer_clear_selection : (Buffer_ID);
-	buffer_clear : (Buffer_ID);
 	buffer_cursor_is_at_bol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_cursor_is_at_eol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_delete_selection : (Buffer_ID, Buffer_Cursor_ID, History_Buffering) -> bool;
@@ -188,12 +188,12 @@ Amber_Hooks :: struct #type_info_none
 	split_create_left : (Split_ID) -> Split_ID;
 	split_create_right : (Split_ID) -> Split_ID;
 	split_exists : (Split_ID) -> bool;
-	split_get_active_buffer_index : (Split_ID) -> s64;
 	split_get_active_buffer : (Split_ID) -> Buffer_ID;
+	split_get_active_buffer_index : (Split_ID) -> s64;
 	split_get_active_text_layout : (Split_ID) -> Text_Layout_ID;
 	split_get_area : (Split_ID) -> Rect (T = f32);
-	split_get_buffer_count : (Split_ID) -> s64;
 	split_get_buffer : (Split_ID, s64) -> Buffer_ID;
+	split_get_buffer_count : (Split_ID) -> s64;
 	split_get_scrollbar_rect : (Split_ID) -> Rect (T = f32);
 	split_get_tab_rect : (Split_ID, s64) -> Rect (T = f32);
 	split_get_text_layout_area : (Split_ID) -> Rect (T = f32);
@@ -201,8 +201,8 @@ Amber_Hooks :: struct #type_info_none
 	split_open_buffer : (Split_ID) -> Buffer_ID;
 	split_set_active_buffer : (Split_ID, s64);
 	split_set_area : (Split_ID, Rect (T = f32));
-	text_layout_clear_colors : (Text_Layout_ID);
 	text_layout_clear : (Text_Layout_ID);
+	text_layout_clear_colors : (Text_Layout_ID);
 	text_layout_compute : (Text_Layout_ID);
 	text_layout_exists : (Text_Layout_ID) -> bool;
 	text_layout_get_area : (Text_Layout_ID) -> Rect (T = f32);
@@ -211,8 +211,8 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_get_closest_character : (Text_Layout_ID, Vec2 (T = f32)) -> s64;
 	text_layout_get_column_width : (Text_Layout_ID) -> f32;
 	text_layout_get_extents : (Text_Layout_ID) -> Vec2 (T = f32);
-	text_layout_get_font_height : (Text_Layout_ID) -> u32;
 	text_layout_get_font : (Text_Layout_ID) -> Font_ID;
+	text_layout_get_font_height : (Text_Layout_ID) -> u32;
 	text_layout_get_line_height : (Text_Layout_ID) -> f32;
 	text_layout_get_line_range : (Text_Layout_ID, s64) -> Range (T = s64);
 	text_layout_get_max_scroll : (Text_Layout_ID) -> Vec2 (T = f32);
@@ -229,8 +229,8 @@ Amber_Hooks :: struct #type_info_none
 	text_layout_scroll_y : (Text_Layout_ID, f32);
 	text_layout_set_area : (Text_Layout_ID, Rect (T = f32));
 	text_layout_set_dirty : (Text_Layout_ID);
-	text_layout_set_font_height : (Text_Layout_ID, u32);
 	text_layout_set_font : (Text_Layout_ID, Font_ID);
+	text_layout_set_font_height : (Text_Layout_ID, u32);
 	text_layout_set_scroll : (Text_Layout_ID, Vec2 (T = f32));
 	text_layout_set_scroll_x : (Text_Layout_ID, f32);
 	text_layout_set_scroll_y : (Text_Layout_ID, f32);

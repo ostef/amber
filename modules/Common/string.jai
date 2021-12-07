@@ -286,10 +286,18 @@ cstring_equals :: (left : *u8, right : *u8) -> bool #must
 compare_strings :: (a: string, b: string) -> s64 #must
 {
 	i := 0;
-	while i < a.count - 1 && i < b.count - 1 && a[i] == b[i]
+	while i < min (a.count, b.count)
+	{
+		if a[i] != b[i]
+			return cast (s64) a[i] - cast (s64) b[i];
 		i += 1;
+	}
+	if a.count < b.count
+		return -cast (s64) b[i];
+	else if a.count > b.count
+		return cast (s64) a[i];
 
-	return cast (s64) a[i] - cast (s64) b[i];
+	return 0;
 }
 
 to_upper :: inline (char : u8) -> u8 #must
