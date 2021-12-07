@@ -411,9 +411,9 @@ buffer_move_cursor_forward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 	
 	if cursor.offset < buffer_get_count (buffer_id)
 	{
-		prev := buffer_get_codepoint (buffer_id, cursor.offset);
 		if cursor_id == WRITE_HEAD
 		{
+			prev := buffer_get_codepoint (buffer_id, cursor.offset);
 			data[offset] = prev;
 			column_index += 1;
 			if prev == #char "\n"
@@ -455,11 +455,11 @@ buffer_move_cursor_backward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor
 	
 	if cursor.offset > 0
 	{
-		prev := buffer_get_codepoint (buffer_id, cursor.offset - 1);
-		cursor.offset -= 1;
-		if select then cursor.selection += 1;
 		if cursor_id == WRITE_HEAD
 		{
+			prev := buffer_get_codepoint (buffer_id, cursor.offset - 1);
+			cursor.offset -= 1;
+			if select then cursor.selection += 1;
 			data[offset + gap] = prev;
 			column_index -= 1;
 			if prev == #char "\n"
@@ -468,7 +468,12 @@ buffer_move_cursor_backward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor
 				column_index = lines[line_index] - 1;
 			}
 		}
-	
+		else
+		{
+			cursor.offset -= 1;
+			if select then cursor.selection += 1;
+		}
+		
 		return true;
 	}
 	
@@ -1231,6 +1236,7 @@ buffer_delete_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID,
 	if cursor_id != WRITE_HEAD
 	{
 		<<cursor = write_head;
+		prev_offset = clamp (prev_offset, 0, buffer_get_count (buffer_id));
 		buffer_move_cursor_to_offset (buffer_id, prev_offset, WRITE_HEAD);
 		selection = prev_selection;
 	}
@@ -1309,7 +1315,8 @@ buffer_backspace_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 	{
 		if i == xx cursor_id then continue;
 		it := buffer_get_cursor_ptr (buffer_id, xx i);
-		if it.offset >= cursor.offset - 1 then buffer_move_cursor_backward (buffer_id, xx i);
+		if it.offset >= cursor.offset - 1
+			buffer_move_cursor_backward (buffer_id, xx i);
 	}
 	
 	return true;
