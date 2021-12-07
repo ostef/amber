@@ -1,11 +1,10 @@
-# This is a comment
-a = 10;		# This is another comment
-b = "Hello Sailor!\n";
-a.b[10].c.d[5].e = b;
 extensions = {
 	"amber_default",
 	"amber_jai"
 };
+default_font_name = "JetBrains-Mono";
+default_font_height = 16;
+command_prompt = ">";
 shortcuts = {
 	{
 		.command = "open",
@@ -20,4 +19,4 @@ shortcuts = {
 		.1 = { 123 }
 	}
 };
-array[10] = "String";
+another_array = some_array;

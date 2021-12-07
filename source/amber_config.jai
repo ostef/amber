@@ -18,9 +18,12 @@
 
 Amber_Config :: struct
 {
-	extensions : [..]string;
+	extensions : []string;
 	default_font_name : string;
 	default_font_height : u32;
+	command_prompt : string;
+	some_array : [3]int = .[ 1, 2, 3 ];
+	another_array : []int;
 }
 
 Config_Parser :: struct
@@ -221,6 +224,8 @@ config_parser_advance :: inline (using parser : *Config_Parser, count := 1)
 
 config_parse :: (using parser : *Config_Parser)
 {
+	profile ();
+
 	while config_parser_is_valid (parser)
 	{
 		assignment := config_parse_assignment (parser);
@@ -232,6 +237,8 @@ config_parse :: (using parser : *Config_Parser)
 
 config_parse_assignment :: (using parser : *Config_Parser) -> *Config_Assignment
 {
+	profile ();
+
 	lvalue := config_parse_lvalue (parser);
 	if !lvalue
 	{
@@ -274,6 +281,8 @@ config_parse_assignment :: (using parser : *Config_Parser) -> *Config_Assignment
 
 config_parse_rvalue :: (using parser : *Config_Parser) -> *Config_RValue
 {
+	profile ();
+
 	config_parser_skip_spaces (parser);
 	if is_alpha (config_parser_get (parser)) || config_parser_get (parser) == #char "_"
 	{
@@ -342,6 +351,8 @@ config_parse_rvalue :: (using parser : *Config_Parser) -> *Config_RValue
 
 config_parse_lvalue :: (using parser : *Config_Parser) -> *Config_LValue
 {
+	profile ();
+
 	config_parser_skip_spaces (parser);
 	identifier, ok := config_parse_identifier (parser);
 	if !ok then return null;
@@ -393,6 +404,8 @@ config_parse_bool :: inline (using parser : *Config_Parser) -> bool, ok : bool
 
 config_parse_string :: inline (using parser : *Config_Parser) -> string, ok : bool
 {
+	profile ();
+
 	if !config_parser_match_string (parser, "\"")
 		return "", false;
 	builder : String_Builder;
@@ -449,6 +462,8 @@ config_parse_identifier :: inline (using parser : *Config_Parser) -> string, ok 
 
 config_parse_compound :: (using parser : *Config_Parser) -> *Config_Compound
 {
+	profile ();
+
 	config_parser_skip_spaces (parser);
 	if !config_parser_match_string (parser, "{") then return null;
 	elems : [..]*Config_Compound_Elem;
@@ -474,6 +489,8 @@ config_parse_compound :: (using parser : *Config_Parser) -> *Config_Compound
 
 config_parse_compound_elem :: (using parser : *Config_Parser) -> *Config_Compound_Elem
 {
+	profile ();
+
 	specifier : Config_Compound_Elem.Specifier;
 	config_parser_skip_spaces (parser);
 	if config_parser_match_string (parser, ".")
@@ -585,4 +602,120 @@ config_print :: (using root : *Config_Root)
 		config_print_assignment (it);
 }
 
-//config_fill_variables :: (config : Any, root : *Config_Root) -> bool;
+config_fill_variables :: (config : Any, root : *Config_Root) -> bool
+{
+	profile ();
+	
+	info := cast (*Type_Info_Struct) config.type;
+	ptr := config.value_pointer;
+	if info.type == .POINTER
+	{
+		info = cast (*Type_Info_Struct) (cast (*Type_Info_Pointer) info).pointer_to;
+		ptr = <<cast (**void) ptr;
+	}
+	assert (info.type == .STRUCT, "Config has invalid non-struct type.");
+	for root.assignments
+	{
+		lvalue := config_find_lvalue_ptr (ptr, info, it.lvalue);
+		if lvalue.value_pointer
+		{
+			print ("Found pointer for l-value ");
+			config_print_lvalue (it.lvalue);
+			print ("\n");
+			
+			config_assign (ptr, info, lvalue.value_pointer, lvalue.type, it.rvalue);
+		}
+	}
+
+	return true;
+}
+
+config_find_lvalue_ptr :: (ptr : *void, info : *Type_Info_Struct, lvalue : *Config_LValue) -> Any
+{
+	for info.members
+	{
+		if it.name == lvalue.identifier
+		{
+			member_ptr := ptr + it.offset_in_bytes;
+			if lvalue.subscript_index > 0
+			{
+				// Typecheck array
+				if it.type.type != .ARRAY
+				{
+					println ("Accessing l-value with non-zero subscript index for non-array type ('%').", lvalue.identifier);
+
+					return NULL_ANY;
+				}
+				if lvalue.subscript_index > rtti_get_array_count (member_ptr, cast (*Type_Info_Array) it.type)
+				{
+					println ("Index % out of bounds when accessing l-value array ('%').", lvalue.identifier);
+
+					return NULL_ANY;
+				}
+				member_ptr = rtti_get_array_data (member_ptr, cast (*Type_Info_Array) it.type) + (cast (*Type_Info_Array) info).element_type.runtime_size * lvalue.subscript_index;
+			}
+
+			if lvalue.member_lvalue
+			{
+				if it.type.type != .STRUCT
+				{
+					println ("Accessing member of l-value for non-struct type ('%').", lvalue.identifier);
+
+					return NULL_ANY;
+				}
+				
+				return config_find_lvalue_ptr (member_ptr, cast (*Type_Info_Struct) it.type, lvalue.member_lvalue);
+			}
+			result : Any = ---;
+			result.type = it.type;
+			result.value_pointer = member_ptr;
+
+			return result;
+		}
+	}
+
+	return NULL_ANY;
+}
+
+config_assign :: (config_ptr : *void, config_info : *Type_Info_Struct, ptr : *void, info : *Type_Info, rvalue : *Config_RValue) -> bool
+{
+	profile ();
+
+	if #complete rvalue.kind ==
+	{
+	case .INT;
+		if info.type != .INTEGER then return false;
+		info_int := cast (*Type_Info_Integer) info;
+		if !info_int.signed && rvalue.int_value < 0 then return false;
+		rtti_set_int (ptr, info_int, rvalue.int_value);
+
+	case .BOOL;
+		if info.type != .BOOL then return false;
+		rtti_set_bool (ptr, info, rvalue.bool_value);
+
+	case .STRING;
+		if info.type != .STRING then return false;
+		info_str := cast (*Type_Info_String) info;
+		if info_str.relative_pointer_size then return false;	// @Note (stefan): We don't handle relative strings
+		rtti_set_string (ptr, info_str, rvalue.string_value);
+	
+	case .FLOAT;
+	case .COMPOUND;
+		if info.type ==
+		{
+		case .STRUCT;
+		case .ARRAY;
+			
+		case;
+			return false;
+		}
+
+	case .LVALUE;
+		rhs := config_find_lvalue_ptr (config_ptr, config_info, rvalue.lvalue);
+		if !rhs.value_pointer then return false;
+		if !rtti_is_assignable (info, rhs.type) then return false;
+		rtti_assign (ptr, info, rhs.value_pointer, rhs.type);
+	}
+	
+	return true;
+}

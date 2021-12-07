@@ -1,7 +1,6 @@
 #import "Common";
 #import "Process";
 #import "File";
-Sort :: #import "Sort";
 Compiler :: #import "Compiler";
 Windows_Resources :: #import "Windows_Resources";
 
@@ -107,7 +106,7 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 				
 				if generate_amber_hooks
 				{
-					Sort.quick_sort (amber_api_procedures, (a, b) => compare_strings (a.name, b.name));
+					quick_sort (amber_api_procedures, (a, b) => compare_strings (a.name, b.name));
 
 					builder := make_string_builder (5000, TEMP);
 					ln (*builder, "// This file was automatically generated.");
@@ -317,6 +316,43 @@ build :: ()
 	
 	// Set metaprogram output to none
 	Compiler.set_build_options_dc (.{ do_output = false, write_added_strings = false });
+}
+
+quick_sort :: (array : []$T, compare_func : (T, T) -> $R)
+{
+	partition :: (array : *T, low_index : s64, high_index : s64, compare_func : (T, T) -> R) -> s64
+	{
+		x := array[high_index];
+		i := low_index - 1;
+
+		for j : low_index..high_index - 1
+		{
+			if compare_func (array[j], x) <= 0
+			{
+				i += 1;
+				tmp := array[i];
+				array[i] = array[j];
+				array[j] = tmp;
+			}
+		}
+		tmp := array[i + 1];
+		array[i + 1] = array[high_index];
+		array[high_index] = tmp;
+		
+		return i + 1;
+	}
+
+	helper :: (array : *T, low_index : s64, high_index : s64, compare_func : (T, T) -> R)
+	{
+		if low_index < high_index
+		{
+			p := partition (array, low_index, high_index, compare_func);
+			helper (array, low_index, p - 1, compare_func);
+			helper (array, p + 1, high_index, compare_func);
+		}
+	}
+
+	helper (array.data, 0, array.count - 1, compare_func);
 }
 
 #run build ();

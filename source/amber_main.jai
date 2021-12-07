@@ -64,7 +64,7 @@ handle_event :: inline (event : Event) -> Event_Result #must, propagate : bool
 
 	case .KEY_PRESS; #through;
 	case .KEY_REPEAT;
-		if event.key_code == .ESCAPE && event.mods == .NONE
+		if event.key_code == .F3 && event.mods == .NONE
 		{
 			toggle_command_input ();
 			propagate = false;
@@ -136,19 +136,33 @@ main :: ()
 	FONT_NAME :: "fonts/jetbrainsmono/JetBrainsMono-Regular.ttf";
 	context.allocator = HEAP;
 
+#if ENABLE_PROFILING
+	init_profiler ();
+
 	executable_path = platform_get_module_filename (HEAP);
 	executable_dir  = filename_remove_basename (executable_path);
 
+	config : Amber_Config;
 	parser : Config_Parser;
 	{
 		file_contents, ok := platform_read_entire_file ("config.amber", TEMP);
 		config_parser_init (*parser, "config.amber", file_contents);
 		config_parse (*parser);
-		config_print (*parser.root);
+		//config_print (*parser.root);
+		/*
+		config_fill_variables (*config, *parser.root);
+		#insert -> string
+		{
+			builder : String_Builder;
+			builder.allocator = TEMP;
+			for type_info (Amber_Config).members
+				print_line_to_builder (*builder, "println (\"% is %%\", config.%);", it.name, it.name);
+			
+			return to_string (builder);
+		}
+		*/
 	}
 
-#if ENABLE_PROFILING
-	init_profiler ();
 	platform_init_window_and_gl ();
 	viewport_size = platform_get_viewport_size ();
 	draw_init ();
@@ -198,7 +212,7 @@ main :: ()
 			if !is_inputting_command && active_split_id != NULL_SPLIT
 				event_result ||= split_handle_event (active_split_id, event);
 		}
-
+		
 		if active_split_id != NULL_SPLIT
 			split_update (active_split_id, *event_result, delta_time);
 		memset (*event_result, 0, size_of (Event_Result));
