@@ -122,6 +122,8 @@ buffer_grow :: (buffer_id : Buffer_ID, additional_capacity : s64)
 
 buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
 {
+	profile ();
+	
 	// @Note (stefan): We always use the full filename because the working directory
 	// might change later.
 	full_filename := platform_get_full_filename (filename, HEAP);
@@ -140,6 +142,8 @@ buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
 
 buffer_write_to_file :: inline (buffer_id : Buffer_ID) -> bool
 {
+	profile ();
+	
 	buffer := get_buffer (buffer_id);
 	if !buffer.filename then return false;
 	
@@ -309,6 +313,8 @@ buffer_get_cursor_ptr :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Curso
 
 buffer_get_cursor_line_index :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> s64 #must
 {
+	profile ();
+	
 	buffer := get_buffer (buffer_id);
 	if cursor_id == WRITE_HEAD
 		return buffer.line_index;
@@ -326,6 +332,8 @@ buffer_get_cursor_line_index :: inline (buffer_id : Buffer_ID, cursor_id : Buffe
 
 buffer_get_cursor_column_index :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> s64 #must
 {
+	profile ();
+	
 	buffer := get_buffer (buffer_id);
 	if cursor_id == WRITE_HEAD
 		return buffer.column_index;
@@ -390,6 +398,8 @@ buffer_set_eol_sequence :: inline (buffer_id : Buffer_ID, eol_sequence : EOL_Seq
 
 buffer_move_cursor_forward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	
 	if cursor_id == ALL_CURSORS
@@ -434,6 +444,8 @@ buffer_move_cursor_forward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 
 buffer_move_cursor_backward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	
 	if cursor_id == ALL_CURSORS
@@ -483,6 +495,8 @@ buffer_move_cursor_backward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor
 
 buffer_move_cursor_to_offset :: (buffer_id : Buffer_ID, new_offset : s64, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 
 	if cursor_id == ALL_CURSORS
@@ -514,6 +528,8 @@ buffer_move_cursor_to_offset :: (buffer_id : Buffer_ID, new_offset : s64, cursor
 
 buffer_move_write_head_to_line_and_column :: inline (buffer_id : Buffer_ID, new_line : s64, new_column : s64, select := false) -> bool
 {
+	profile ();
+	
 	moved := buffer_move_write_head_to_line (buffer_id, new_line, select);
 	moved |= buffer_move_cursor_to_column (buffer_id, new_column, WRITE_HEAD, select);
 	
@@ -523,6 +539,8 @@ buffer_move_write_head_to_line_and_column :: inline (buffer_id : Buffer_ID, new_
 
 buffer_move_cursor_to_bol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 
 	if cursor_id == ALL_CURSORS
@@ -551,6 +569,8 @@ buffer_move_cursor_to_bol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_I
 
 buffer_move_cursor_to_eol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 
 	if cursor_id == ALL_CURSORS
@@ -579,6 +599,8 @@ buffer_move_cursor_to_eol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_I
 
 buffer_move_cursor_to_column :: inline (buffer_id : Buffer_ID, column : s64, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	moved := false;
 	if !select && selection != 0
@@ -605,6 +627,8 @@ buffer_move_cursor_to_column :: inline (buffer_id : Buffer_ID, column : s64, cur
 
 buffer_move_cursor_to_previous_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 
 	if cursor_id == ALL_CURSORS
@@ -637,6 +661,8 @@ buffer_move_cursor_to_previous_line :: (buffer_id : Buffer_ID, cursor_id : Buffe
 
 buffer_move_cursor_to_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	
 	if cursor_id == ALL_CURSORS
@@ -667,6 +693,8 @@ buffer_move_cursor_to_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cu
 
 buffer_move_write_head_to_line :: inline (buffer_id : Buffer_ID, line : s64, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	moved := false;
 	if !select && selection != 0
@@ -687,6 +715,8 @@ buffer_move_write_head_to_line :: inline (buffer_id : Buffer_ID, line : s64, sel
 
 buffer_move_cursor_to_beginning :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 
 	if cursor_id == ALL_CURSORS
@@ -715,6 +745,8 @@ buffer_move_cursor_to_beginning :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cu
 
 buffer_move_cursor_to_end :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	
 	if cursor_id == ALL_CURSORS
@@ -743,6 +775,8 @@ buffer_move_cursor_to_end :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_I
 
 buffer_skip_word_forward :: (buffer_id : Buffer_ID, stop_at_word_separators : bool, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 
 	if cursor_id == ALL_CURSORS
@@ -792,6 +826,8 @@ buffer_skip_word_forward :: (buffer_id : Buffer_ID, stop_at_word_separators : bo
 
 buffer_skip_word_backward :: (buffer_id : Buffer_ID, stop_at_word_separators : bool, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 
 	if cursor_id == ALL_CURSORS
@@ -850,6 +886,8 @@ buffer_clear_cursors :: inline (buffer_id : Buffer_ID)
 
 buffer_merge_duplicate_cursors :: (buffer_id : Buffer_ID)
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	cursor_id := WRITE_HEAD;
 	while cursor_id <= xx other_cursors.count
@@ -893,6 +931,8 @@ buffer_merge_duplicate_cursors :: (buffer_id : Buffer_ID)
 
 buffer_sort_cursors_by_offset :: (buffer_id : Buffer_ID)
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	quick_sort (other_cursors, (left, right) => (left.offset - right.offset));
 }
@@ -900,6 +940,8 @@ buffer_sort_cursors_by_offset :: (buffer_id : Buffer_ID)
 
 buffer_add_cursor_at_offset :: (buffer_id : Buffer_ID, target_offset : s64) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 
 	for :cursors buffer
@@ -925,6 +967,8 @@ buffer_add_cursor_at_offset :: (buffer_id : Buffer_ID, target_offset : s64) -> b
 
 buffer_add_cursor_on_previous_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 
 	if cursor_id == ALL_CURSORS
@@ -961,6 +1005,8 @@ buffer_add_cursor_on_previous_line :: (buffer_id : Buffer_ID, cursor_id : Buffer
 
 buffer_add_cursor_on_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 
 	if cursor_id == ALL_CURSORS
@@ -1072,6 +1118,8 @@ buffer_end_batch_edit :: inline (buffer_id : Buffer_ID)
 
 buffer_insert_at_cursor :: (buffer_id : Buffer_ID, codepoint : u32, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT)
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	if codepoint == #char "\r" then return;
 	if cursor_id == ALL_CURSORS
@@ -1135,6 +1183,8 @@ buffer_insert_at_cursor :: (buffer_id : Buffer_ID, codepoint : u32, cursor_id : 
 
 buffer_insert_text_at_cursor :: (buffer_id : Buffer_ID, text : []u32, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT)
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	if cursor_id == ALL_CURSORS
 	{
@@ -1161,6 +1211,8 @@ buffer_insert_text_at_cursor :: (buffer_id : Buffer_ID, text : []u32, cursor_id 
 
 buffer_insert_utf8_text_at_cursor :: (buffer_id : Buffer_ID, text : string, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT)
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	if cursor_id == ALL_CURSORS
 	{
@@ -1187,6 +1239,8 @@ buffer_insert_utf8_text_at_cursor :: (buffer_id : Buffer_ID, text : string, curs
 
 buffer_delete_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT) -> bool
 {
+	profile ();
+	
 	delete_helper :: inline (using buffer : *Buffer)
 	{
 		codepoint := buffer_get_codepoint (id, offset);
@@ -1289,6 +1343,8 @@ buffer_delete_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID,
 
 buffer_backspace_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	
 	if cursor_id == ALL_CURSORS
@@ -1357,6 +1413,8 @@ buffer_backspace_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 
 buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT) -> bool
 {
+	profile ();
+	
 	buffer := get_buffer (buffer_id);
 	if cursor_id == ALL_CURSORS
 	{
@@ -1454,6 +1512,8 @@ buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, his
 
 buffer_move_line_down :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT) -> bool
 {
+	profile ();
+	
 	buffer := get_buffer (buffer_id);
 	if cursor_id == ALL_CURSORS
 	{
@@ -1548,6 +1608,8 @@ buffer_move_line_down :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, h
 
 buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	if history.index == 0 then return false;
 	edit := history.edits[history.index - 1];
@@ -1611,6 +1673,8 @@ buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 
 buffer_redo_last_edit :: (buffer_id : Buffer_ID) -> bool
 {
+	profile ();
+	
 	using buffer := get_buffer (buffer_id);
 	if history.index == history.edits.count then return false;
 	edit := history.edits[history.index];

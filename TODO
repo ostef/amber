@@ -12,8 +12,8 @@
 * C extensions
 * command history
 * line endings
-* multi-cursor selection with mouse
 * try to cache the line_index and column_index of other cursors
+* multi-cursor selection with mouse
 * encodings
 
 # Bugs:
