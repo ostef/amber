@@ -289,7 +289,7 @@ buffer_cursor_exists :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor
 buffer_get_cursor :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> Buffer_Cursor #must
 {
 	using buffer := get_buffer (buffer_id);
-	assert (buffer_cursor_exists (buffer_id, cursor_id), "Invalid cursor id.");
+	assert (buffer_cursor_exists (buffer_id, cursor_id), "Invalid cursor id (%).", cursor_id);
 	if cursor_id == WRITE_HEAD
 		return write_head;
 	
@@ -300,7 +300,7 @@ buffer_get_cursor :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID
 buffer_get_cursor_ptr :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> *Buffer_Cursor #must
 {
 	using buffer := get_buffer (buffer_id);
-	assert (buffer_cursor_exists (buffer_id, cursor_id), "Invalid cursor id.");
+	assert (buffer_cursor_exists (buffer_id, cursor_id), "Invalid cursor id (%).", cursor_id);
 	if cursor_id == WRITE_HEAD
 		return *write_head;
 	
@@ -1420,6 +1420,100 @@ buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, his
 	return true;
 }
 
+buffer_move_line_down :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT) -> bool
+{
+	buffer := get_buffer (buffer_id);
+	if cursor_id == ALL_CURSORS
+	{
+		last_line_moved := buffer.lines.count;
+		modified := false;
+		// @Note (stefan): We need to move the line for each cursor in
+		// line_index descending order.
+		for < :sorted_cursors cursor, cursor_id : buffer
+		{
+			line_index := buffer_get_cursor_line_index (buffer_id, cursor_id);
+			// Don't move a line that is after the last line we moved, because
+			// it means the cursor is on the same line as the previous one.
+			if line_index > last_line_moved
+				continue;
+			// Don't move the same line twice.
+			if line_index != last_line_moved
+				modified |= buffer_move_line_down (buffer_id, cursor_id, history_buffering);
+			last_line_moved = line_index;
+		}
+
+		return modified;
+	}
+
+	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
+	line_index := buffer_get_cursor_line_index (buffer_id, cursor_id);
+	if line_index == buffer.lines.count - 1 then return false;
+	if history_buffering == .PUSH_EDIT
+		buffer_history_push_edit (buffer_id, .MOVE_LINE_DOWN, cursor_id);
+
+	// @Note (stefan): I don't like the way we handle multiple cursors on the same line...
+	Same_Line :: struct
+	{
+		cursor_id : Buffer_Cursor_ID;
+		relative_offset : s64;
+	}
+
+	other_cursors_on_the_same_line : [..]Same_Line;
+	other_cursors_on_the_same_line.allocator = TEMP;
+	for :cursors other, other_id : buffer
+	{
+		if other_id == cursor_id then continue;
+		if buffer_get_cursor_line_index (buffer_id, other_id) == line_index
+		{
+			same_line := push_into_array (*other_cursors_on_the_same_line);
+			same_line.cursor_id = other_id;
+			same_line.relative_offset = other.offset - cursor.offset;
+		}
+	}
+
+	line_buffer : [..]u32;
+	line_buffer.allocator = TEMP;
+	start_column_index := buffer_get_cursor_column_index (buffer_id, cursor_id);
+	move_to_last_line := line_index == buffer_get_line_count (buffer_id) - 2;
+	buffer_move_cursor_to_bol (buffer_id, cursor_id);
+
+	eol := false;
+	while !eol
+	{
+		eol = buffer_cursor_is_at_eol (buffer_id, cursor_id);
+		codepoint := buffer_get_codepoint (buffer_id, cursor.offset);
+		push_into_array (*line_buffer, codepoint);
+		if history_buffering == .PUSH_TEXT
+			buffer_history_push_char (buffer_id, codepoint);
+		buffer_delete_selection (buffer_id, cursor_id, .DONT_PUSH);
+	}
+
+	if move_to_last_line
+	{
+		buffer_move_cursor_to_eol (buffer_id, cursor_id);
+		buffer_insert_at_cursor (buffer_id, #char "\n", cursor_id, .DONT_PUSH);
+		pop_off_array (*line_buffer);
+		if history_buffering == .PUSH_TEXT
+			pop_off_array (*buffer.history.edit_buffer);
+	}
+	else
+	{
+		buffer_move_cursor_to_next_line (buffer_id, cursor_id);
+	}
+
+	buffer_insert_text_at_cursor (buffer_id, line_buffer, cursor_id, .DONT_PUSH);
+	if !move_to_last_line
+		buffer_move_cursor_to_previous_line (buffer_id, cursor_id);
+	buffer_move_cursor_to_column (buffer_id, start_column_index, cursor_id);
+
+	// Move cursors that were on the same line so they keep the same relative offset
+	// as the cursor we just moved.
+	for other_cursors_on_the_same_line
+		buffer_move_cursor_to_offset (buffer_id, cursor.offset + it.relative_offset, it.cursor_id);
+
+	return true;
+}
+
 buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 {
 	using buffer := get_buffer (buffer_id);
@@ -1566,15 +1660,40 @@ else
 
 sorted_cursors :: (buffer : *Buffer, body : Code, flags : For_Flags) #expand
 {
+	REVERSE :: (flags & .REVERSE) == .REVERSE;
+
+#if REVERSE
+{
+	start := buffer.other_cursors.count;
+	end   := 1;
+}
+else
+{
+	start := 1;
+	end   := buffer.other_cursors.count;
+}
+
 	`it : Buffer_Cursor;
 	`it_index : Buffer_Cursor_ID;
 
 	buffer_sort_cursors_by_offset (buffer.id);
 	iterated_on_write_head := false;
-	for i : 1..buffer.other_cursors.count
+	for <=REVERSE i : start..end
 	{
 		cursor_id := cast (Buffer_Cursor_ID) i;
 		cursor := buffer_get_cursor (buffer.id, cursor_id);
+#if REVERSE
+{
+		if !iterated_on_write_head && buffer.offset > cursor.offset
+		{
+			iterated_on_write_head = true;
+			it_index = WRITE_HEAD;
+			it = buffer.write_head;
+			#insert body;
+		}
+}
+else
+{
 		if !iterated_on_write_head && buffer.offset < cursor.offset
 		{
 			iterated_on_write_head = true;
@@ -1582,6 +1701,7 @@ sorted_cursors :: (buffer : *Buffer, body : Code, flags : For_Flags) #expand
 			it = buffer.write_head;
 			#insert body;
 		}
+}
 		it_index = cursor_id;
 		it = cursor;
 		#insert body;

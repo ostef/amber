@@ -485,7 +485,13 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 			}
 
 		case .DOWN;
-			if event.mods == Mods.SHIFT | .ALT
+			if event.mods == .ALT
+			{
+				buffer_modified = buffer_move_line_down (active_buffer_id, ALL_CURSORS);
+				buffer_merge_duplicate_cursors (active_buffer_id);
+				scroll_to_cursor = true;
+			}
+			else if event.mods == Mods.SHIFT | .ALT
 			{
 				buffer_add_cursor_on_next_line (active_buffer_id, ALL_CURSORS);
 				scroll_to_cursor = true;
