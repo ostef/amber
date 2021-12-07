@@ -1420,6 +1420,8 @@ buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, his
 	{
 		last_line_moved := -1;
 		modified := false;
+		if history_buffering == .PUSH_EDIT
+			buffer_begin_batch_edit (buffer_id);
 		// @Note (stefan): We need to move the line for each cursor in
 		// line_index ascending order.
 		for :sorted_cursors cursor, cursor_id : buffer
@@ -1434,6 +1436,8 @@ buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, his
 				modified |= buffer_move_line_up (buffer_id, cursor_id, history_buffering);
 			last_line_moved = line_index;
 		}
+		if history_buffering == .PUSH_EDIT
+			buffer_end_batch_edit (buffer_id);
 
 		return modified;
 	}
@@ -1519,6 +1523,8 @@ buffer_move_line_down :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, h
 	{
 		last_line_moved := buffer.lines.count;
 		modified := false;
+		if history_buffering == .PUSH_EDIT
+			buffer_begin_batch_edit (buffer_id);
 		// @Note (stefan): We need to move the line for each cursor in
 		// line_index descending order.
 		for < :sorted_cursors cursor, cursor_id : buffer
@@ -1533,6 +1539,8 @@ buffer_move_line_down :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, h
 				modified |= buffer_move_line_down (buffer_id, cursor_id, history_buffering);
 			last_line_moved = line_index;
 		}
+		if history_buffering == .PUSH_EDIT
+			buffer_end_batch_edit (buffer_id);
 
 		return modified;
 	}
@@ -1839,13 +1847,13 @@ selected_text :: (buffer : *Buffer, body : Code, flags : For_Flags) #expand
 	start := buffer.offset - 1;
 	end   := buffer.offset;
 	if buffer.selection > 0 then start += buffer.selection;
-	if buffer.selection < 0 then end += buffer.selection; 
+	if buffer.selection < 0 then end += buffer.selection;
 }
 else
 {
 	start := buffer.offset;
 	end   := buffer.offset - 1;
-	if buffer.selection < 0 then start += buffer.selection; 
+	if buffer.selection < 0 then start += buffer.selection;
 	if buffer.selection > 0 then end += buffer.selection;
 }
 
