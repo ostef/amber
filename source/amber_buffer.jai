@@ -1077,11 +1077,11 @@ buffer_insert_at_cursor :: (buffer_id : Buffer_ID, codepoint : u32, cursor_id : 
 	if cursor_id == ALL_CURSORS
 	{
 		if history_buffering == .PUSH_EDIT
-			buffer_history_push_edit (buffer_id, .BATCH_BEGIN);
+			buffer_begin_batch_edit (buffer_id);
 		for i : 0..other_cursors.count
 			buffer_insert_at_cursor (buffer_id, codepoint, xx i, history_buffering);
 		if history_buffering == .PUSH_EDIT
-			buffer_history_push_edit (buffer_id, .BATCH_END);
+			buffer_end_batch_edit (buffer_id);
 		
 		return;
 	}
@@ -1139,11 +1139,11 @@ buffer_insert_text_at_cursor :: (buffer_id : Buffer_ID, text : []u32, cursor_id 
 	if cursor_id == ALL_CURSORS
 	{
 		if history_buffering == .PUSH_EDIT
-			buffer_history_push_edit (buffer_id, .BATCH_BEGIN);
+			buffer_begin_batch_edit (buffer_id);
 		for i : 0..other_cursors.count
 			buffer_insert_text_at_cursor (buffer_id, text, xx i, history_buffering);
 		if history_buffering == .PUSH_EDIT
-			buffer_history_push_edit (buffer_id, .BATCH_END);
+			buffer_end_batch_edit (buffer_id);
 		
 		return;
 	}
@@ -1165,11 +1165,11 @@ buffer_insert_utf8_text_at_cursor :: (buffer_id : Buffer_ID, text : string, curs
 	if cursor_id == ALL_CURSORS
 	{
 		if history_buffering == .PUSH_EDIT
-			buffer_history_push_edit (buffer_id, .BATCH_BEGIN);
+			buffer_begin_batch_edit (buffer_id);
 		for i : 0..other_cursors.count
 			buffer_insert_utf8_text_at_cursor (buffer_id, text, xx i, history_buffering);
 		if history_buffering == .PUSH_EDIT
-			buffer_history_push_edit (buffer_id, .BATCH_END);
+			buffer_end_batch_edit (buffer_id);
 		
 		return;
 	}
@@ -1201,8 +1201,12 @@ buffer_delete_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID,
 	if cursor_id == ALL_CURSORS
 	{
 		modified := false;
+		if history_buffering == .PUSH_EDIT
+			buffer_begin_batch_edit (buffer_id);
 		for i : 0..other_cursors.count
 			modified |= buffer_delete_selection (buffer_id, xx i, history_buffering);
+		if history_buffering == .PUSH_EDIT
+			buffer_end_batch_edit (buffer_id);
 		
 		return modified;
 	}
@@ -1290,8 +1294,12 @@ buffer_backspace_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 	if cursor_id == ALL_CURSORS
 	{
 		modified := false;
+		if history_buffering == .PUSH_EDIT
+			buffer_begin_batch_edit (buffer_id);
 		for i : 0..other_cursors.count
 			modified |= buffer_backspace_selection (buffer_id, xx i, history_buffering);
+		if history_buffering == .PUSH_EDIT
+			buffer_end_batch_edit (buffer_id);
 	
 		return modified;
 	}
