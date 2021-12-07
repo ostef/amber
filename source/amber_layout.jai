@@ -665,7 +665,7 @@ draw_text_layout :: (layout_id : Text_Layout_ID)
 	prev_shader := draw_set_shader (glyph_shader);
 	defer draw_set_shader (prev_shader);
 
-	
+	assert (colors.count != 0, "Colors array is empty.");
 	active := !is_inputting_command && get_active_split () == text_layout_get_split (layout_id);
 	buffer := get_buffer (buffer_id);
 	font   := get_font (font_id);

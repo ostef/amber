@@ -111,7 +111,6 @@ c_process_buffer :: (using hooks : *Amber_Hooks, buffer_id : Buffer_ID)
 	{
 		token := read_next_token (hooks, *lexer);
 		//push_into_array (*lexer.tokens, token);
-		if token.kind == .EOI then break;
 		color := RGBA_WHITE;
 		if token.kind ==
 		{
@@ -134,6 +133,7 @@ c_process_buffer :: (using hooks : *Amber_Hooks, buffer_id : Buffer_ID)
 		case .SYMBOL; color = rgba (0xe5, 0xe5, 0xe5);
 		}
 		text_layout_push_color (layout_id, token.range, color);
+		if token.kind == .EOI then break;
 	}
 	end := platform_get_time ();
 }
