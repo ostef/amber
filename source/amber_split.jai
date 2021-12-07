@@ -748,8 +748,8 @@ split_draw :: (split_id : Split_ID)
 		fstring (
 			TEMP,
 			"Ln %, Col % ~ % line(s) ~ %",
-			buffer_get_line_index (active_buffer_id) + 1,
-			buffer_get_column_index (active_buffer_id) + 1,
+			buffer_get_cursor_line_index (active_buffer_id, WRITE_HEAD) + 1,
+			buffer_get_cursor_column_index (active_buffer_id, WRITE_HEAD) + 1,
 			buffer_get_line_count (active_buffer_id),
 			language_name
 		),
