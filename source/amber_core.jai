@@ -1753,8 +1753,9 @@ print_newline_to_builder :: inline (builder : *String_Builder)
 
 print :: (fmt : string, args : ..Any)
 {
-	formatted := format_string (TEMP, fmt, ..args);
+	formatted := format_string (context.allocator, fmt, ..args);
 	write_string (formatted);
+	free (formatted, context.allocator);
 }
 
 println :: (fmt : string, args : ..Any)
