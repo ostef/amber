@@ -27,6 +27,7 @@ int_dir   := DEFAULT_INT_DIR;
 
 generate_amber_hooks := true;
 amber_api_procedures  : [..]*Compiler.Code_Procedure_Header;
+run_after_typechecking : [..]*Compiler.Code_Procedure_Header;
 
 report_error :: (fmt : string, args : ..Any, location := #caller_location)
 {
@@ -87,11 +88,13 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 			{
 				for note : header.expression.notes
 				{
-					if note.text == "Amber_API"
+					if note.text ==
 					{
+					case "Amber_API";
 						push_into_array (*amber_api_procedures, header.expression);
-						
-						break note;
+					
+					case "Run_After_Typechecking";
+						push_into_array (*run_after_typechecking, header.expression);
 					}
 				}
 			}
@@ -104,6 +107,12 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 				ln :: print_line_to_builder;
 				nl :: print_newline_to_builder;
 				
+				// Run procedures marked with @Run_After_Typechecking
+				for run_after_typechecking
+					Compiler.add_build_string (fstring (TEMP, "#run % ();", it.name), workspace);
+				clear_array (*run_after_typechecking);
+
+				// Generate Amber_Hooks struct
 				if generate_amber_hooks
 				{
 					quick_sort (amber_api_procedures, (a, b) => compare_strings (a.name, b.name));
@@ -247,6 +256,7 @@ build :: ()
 	set_working_directory (strip_filename_from_path (#filepath));
 
 	init_array (*amber_api_procedures, 100, TEMP);
+	init_array (*run_after_typechecking, 100, TEMP);
 	app := Compiler.compiler_create_workspace (APP_OUTPUT_NAME);
 	{
 		options := Compiler.get_build_options (app);
