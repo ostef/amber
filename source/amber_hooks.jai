@@ -17,6 +17,7 @@ Amber_Hooks :: struct #type_info_none
 	buffer_clear_history : (Buffer_ID);
 	buffer_clear_redo_history : (Buffer_ID);
 	buffer_clear_selection : (Buffer_ID);
+	buffer_cursor_exists : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_cursor_is_at_bol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_cursor_is_at_eol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_delete_selection : (Buffer_ID, Buffer_Cursor_ID, History_Buffering) -> bool;
@@ -31,9 +32,12 @@ Amber_Hooks :: struct #type_info_none
 	buffer_get_filename : (Buffer_ID, Allocator) -> string;
 	buffer_get_language : (Buffer_ID) -> Language_ID;
 	buffer_get_line_count : (Buffer_ID) -> s64;
+	buffer_get_line_length : (Buffer_ID, s64) -> s64;
 	buffer_get_name : (Buffer_ID, Allocator) -> string;
 	buffer_get_split : (Buffer_ID) -> Split_ID;
 	buffer_get_text_layout : (Buffer_ID) -> Text_Layout_ID;
+	buffer_history_get_edit_count : (Buffer_ID) -> s64;
+	buffer_history_get_index : (Buffer_ID) -> s64;
 	buffer_history_push_char : (Buffer_ID, u32);
 	buffer_history_push_edit : (Buffer_ID, Buffer_Edit_Kind, Buffer_Cursor_ID) -> *Buffer_Edit;
 	buffer_history_push_text : (Buffer_ID, []u32);
