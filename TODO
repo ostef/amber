@@ -11,11 +11,15 @@
 * advanced clipboard (multi-cursor copy/pasting and such)
 * C extensions
 * command history
+* message buffer
 * line endings
 * try to cache the line_index and column_index of other cursors
 * multi-cursor selection with mouse
 * encodings
 * custom layouting
+* better tab ui
+* custom window caption on windows
+* file changes and hot reloading
 
 # Bugs:
 
