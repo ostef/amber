@@ -124,6 +124,7 @@ buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
 {
 	profile ();
 	
+	// @Todo (stefan): Encoding
 	// @Note (stefan): We always use the full filename because the working directory
 	// might change later.
 	full_filename := platform_get_full_filename (filename, HEAP);
@@ -172,6 +173,22 @@ buffer_clear :: inline (buffer_id : Buffer_ID)
 	buffer_clear_history (buffer_id);
 	clear_array (*lines);
 	push_into_array (*lines, 0);
+}
+@Amber_API
+
+buffer_history_get_edit_count :: inline (buffer_id : Buffer_ID) -> s64 #must
+{
+	using buffer := get_buffer (buffer_id);
+	
+	return history.edits.count;
+}
+@Amber_API
+
+buffer_history_get_index :: inline (buffer_id : Buffer_ID) -> s64 #must
+{
+	using buffer := get_buffer (buffer_id);
+
+	return history.index;
 }
 @Amber_API
 
@@ -241,12 +258,12 @@ buffer_get_filename :: inline (buffer_id : Buffer_ID, allocator : Allocator) -> 
 }
 @Amber_API
 
-buffer_set_filename :: inline (buffer_id : Buffer_ID, new_filename : string)
+buffer_set_filename :: inline (buffer_id : Buffer_ID, filename : string)
 {
-	using buffer := get_buffer (buffer_id);
-	free (filename, HEAP);
-	filename = clone_string (new_filename, HEAP);
-	buffer_set_language (buffer_id, language_detect (filename));
+	buffer := get_buffer (buffer_id);
+	free (buffer.filename, HEAP);
+	buffer.filename = clone_string (filename, HEAP);
+	buffer_set_language (buffer_id, language_detect (buffer.filename));
 }
 @Amber_API
 
@@ -289,6 +306,7 @@ buffer_cursor_exists :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor
 
 	return cursor_id >= WRITE_HEAD && cursor_id <= xx other_cursors.count;
 }
+@Amber_API
 
 buffer_get_cursor :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> Buffer_Cursor #must
 {
@@ -380,6 +398,7 @@ buffer_get_line_length :: inline (buffer_id : Buffer_ID, line_index : s64) -> s6
 
 	return buffer.lines[line_index];
 }
+@Amber_API
 
 buffer_get_eol_sequence :: inline (buffer_id : Buffer_ID) -> EOL_Sequence #must
 {
@@ -849,8 +868,12 @@ buffer_skip_word_backward :: (buffer_id : Buffer_ID, stop_at_word_separators : b
 	if cursor.offset == 0
 		return moved;
 	
-	while !buffer_cursor_is_at_bol (buffer_id, cursor_id) && is_space (buffer_get_codepoint (buffer_id, cursor.offset - 1))
+	while is_space (buffer_get_codepoint (buffer_id, cursor.offset - 1))
+	{
 		moved |= buffer_move_cursor_backward (buffer_id, cursor_id, select);
+		if buffer_cursor_is_at_bol (buffer_id, cursor_id)
+			return moved;
+	}
 	if cursor.offset == 0
 		return moved;
 	first := buffer_get_codepoint (buffer_id, cursor.offset - 1);
