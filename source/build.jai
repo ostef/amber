@@ -339,16 +339,19 @@ generate_documentation :: ()
 		if !info.is_directory
 		{
 			extension := get_filename_extension (info.name);
-			name := strip_extension_from_path (info.name);
-			doc_file : Doc_File;
-			ok := parse_doc_file (info.full_name, *doc_file);
-			if ok
+			if extension == "amber_doc"
 			{
-				builder : String_Builder;
-				init_string_builder (*builder, 10000, HEAP);
-				generate_markdown (*builder, doc_file);
-				md_filename := make_path (HEAP, "docs/generated/api/", name, ".md");
-				write_to_file (md_filename, to_string (builder));
+				doc_file : Doc_File;
+				ok := parse_doc_file (info.full_name, *doc_file);
+				if ok
+				{
+					builder : String_Builder;
+					init_string_builder (*builder, 10000, HEAP);
+					generate_markdown (*builder, doc_file);
+					name := strip_extension_from_path (info.name);
+					md_filename := make_path (HEAP, "docs/generated/api/", name, ".md");
+					write_to_file (md_filename, to_string (builder));
+				}
 			}
 		}
 	}
