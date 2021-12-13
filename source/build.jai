@@ -5,6 +5,7 @@ Compiler :: #import "Compiler";
 Windows_Resources :: #import "Windows_Resources";
 
 #load "amber_meta.jai";
+#load "amber_doc.jai";
 
 IS_IN_METAPROGRAM :: true;
 DATA_DIR          :: "data/";
@@ -22,6 +23,7 @@ target  := OS;
 run_on_success := false;
 link_info := false;
 time_info := false;
+doc := false;
 build_dir := DEFAULT_BUILD_DIR;
 int_dir   := DEFAULT_INT_DIR;
 
@@ -139,7 +141,7 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 					ln (*builder, "}");
 					
 					Compiler.add_build_string (to_string (builder), workspace);
-					clear_array (*amber_api_procedures);
+					//clear_array (*amber_api_procedures);
 					generate_amber_hooks = false;
 				}
 			}
@@ -203,6 +205,7 @@ build :: ()
 		case "time_info"; time_info = true;
 		case "build_dir"; is_build_dir = true;
 		case "int_dir";   is_int_dir   = true;
+		case "doc";   doc = true;
 		case "---"; is_program_arg = true;
 		case; println ("Unkown argument '%'.", it);
 		}
@@ -281,6 +284,7 @@ build :: ()
 	create_directory_tree (int_dir);
 	
 	app_build_success  := compile_workspace (app,  "source/amber_main.jai");
+	if doc && app_build_success then generate_documentation ();
 	generate_amber_hooks = false;
 	extensions_build_success : [EXTENSIONS.count]bool;
 	all_extensions_build_success := true;
@@ -326,6 +330,31 @@ build :: ()
 	
 	// Set metaprogram output to none
 	Compiler.set_build_options_dc (.{ do_output = false, write_added_strings = false });
+}
+
+generate_documentation :: ()
+{
+	visitor :: (info : *File_Visit_Info, data : *void)
+	{
+		if !info.is_directory
+		{
+			extension := get_filename_extension (info.name);
+			name := strip_extension_from_path (info.name);
+			doc_file : Doc_File;
+			ok := parse_doc_file (info.full_name, *doc_file);
+			if ok
+			{
+				builder : String_Builder;
+				init_string_builder (*builder, 10000, HEAP);
+				generate_markdown (*builder, doc_file);
+				md_filename := make_path (HEAP, "docs/generated/api/", name, ".md");
+				write_to_file (md_filename, to_string (builder));
+			}
+		}
+	}
+
+	delete_directory ("docs/generated/");
+	inspect_directory ("docs/api/", true, null, visitor);
 }
 
 quick_sort :: (array : []$T, compare_func : (T, T) -> $R)

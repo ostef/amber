@@ -1,0 +1,180 @@
+@name: Buffer API
+
+---
+
+@proc: get_buffer_count
+
+@desc:
+Ask the editor for the total number of opened buffers.
+
+@return:
+The number of opened buffers in the editor.
+
+---
+
+@proc: get_active_buffer
+
+@desc:
+Ask the editor for the id of the currently active buffer.
+Shorthand for `split_get_active_buffer (get_active_split ())`.
+
+@return:
+The id of the active buffer.
+
+---
+
+@proc: buffer_exists
+
+@desc:
+Ask the editor if a buffer with a given id exists.
+
+@param id: is the id of the buffer.
+
+@return:
+*true* if the buffer exists, *false* otherwise.
+
+---
+
+@proc: buffer_load_file
+
+@desc:
+Load a file to the given buffer. If the file can't be opened, the function fails and the buffer is not modified.
+
+@param buffer_id: is the id of the buffer.  
+@param filename: is the file name of the file to load.
+
+@return:
+*true* on success, *false* otherwise.
+
+---
+
+@proc: buffer_write_to_file
+
+@desc:
+Write the contents of a buffer to its associated file. If no file is associated with the buffer, the function fails and the return value is *false*.
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+*true* on success, *false* otherwise.
+
+---
+
+@proc: buffer_clear
+
+@desc:
+Clear the given buffer, as well as its history. All cursors are removed and the write head is moved to offset 0. No memory is freed, and the `filename` and `name` of the buffer remain untouched.
+
+@param buffer_id: is the id of the buffer.
+
+---
+
+@proc: buffer_history_get_edit_count
+
+@desc:
+Get the number of edits in the buffer history.
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+The total number of individual edits in the history, including `BATCH_BEGIN` and `BATCH_END` edits. See [Buffer History] for more information.
+
+---
+
+@proc: buffer_history_get_undo_cursor
+
+@desc:
+Get the undo cursor of the buffer history. The undo cursor is the index of the last undone edit. See [Buffer History] for more information.
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+The undo cursor of the buffer history.
+
+---
+
+@proc: buffer_clear_history
+
+@desc:
+Clear the buffer history, the memory allocated for the edit stack and edit text buffer is not freed.
+
+@param buffer_id: is the id of the buffer.
+
+---
+
+@proc: buffer_clear_redo_history
+
+@desc:
+Clear the redo history of the buffer, effectively setting the edit count to the undo cursor. See [Buffer History] for more information.
+
+@param buffer_id: is the id of the buffer.
+
+---
+
+@proc: buffer_get_split
+
+@desc:
+Get the split this buffer is attached to. See [Splits] for more information.
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+The id of the split this buffer is attached to.
+
+---
+
+@proc: buffer_get_text_layout
+
+@desc:
+Get the text layout associated with the buffer. See [Text Layouts] for more information.
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+The id of the text layout associated with the buffer.
+
+---
+
+@proc: buffer_get_language
+
+@desc:
+Get the language associated with the buffer. See [Languages] for more information.
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+The id of the language associated with the buffer.
+
+---
+
+@proc: buffer_set_language
+
+@desc:
+Set the language associated with the buffer. See [Languages] for more information.
+
+@param buffer_id: is the id of the buffer.
+@param language_id: is the id of the language.
+
+---
+
+@proc: buffer_get_filename
+
+@desc:
+Get a clone of the filename of the buffer, allocated with **allocator**.
+
+@param buffer_id: is the id of the buffer.
+@param allocator: is the allocator used to allocate the string.
+
+@return:
+A clone of the buffer's filename, newly allocated.
+
+---
+
+@proc: buffer_set_filename
+
+@desc:
+Set the filename of the buffer to **filename**. The buffer language is detected from the filename and automatically changed.
+
+@param buffer_id: is the id of the buffer.
+@param filename: is the new filename.
+

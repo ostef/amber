@@ -1,7 +1,7 @@
 Buffer_History :: struct
 {
 	edits : [..]Buffer_Edit;
-	index : s64;
+	undo_cursor : s64;
 	edit_buffer : [..]u32;
 }
 
@@ -145,6 +145,7 @@ buffer_write_to_file :: inline (buffer_id : Buffer_ID) -> bool
 {
 	profile ();
 	
+	// @Todo (stefan): EOL sequence.
 	buffer := get_buffer (buffer_id);
 	if !buffer.filename then return false;
 	
@@ -184,11 +185,11 @@ buffer_history_get_edit_count :: inline (buffer_id : Buffer_ID) -> s64 #must
 }
 @Amber_API
 
-buffer_history_get_index :: inline (buffer_id : Buffer_ID) -> s64 #must
+buffer_history_get_undo_cursor :: inline (buffer_id : Buffer_ID) -> s64 #must
 {
 	using buffer := get_buffer (buffer_id);
 
-	return history.index;
+	return history.undo_cursor;
 }
 @Amber_API
 
@@ -196,7 +197,7 @@ buffer_clear_history :: inline (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
 	clear_array (*history.edits);
-	history.index = 0;
+	history.undo_cursor = 0;
 	clear_array (*history.edit_buffer);
 }
 @Amber_API
@@ -204,7 +205,7 @@ buffer_clear_history :: inline (buffer_id : Buffer_ID)
 buffer_clear_redo_history :: inline (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
-	history.edits.count = history.index;
+	history.edits.count = history.undo_cursor;
 }
 @Amber_API
 
@@ -231,7 +232,6 @@ buffer_set_text_layout :: inline (buffer_id : Buffer_ID, text_layout_id : Text_L
 	buffer := get_buffer (buffer_id);
 	buffer.text_layout_id = text_layout_id;
 }
-@Amber_API
 
 buffer_get_language :: inline (buffer_id : Buffer_ID) -> Language_ID #must
 {
@@ -1106,7 +1106,7 @@ buffer_history_push_edit :: inline (buffer_id : Buffer_ID, kind : Buffer_Edit_Ki
 		edit.cursor = buffer_get_cursor (buffer_id, cursor_id);
 	}
 	edit.offset_in_edit_buffer = history.edit_buffer.count;
-	history.index = history.edits.count;
+	history.undo_cursor = history.edits.count;
 
 	return edit;
 }
@@ -1642,14 +1642,14 @@ buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 	profile ();
 	
 	using buffer := get_buffer (buffer_id);
-	if history.index == 0 then return false;
-	edit := history.edits[history.index - 1];
+	if history.undo_cursor == 0 then return false;
+	edit := history.edits[history.undo_cursor - 1];
 	count : s64 = ---;
-	if history.index == history.edits.count
+	if history.undo_cursor == history.edits.count
 		count = history.edit_buffer.count - edit.offset_in_edit_buffer;
 	else
-		count = history.edits[history.index].offset_in_edit_buffer - edit.offset_in_edit_buffer;
-	history.index -= 1;
+		count = history.edits[history.undo_cursor].offset_in_edit_buffer - edit.offset_in_edit_buffer;
+	history.undo_cursor -= 1;
 
 	if edit.kind ==
 	{
@@ -1687,15 +1687,15 @@ buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 		buffer_move_line_up (buffer_id, WRITE_HEAD, .DONT_PUSH);
 
 	case .BATCH_END;
-		assert (history.index > 0, "Found a BATCH_END edit, but no matching BATCH_BEGIN edit was found.");
-		next := history.edits[history.index - 1];
+		assert (history.undo_cursor > 0, "Found a BATCH_END edit, but no matching BATCH_BEGIN edit was found.");
+		next := history.edits[history.undo_cursor - 1];
 		while next.kind != .BATCH_BEGIN
 		{
-			assert (history.index > 0, "Found a BATCH_END edit, but no matching BATCH_BEGIN edit was found.");
+			assert (history.undo_cursor > 0, "Found a BATCH_END edit, but no matching BATCH_BEGIN edit was found.");
 			buffer_undo_last_edit (buffer_id);
-			next = history.edits[history.index - 1];
+			next = history.edits[history.undo_cursor - 1];
 		}
-		history.index -= 1;	// Skip the matching BATCH_BEGIN edit
+		history.undo_cursor -= 1;	// Skip the matching BATCH_BEGIN edit
 	}
 
 	return true;
@@ -1707,14 +1707,14 @@ buffer_redo_last_edit :: (buffer_id : Buffer_ID) -> bool
 	profile ();
 	
 	using buffer := get_buffer (buffer_id);
-	if history.index == history.edits.count then return false;
-	edit := history.edits[history.index];
+	if history.undo_cursor == history.edits.count then return false;
+	edit := history.edits[history.undo_cursor];
 	count : s64 = ---;
-	if history.index == history.edits.count - 1
+	if history.undo_cursor == history.edits.count - 1
 		count = history.edit_buffer.count - edit.offset_in_edit_buffer;
 	else
-		count = history.edits[history.index + 1].offset_in_edit_buffer - edit.offset_in_edit_buffer;
-	history.index += 1;
+		count = history.edits[history.undo_cursor + 1].offset_in_edit_buffer - edit.offset_in_edit_buffer;
+	history.undo_cursor += 1;
 
 	if edit.kind ==
 	{
@@ -1749,15 +1749,15 @@ buffer_redo_last_edit :: (buffer_id : Buffer_ID) -> bool
 		buffer_move_line_down (buffer_id, WRITE_HEAD, .DONT_PUSH);
 
 	case .BATCH_BEGIN;
-		assert (history.index < history.edits.count, "Found a BATCH_BEGIN edit, but no matching BATCH_END edit was found.");
-		next := history.edits[history.index];
+		assert (history.undo_cursor < history.edits.count, "Found a BATCH_BEGIN edit, but no matching BATCH_END edit was found.");
+		next := history.edits[history.undo_cursor];
 		while next.kind != .BATCH_END
 		{
-			assert (history.index < history.edits.count, "Found a BATCH_BEGIN edit, but no matching BATCH_END edit was found.");
+			assert (history.undo_cursor < history.edits.count, "Found a BATCH_BEGIN edit, but no matching BATCH_END edit was found.");
 			buffer_redo_last_edit (buffer_id);
-			next = history.edits[history.index];
+			next = history.edits[history.undo_cursor];
 		}
-		history.index += 1;	// Skip the matching BATCH_END edit
+		history.undo_cursor += 1;	// Skip the matching BATCH_END edit
 	}
 
 	return true;

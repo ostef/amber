@@ -109,7 +109,7 @@ array_top :: inline (array : [..]$T) -> T #must
 	return array[array.count - 1];
 }
 
-insert_into_array :: (array : *[..]$T, position : int, $initialize := false) -> *T #must
+insert_into_array :: (array : *[..]$T, position : int, $initialize := true) -> *T #must
 {
 	assert (position >= 0 && position <= array.count, "Index % out of range [%, %].", position, 0, array.count);
 
@@ -134,7 +134,7 @@ insert_into_array :: (array : *[..]$T, position : int, elem : T) -> *T
 	return ptr;
 }
 
-sorted_insert_into_array :: (array : *[..]$T, position : int, $initialize := false) -> *T #must
+sorted_insert_into_array :: (array : *[..]$T, position : int, $initialize := true) -> *T #must
 {
 	assert (position >= 0 && position <= array.count, "Index % out of range [%, %].", position, 0, array.count);
 
@@ -192,7 +192,7 @@ sorted_remove_from_array :: (array : *[..]$T, position : int)
 	array.count -= 1;
 }
 
-push_into_array :: (array : *[..]$T, $initialize := false) -> *T #must
+push_into_array :: (array : *[..]$T, $initialize := true) -> *T #must
 {
 	if array.count == array.allocated then resize_array (array, array.count * 2 + 8);
 

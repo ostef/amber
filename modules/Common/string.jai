@@ -5,6 +5,28 @@ starts_with :: (str : string, other : string) -> bool #must
 	return trim (str, str.count - other.count) == other;
 }
 
+match_string :: (str : *string, other : string) -> bool #must
+{
+	if starts_with (<<str, other)
+	{
+		str.count += other.count;
+
+		return true;
+	}
+
+	return false;
+}
+
+get_next_line :: (str : string) -> string #must
+{
+	result := str;
+	result.count = 0;
+	while result.count < str.count && result.data[result.count] != #char "\n"
+		result.count += 1;
+	
+	return result;
+}
+
 starts_with_word :: (str : string, other : string) -> bool #must
 {
 	if str.count < other.count then return false;
@@ -21,6 +43,16 @@ advance :: (str : string, count : int = 1) -> string #must
 	result := str;
 	result.data  += count;
 	result.count -= count;
+
+	return result;
+}
+
+advance_to_next_line :: (str : string) -> string #must
+{
+	result := str;
+	while result.count > 0 && result[0] != #char "\n"
+		result = advance (result);
+	result = advance (result);
 
 	return result;
 }

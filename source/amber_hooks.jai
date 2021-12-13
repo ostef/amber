@@ -37,7 +37,7 @@ Amber_Hooks :: struct #type_info_none
 	buffer_get_split : (Buffer_ID) -> Split_ID;
 	buffer_get_text_layout : (Buffer_ID) -> Text_Layout_ID;
 	buffer_history_get_edit_count : (Buffer_ID) -> s64;
-	buffer_history_get_index : (Buffer_ID) -> s64;
+	buffer_history_get_undo_cursor : (Buffer_ID) -> s64;
 	buffer_history_push_char : (Buffer_ID, u32);
 	buffer_history_push_edit : (Buffer_ID, Buffer_Edit_Kind, Buffer_Cursor_ID) -> *Buffer_Edit;
 	buffer_history_push_text : (Buffer_ID, []u32);
@@ -64,7 +64,6 @@ Amber_Hooks :: struct #type_info_none
 	buffer_set_filename : (Buffer_ID, string);
 	buffer_set_language : (Buffer_ID, Language_ID);
 	buffer_set_name : (Buffer_ID, string);
-	buffer_set_text_layout : (Buffer_ID, Text_Layout_ID);
 	buffer_skip_word_backward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
 	buffer_skip_word_forward : (Buffer_ID, bool, Buffer_Cursor_ID, bool) -> bool;
 	buffer_sort_cursors_by_offset : (Buffer_ID);
