@@ -12,7 +12,7 @@ Used to identify a buffer in the editor. You can check if a buffer exists by cal
 @type: Buffer_Cursor_ID
 
 @desc:
-Used to identifier a cursor in a buffer. You can check if a cursor exists by calling [buffer_cursor_exists].
+Used to identify a cursor in a buffer. You can check if a cursor exists by calling [buffer_cursor_exists].
 
 ---
 

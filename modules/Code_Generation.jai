@@ -180,11 +180,8 @@ code_print_struct :: (builder : *String_Builder, using code : *Code_Struct)
 		code_print_argument_decls (builder, constants_block.members);
 		print_to_builder (builder, ")");
 	}
-	else
-	{
-		print_to_builder (builder, " ");
-	}
-
+	print_to_builder (builder, " ");
+	
 	for notes
 	{
 		code_print_note (builder, it);
@@ -241,8 +238,6 @@ code_print_declaration :: (builder : *String_Builder, using decl : *Code_Declara
 	if flags & .IS_IMPORTED
 		return;
 
-	if flags & .IS_MARKED_AS_USING
-		print_to_builder (builder, "using ");
 	if flags & .PROGRAM_EXPORT
 	{
 		print_to_builder (builder, "#program_export ");
@@ -255,6 +250,8 @@ code_print_declaration :: (builder : *String_Builder, using decl : *Code_Declara
 	}
 	if flags & .NO_RESET
 		print_to_builder (builder, "#no_reset ");
+	if flags & .IS_MARKED_AS_USING
+		print_to_builder (builder, "using ");
 	
 	if name
 	{
@@ -263,13 +260,15 @@ code_print_declaration :: (builder : *String_Builder, using decl : *Code_Declara
 		else if flags & .AUTO_VALUE_BAKE
 			print_to_builder (builder, "$$");
 		print_to_builder (builder, decl.name);
+		print_to_builder (builder, " :");
+		if type_inst
+			print_to_builder (builder, " ");
 	}
-	print_to_builder (builder, ":");
 	if type_inst
 	{
-		print_to_builder (builder, " ");
 		code_print_type_instantiation (builder, type_inst);
-		print_to_builder (builder, " ");
+		if expression
+			print_to_builder (builder, " ");
 	}
 	
 	if expression
@@ -286,7 +285,10 @@ code_print_declaration :: (builder : *String_Builder, using decl : *Code_Declara
 		print_to_builder (builder, " #must");
 
 	for notes
+	{
+		print_to_builder (builder, " ");
 		code_print_note (builder, it);
+	}
 }
 
 code_print_compound_declaration :: (builder : *String_Builder, using compound : *Code_Compound_Declaration)
@@ -302,7 +304,10 @@ code_print_compound_declaration :: (builder : *String_Builder, using compound : 
 	code_print_comma_separated_arguments (builder, comma_separated_assignment);
 	code_print_declaration (builder, declaration_properties);
 	for notes
+	{
+		print_to_builder (builder, " ");
 		code_print_note (builder, it);
+	}
 }
 
 code_print_arguments :: (builder : *String_Builder, args : []Code_Argument)

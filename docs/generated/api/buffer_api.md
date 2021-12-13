@@ -6,7 +6,7 @@ Type:
 </h2>
 
 ```jai
-Buffer_ID:: #type, distinct u32@Amber_API
+Buffer_ID :: #type, distinct u32 @Amber_API
 ```
 
 ## Description:
@@ -20,11 +20,11 @@ Type:
 </h2>
 
 ```jai
-Buffer_Cursor_ID:: #type, distinct s64@Amber_API
+Buffer_Cursor_ID :: #type, distinct s64 @Amber_API
 ```
 
 ## Description:
-Used to identifier a cursor in a buffer. You can check if a cursor exists by calling [buffer_cursor_exists].
+Used to identify a cursor in a buffer. You can check if a cursor exists by calling [buffer_cursor_exists].
 
 ---
 
@@ -34,12 +34,12 @@ Struct:
 </h2>
 
 ```jai
-Buffer_Cursor:: struct 
+Buffer_Cursor :: struct 
 {
-offset: s64 ;
-selection: s64 ;
+offset : s64;
+selection : s64;
 }
-@Amber_API
+ @Amber_API
 ```
 
 ## Description:
@@ -57,7 +57,7 @@ Procedure:
 </h2>
 
 ```jai
-get_buffer_count:: () -> : s64  #must@Amber_API
+get_buffer_count :: () -> s64 #must @Amber_API
 ```
 
 ## Description:
@@ -74,7 +74,7 @@ Procedure:
 </h2>
 
 ```jai
-get_active_buffer:: () -> : Buffer_ID  #must@Amber_API
+get_active_buffer :: () -> Buffer_ID #must @Amber_API
 ```
 
 ## Description:
@@ -92,7 +92,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_exists:: (id: Buffer_ID ) -> : bool  #must@Amber_API
+buffer_exists :: (id : Buffer_ID) -> bool #must @Amber_API
 ```
 
 ## Description:
@@ -112,7 +112,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_load_file:: (buffer_id: Buffer_ID , filename: string ) -> : bool @Amber_API
+buffer_load_file :: (buffer_id : Buffer_ID, filename : string) -> bool @Amber_API
 ```
 
 ## Description:
@@ -133,7 +133,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_write_to_file:: (buffer_id: Buffer_ID ) -> : bool @Amber_API
+buffer_write_to_file :: (buffer_id : Buffer_ID) -> bool @Amber_API
 ```
 
 ## Description:
@@ -153,7 +153,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_clear:: (buffer_id: Buffer_ID )@Amber_API
+buffer_clear :: (buffer_id : Buffer_ID) @Amber_API
 ```
 
 ## Description:
@@ -170,7 +170,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_history_get_edit_count:: (buffer_id: Buffer_ID ) -> : s64  #must@Amber_API
+buffer_history_get_edit_count :: (buffer_id : Buffer_ID) -> s64 #must @Amber_API
 ```
 
 ## Description:
@@ -190,7 +190,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_history_get_undo_cursor:: (buffer_id: Buffer_ID ) -> : s64  #must@Amber_API
+buffer_history_get_undo_cursor :: (buffer_id : Buffer_ID) -> s64 #must @Amber_API
 ```
 
 ## Description:
@@ -210,7 +210,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_clear_history:: (buffer_id: Buffer_ID )@Amber_API
+buffer_clear_history :: (buffer_id : Buffer_ID) @Amber_API
 ```
 
 ## Description:
@@ -227,7 +227,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_clear_redo_history:: (buffer_id: Buffer_ID )@Amber_API
+buffer_clear_redo_history :: (buffer_id : Buffer_ID) @Amber_API
 ```
 
 ## Description:
@@ -244,7 +244,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_split:: (buffer_id: Buffer_ID ) -> : Split_ID  #must@Amber_API
+buffer_get_split :: (buffer_id : Buffer_ID) -> Split_ID #must @Amber_API
 ```
 
 ## Description:
@@ -264,7 +264,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_text_layout:: (buffer_id: Buffer_ID ) -> : Text_Layout_ID  #must@Amber_API
+buffer_get_text_layout :: (buffer_id : Buffer_ID) -> Text_Layout_ID #must @Amber_API
 ```
 
 ## Description:
@@ -284,7 +284,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_language:: (buffer_id: Buffer_ID ) -> : Language_ID  #must@Amber_API
+buffer_get_language :: (buffer_id : Buffer_ID) -> Language_ID #must @Amber_API
 ```
 
 ## Description:
@@ -304,7 +304,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_set_language:: (buffer_id: Buffer_ID , language_id: Language_ID )@Amber_API
+buffer_set_language :: (buffer_id : Buffer_ID, language_id : Language_ID) @Amber_API
 ```
 
 ## Description:
@@ -322,7 +322,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_filename:: (buffer_id: Buffer_ID , allocator: Allocator ) -> : string  #must@Amber_API
+buffer_get_filename :: (buffer_id : Buffer_ID, allocator : Allocator) -> string #must @Amber_API
 ```
 
 ## Description:
@@ -343,7 +343,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_set_filename:: (buffer_id: Buffer_ID , filename: string )@Amber_API
+buffer_set_filename :: (buffer_id : Buffer_ID, filename : string) @Amber_API
 ```
 
 ## Description:
@@ -361,7 +361,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_name:: (buffer_id: Buffer_ID , allocator: Allocator ) -> : string  #must@Amber_API
+buffer_get_name :: (buffer_id : Buffer_ID, allocator : Allocator) -> string #must @Amber_API
 ```
 
 ## Description:
@@ -382,7 +382,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_set_name:: (buffer_id: Buffer_ID , name: string )@Amber_API
+buffer_set_name :: (buffer_id : Buffer_ID, name : string) @Amber_API
 ```
 
 ## Description:
@@ -400,7 +400,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_codepoint:: (buffer_id: Buffer_ID , index: s64 ) -> : u32  #must@Amber_API
+buffer_get_codepoint :: (buffer_id : Buffer_ID, index : s64) -> u32 #must @Amber_API
 ```
 
 ## Description:
@@ -422,7 +422,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_count:: (buffer_id: Buffer_ID ) -> : s64  #must@Amber_API
+buffer_get_count :: (buffer_id : Buffer_ID) -> s64 #must @Amber_API
 ```
 
 ## Description:
@@ -442,7 +442,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_cursor_exists:: (buffer_id: Buffer_ID , cursor_id: Buffer_Cursor_ID ) -> : bool  #must@Amber_API
+buffer_cursor_exists :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool #must @Amber_API
 ```
 
 ## Description:
@@ -463,7 +463,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_cursor:: (buffer_id: Buffer_ID , cursor_id: Buffer_Cursor_ID ) -> : Buffer_Cursor  #must@Amber_API
+buffer_get_cursor :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> Buffer_Cursor #must @Amber_API
 ```
 
 ## Description:
@@ -485,7 +485,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_cursor_line_index:: (buffer_id: Buffer_ID , cursor_id: Buffer_Cursor_ID ) -> : s64  #must@Amber_API
+buffer_get_cursor_line_index :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> s64 #must @Amber_API
 ```
 
 ## Description:
@@ -508,7 +508,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_cursor_column_index:: (buffer_id: Buffer_ID , cursor_id: Buffer_Cursor_ID ) -> : s64  #must@Amber_API
+buffer_get_cursor_column_index :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> s64 #must @Amber_API
 ```
 
 ## Description:
@@ -530,7 +530,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_cursor_is_at_bol:: (buffer_id: Buffer_ID , cursor_id: Buffer_Cursor_ID ) -> : bool  #must@Amber_API
+buffer_cursor_is_at_bol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool #must @Amber_API
 ```
 
 ## Description:
@@ -551,7 +551,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_cursor_is_at_eol:: (buffer_id: Buffer_ID , cursor_id: Buffer_Cursor_ID ) -> : bool  #must@Amber_API
+buffer_cursor_is_at_eol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID) -> bool #must @Amber_API
 ```
 
 ## Description:
@@ -572,7 +572,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_line_count:: (buffer_id: Buffer_ID ) -> : s64  #must@Amber_API
+buffer_get_line_count :: (buffer_id : Buffer_ID) -> s64 #must @Amber_API
 ```
 
 ## Description:
@@ -592,7 +592,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_line_length:: (buffer_id: Buffer_ID , line_index: s64 ) -> : s64  #must@Amber_API
+buffer_get_line_length :: (buffer_id : Buffer_ID, line_index : s64) -> s64 #must @Amber_API
 ```
 
 ## Description:
@@ -613,7 +613,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_get_eol_sequence:: (buffer_id: Buffer_ID ) -> : EOL_Sequence  #must@Amber_API
+buffer_get_eol_sequence :: (buffer_id : Buffer_ID) -> EOL_Sequence #must @Amber_API
 ```
 
 ## Description:
@@ -633,7 +633,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_set_eol_sequence:: (buffer_id: Buffer_ID , eol_sequence: EOL_Sequence )@Amber_API
+buffer_set_eol_sequence :: (buffer_id : Buffer_ID, eol_sequence : EOL_Sequence) @Amber_API
 ```
 
 ## Description:
@@ -651,7 +651,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_move_cursor_forward:: (buffer_id: Buffer_ID , cursor_id: Buffer_Cursor_ID , select:= false) -> : bool @Amber_API
+buffer_move_cursor_forward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool @Amber_API
 ```
 
 ## Description:
@@ -674,7 +674,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_move_cursor_backward:: (buffer_id: Buffer_ID , cursor_id: Buffer_Cursor_ID , select:= false) -> : bool @Amber_API
+buffer_move_cursor_backward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool @Amber_API
 ```
 
 ## Description:
@@ -697,7 +697,7 @@ Procedure:
 </h2>
 
 ```jai
-buffer_move_cursor_to_offset:: (buffer_id: Buffer_ID , new_offset: s64 , cursor_id: Buffer_Cursor_ID , select:= false) -> : bool @Amber_API
+buffer_move_cursor_to_offset :: (buffer_id : Buffer_ID, new_offset : s64, cursor_id : Buffer_Cursor_ID, select := false) -> bool @Amber_API
 ```
 
 ## Description:
