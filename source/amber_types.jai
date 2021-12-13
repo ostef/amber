@@ -1,13 +1,13 @@
 f32 :: float32;
 f64 :: float64;
 
-Buffer_ID      :: #type, distinct u32;
-Text_Layout_ID :: #type, distinct u32;
-Split_ID       :: #type, distinct u32;
+Buffer_ID      :: #type, distinct u32; @Amber_API
+Text_Layout_ID :: #type, distinct u32; @Amber_API
+Split_ID       :: #type, distinct u32; @Amber_API
 
-NULL_BUFFER      : Buffer_ID      : 0;
-NULL_TEXT_LAYOUT : Text_Layout_ID : 0;
-NULL_SPLIT       : Split_ID       : 0;
+NULL_BUFFER      : Buffer_ID      : 0; @Amber_API
+NULL_TEXT_LAYOUT : Text_Layout_ID : 0; @Amber_API
+NULL_SPLIT       : Split_ID       : 0; @Amber_API
 
 EOL_Sequence :: enum u8
 {
@@ -18,17 +18,19 @@ EOL_Sequence :: enum u8
 else
 	PLATFORM :: LF;
 }
+@Amber_API
 
 Buffer_Cursor :: struct
 {
 	offset    : s64;
 	selection : s64;
 }
+@Amber_API
 
-Buffer_Cursor_ID :: #type, distinct s64;
+Buffer_Cursor_ID :: #type, distinct s64; @Amber_API
 
-ALL_CURSORS : Buffer_Cursor_ID : -1;
-WRITE_HEAD  : Buffer_Cursor_ID : 0;
+ALL_CURSORS : Buffer_Cursor_ID : -1; @Amber_API
+WRITE_HEAD  : Buffer_Cursor_ID : 0;  @Amber_API
 
 // @Note (stefan): I would like to put this inside the Buffer_Edit struct,
 // but I need to be able to print the full type when generating hooks,
@@ -44,6 +46,7 @@ Buffer_Edit_Kind :: enum
 	BATCH_BEGIN :: 100;
 	BATCH_END   :: 101;
 }
+@Amber_API
 
 Buffer_Edit :: struct
 {
@@ -53,6 +56,7 @@ Buffer_Edit :: struct
 	cursor : Buffer_Cursor;
 	offset_in_edit_buffer : s64;
 }
+@Amber_API
 
 History_Buffering :: enum
 {
@@ -60,6 +64,7 @@ History_Buffering :: enum
 	PUSH_TEXT :: 1;
 	PUSH_EDIT :: 2;
 }
+@Amber_API
 
 // Command
 

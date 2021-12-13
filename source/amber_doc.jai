@@ -13,6 +13,7 @@ Doc_File :: struct
 			PROC    :: 1;
 			STRUCT  :: 2;
 			ENUM    :: 3;
+			TYPE    :: 4;
 		}
 
 		Name_Desc :: struct
@@ -69,8 +70,10 @@ parse_doc_file :: (filename : string, using doc : *Doc_File) -> bool
 			entry.kind = .STRUCT;
 		else if lexer_advance_if_matches_string (*lexer, "@enum:")
 			entry.kind = .ENUM;
+		else if lexer_advance_if_matches_string (*lexer, "@type:")
+			entry.kind = .TYPE;
 		else
-			return lexer_error (*lexer, "Expected '@proc', '@struct' or '@enum', got '%'.", lexer_get_next_line (lexer));
+			return lexer_error (*lexer, "Expected '@proc:', '@struct:', '@enum:' or '@type:', got '%'.", lexer_get_next_line (lexer));
 		lexer_skip_spaces (*lexer);
 		// Parse name
 		entry.name.data = lexer.curr;
@@ -206,6 +209,7 @@ generate_markdown :: (builder : *String_Builder, using entry : Doc_File.Entry)
 	ln :: print_line_to_builder;
 	nl :: print_newline_to_builder;
 
+	ln (builder, "[%]: #%", name, name);
 	ln (builder, "<h2 id=\"%\">", name);
 	if #complete kind ==
 	{
@@ -220,14 +224,17 @@ generate_markdown :: (builder : *String_Builder, using entry : Doc_File.Entry)
 
 	case .ENUM;
 		ln (builder, "Enum:");
+
+	case .TYPE;
+		ln (builder, "Type:");
 	}
 	ln (builder, "</h2>");
 	nl (builder);
 
 	ln (builder, "```jai");
-	// @Todo (stefan): Print declaration + filename + line.
-	if kind == .PROC
+	if kind ==
 	{
+	case .PROC;
 		header : *Compiler.Code_Procedure_Header;
 		for amber_api_procedures
 		{
@@ -248,10 +255,32 @@ generate_markdown :: (builder : *String_Builder, using entry : Doc_File.Entry)
 		{
 			ln (builder, "// Could not find API procedure declaration.");
 		}
-	}
-	else
+
+	case .STRUCT;
+		node : *Compiler.Code_Struct;
+		for amber_api_structs
+		{
+			if it.defined_type.name == name
+			{
+				node = it;
+
+				break;
+			}
+		}
+
+		if node
+		{
+			print_struct_to_builder (builder, node);
+			nl (builder);
+		}
+		else
+		{
+			ln (builder, "// Could not find API struct declaration.");
+		}
+
+	case;
 		ln (builder, "// Declaration goes here");
-	
+	}
 	ln (builder, "```");
 	nl (builder);
 
@@ -328,4 +357,17 @@ print_procedure_header_to_builder :: (builder : *String_Builder, header : *Compi
 		}
 		print_type_to_builder (builder, ret.type);
 	}
+}
+
+print_struct_to_builder :: (builder : *String_Builder, node : *Compiler.Code_Struct)
+{
+	info := node.defined_type;
+	print_line_to_builder (builder, "% :: struct\n{", info.name);
+	for info.members
+	{
+		print_to_builder (builder, "\t% : ", it.name);
+		print_type_to_builder (builder, it.type);
+		print_line_to_builder (builder, ";");
+	}
+	print_to_builder (builder, "}");
 }

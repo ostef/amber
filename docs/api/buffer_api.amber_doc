@@ -2,6 +2,30 @@
 
 ---
 
+@type: Buffer_ID
+
+@desc:
+Used to identify a buffer in the editor. You can check if a buffer exists by calling [buffer_exists].
+
+---
+
+@type: Buffer_Cursor_ID
+
+@desc:
+Used to identifier a cursor in a buffer. You can check if a cursor exists by calling [buffer_cursor_exists].
+
+---
+
+@struct: Buffer_Cursor
+
+@desc:
+Holds information about a buffer cursor. Cursors are identified by a [Buffer_Cursor_ID]. 
+
+@member offset: is the offset of the cursor in the buffer, in the range [0; buffer count - 1].
+@member selection: is the selection of the cursor. If **selection** is negative, then the selection goes backwards, if it is positive then the selection goes forward.
+
+---
+
 @proc: get_buffer_count
 
 @desc:
@@ -178,3 +202,226 @@ Set the filename of the buffer to **filename**. The buffer language is detected 
 @param buffer_id: is the id of the buffer.
 @param filename: is the new filename.
 
+---
+
+@proc: buffer_get_name
+
+@desc:
+Get a clone of the name of the buffer, allocated with **allocator**.
+
+@param buffer_id: is the id of the buffer.
+@param allocator: is the allocator used to allocate the string.
+
+@return:
+A clone of the buffer's name, newly allocated.
+
+---
+
+@proc: buffer_set_name
+
+@desc:
+Set the name of the buffer to **name**.
+
+@param buffer_id: is the id of the buffer.
+@param name: is the new name.
+
+---
+
+@proc: buffer_get_codepoint
+
+@desc:
+Get the unicode codepoint at **index** in the given buffer.
+The index has to be in the range [0; `buffer_get_count (buffer_id)`).
+
+@param buffer_id: is the id of the buffer.
+@param index: is the index in the range [0; `buffer_get_count (buffer_id)` - 1].
+
+@return:
+The unicode codepoint at the given index.
+
+---
+
+@proc: buffer_get_count
+
+@desc:
+Get the number of characters in the buffer.
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+The number of characters in the buffer.
+
+---
+
+@proc: buffer_cursor_exists
+
+@desc:
+Ask the editor if the given cursor id is valid for the buffer.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the cursor id to query.
+
+@return:
+*true* if the cursor exists, *false* otherwise.
+
+---
+
+@proc: buffer_get_cursor
+
+@desc:
+Get the cursor with id **cursor_id** in the buffer.
+The cursor has to exist (see [buffer_cursor_exists]).
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the cursor id to query. This parameter cannot be `ALL_CURSORS`.
+
+@return:
+The cursor information, as a [Buffer_Cursor].
+
+---
+
+@proc: buffer_get_cursor_line_index
+
+@desc:
+Get the line index position of the given cursor in the buffer.
+Currently, the line index and column index is only cached for the write head, so getting this information for other cursors require recalculation each time.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to query for line index. This parameter cannot be `ALL_CURSORS`.
+
+@return:
+The line index position of the given cursor.
+Line indices are in the range [0, `buffer_get_line_count (buffer_id)` - 1].
+
+---
+
+@proc: buffer_get_cursor_column_index
+
+@desc:
+Get the column index position of the given cursor in the buffer.
+Currently, the line index and column index is only cached for the write head, so getting this information for other cursors require recalculation each time.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to query for column index. This parameter cannot be `ALL_CURSORS`.
+
+@return:
+The column index position of the given cursor. Column indices start from 0, to the length of the line minus one.
+
+---
+
+@proc: buffer_cursor_is_at_bol
+
+@desc:
+Ask the editor if the given cursor is at the beginning of the line.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to query. This parameter cannot be `ALL_CURSORS`.
+
+@return:
+*true* if the cursor is at the beginning of the line, *false* otherwise.
+
+---
+
+@proc: buffer_cursor_is_at_eol
+
+@desc:
+Ask the editor if the given cursor is at the end of the line.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to query. This parameter cannot be `ALL_CURSORS`.
+
+@return:
+*true* if the cursor is at the end of the line, *false* otherwise.
+
+---
+
+@proc: buffer_get_line_count
+
+@desc:
+Get the number of lines in the buffer.
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+The number of lines in the buffer.
+
+---
+
+@proc: buffer_get_line_length
+
+@desc:
+Get the length of the line with index **line_index** in the buffer.
+
+@param buffer_id: is the id of the buffer.
+@param line_index: is the index of the line to query, in the range [0; `buffer_get_line_count (buffer_id) - 1`].
+
+@return:
+The length of the given line.
+
+---
+
+@proc: buffer_get_eol_sequence
+
+@desc:
+Get the EOL sequence the buffer uses when writing to file (see [buffer_write_to_file], [EOL_Sequence]).
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+The EOL sequence of the buffer.
+
+---
+
+@proc: buffer_set_eol_sequence
+
+@desc:
+Set the EOL sequence the buffer uses when writing to file (see [buffer_write_to_file], [EOL_Sequence]).
+
+@param buffer_id: is the id of the buffer.
+@param eol_sequence: is the new eol sequence.
+
+---
+
+@proc: buffer_move_cursor_forward
+
+@desc:
+Move the cursor with id **cursor_id** forward by one character.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to move. This parameter can be `ALL_CURSORS` to move all cursors.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared and the cursor is not moved if the selection is not 0.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_move_cursor_backward
+
+@desc:
+Move the cursor with id **cursor_id** backward by one character.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to move. This parameter can be `ALL_CURSORS` to move all cursors.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared and the cursor is not moved if the selection is not 0.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_move_cursor_to_offset
+
+@desc:
+Move the given cursor to a given offset.
+
+@param buffer_id: is the id of the buffer.
+@param new_offset: is the offset to move the cursor to.
+@param cursor_id: is the id of the cursor to move.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared and the cursor is not moved if the selection is not 0.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
