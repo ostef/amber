@@ -952,7 +952,7 @@ code_print_directive_modify :: (builder : *Code_Builder, using directive : *Code
 }
 code_print_directive_foreign_library :: (builder : *Code_Builder, using directive : *Code_Directive_Foreign_Library)
 {
-	print_line_to_builder (builder, "#foreign_library \"%\";", name);
+	print_line_to_builder (builder, "#foreign_library \"", name, "\";");
 }
 
 code_print_push_context :: (builder : *Code_Builder, using push : *Code_Push_Context)
