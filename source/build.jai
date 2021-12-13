@@ -29,7 +29,6 @@ int_dir   := DEFAULT_INT_DIR;
 
 generate_amber_hooks := true;
 amber_api_procedures : [..]*Compiler.Code_Procedure_Header;
-amber_api_structs    : [..]*Compiler.Code_Struct;
 amber_api_decls      : [..]*Compiler.Code_Declaration;
 run_after_typechecking : [..]*Compiler.Code_Procedure_Header;
 
@@ -111,14 +110,7 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 					if note.text ==
 					{
 					case "Amber_API";
-						if decl.expression.kind ==
-						{
-						case .STRUCT;
-							push_into_array (*amber_api_structs, cast (*Compiler.Code_Struct) decl.expression);
-
-						case;
-							push_into_array (*amber_api_decls, decl);
-						}
+						push_into_array (*amber_api_decls, decl);
 
 						break;
 					}
@@ -283,8 +275,7 @@ build :: ()
 	set_working_directory (strip_filename_from_path (#filepath));
 
 	init_array (*amber_api_procedures, 100, HEAP);
-	init_array (*amber_api_structs, 100, HEAP);
-	init_array (*amber_api_decls, 100, HEAP);
+	init_array (*amber_api_decls, 500, HEAP);
 	init_array (*run_after_typechecking, 100, HEAP);
 	app := Compiler.compiler_create_workspace (APP_OUTPUT_NAME);
 	{

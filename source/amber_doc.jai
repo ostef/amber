@@ -2,6 +2,7 @@
 // source code data gathered from the metaprogram.
 
 #import "Lexer";
+#import "Code_Generation";
 
 Doc_File :: struct
 {
@@ -232,54 +233,24 @@ generate_markdown :: (builder : *String_Builder, using entry : Doc_File.Entry)
 	nl (builder);
 
 	ln (builder, "```jai");
-	if kind ==
+	decl : *Compiler.Code_Declaration;
+	for amber_api_decls
 	{
-	case .PROC;
-		header : *Compiler.Code_Procedure_Header;
-		for amber_api_procedures
+		if it.name == name
 		{
-			if it.name == name
-			{
-				header = it;
+			decl = it;
 
-				break;
-			}
+			break;
 		}
-
-		if header
-		{
-			print_procedure_header_to_builder (builder, header);
-			nl (builder);
-		}
-		else
-		{
-			ln (builder, "// Could not find API procedure declaration.");
-		}
-
-	case .STRUCT;
-		node : *Compiler.Code_Struct;
-		for amber_api_structs
-		{
-			if it.defined_type.name == name
-			{
-				node = it;
-
-				break;
-			}
-		}
-
-		if node
-		{
-			print_struct_to_builder (builder, node);
-			nl (builder);
-		}
-		else
-		{
-			ln (builder, "// Could not find API struct declaration.");
-		}
-
-	case;
-		ln (builder, "// Declaration goes here");
+	}
+	if decl
+	{
+		code_print_declaration (builder, decl);
+		nl (builder);
+	}
+	else
+	{
+		ln (builder, "// Could not find API procedure declaration.");
 	}
 	ln (builder, "```");
 	nl (builder);
@@ -329,45 +300,4 @@ generate_markdown :: (builder : *String_Builder, using entry : Doc_File.Entry)
 		
 		ln (builder, "%  ", it.desc);
 	}
-}
-
-print_procedure_header_to_builder :: (builder : *String_Builder, header : *Compiler.Code_Procedure_Header)
-{
-	print_to_builder (builder, header.name);
-	print_to_builder (builder, " :: (");
-	for arg : header.arguments
-	{
-		if it_index != 0
-			print_to_builder (builder, ", ");
-		print_to_builder (builder, arg.name);
-		print_to_builder (builder, " : ");
-		print_type_to_builder (builder, arg.type);
-	}
-	print_to_builder (builder, ")");
-	for ret : header.returns
-	{
-		if it_index == 0
-			print_to_builder (builder, " -> ");
-		else
-			print_to_builder (builder, ", ");
-		if ret.name
-		{
-			print_to_builder (builder, ret.name);
-			print_to_builder (builder, " : ");
-		}
-		print_type_to_builder (builder, ret.type);
-	}
-}
-
-print_struct_to_builder :: (builder : *String_Builder, node : *Compiler.Code_Struct)
-{
-	info := node.defined_type;
-	print_line_to_builder (builder, "% :: struct\n{", info.name);
-	for info.members
-	{
-		print_to_builder (builder, "\t% : ", it.name);
-		print_type_to_builder (builder, it.type);
-		print_line_to_builder (builder, ";");
-	}
-	print_to_builder (builder, "}");
 }
