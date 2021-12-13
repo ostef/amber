@@ -22,7 +22,7 @@ HEAP :: Allocator.{ heap_allocator_proc, null };
 // Resizing a non null block of memory to zero size is the same as freeing it.
 // A resized memory block might be moved if necessary. (old_ptr == HEAP (.RESIZE, new_size, old_size, old_ptr, null) is not always true).
 // If the OS's heap reallocation routine fails, we free the block and allocate a new one ourselves, copying the bytes to the new location.
-// Freeing a null pointer won't do anything and is paerfectly valid.
+// Freeing a null pointer won't do anything and is perfectly valid.
 heap_allocator_proc :: (mode : Allocator_Mode, size : s64, old_size : s64, old_ptr : *void, allocator_data : *void) -> *void		// We can't #must because we ignore the return value when mode == .FREE
 {
 	if #complete mode ==

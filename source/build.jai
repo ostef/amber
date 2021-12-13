@@ -349,34 +349,6 @@ build :: ()
 	Compiler.set_build_options_dc (.{ do_output = false, write_added_strings = false });
 }
 
-generate_documentation :: ()
-{
-	visitor :: (info : *File_Visit_Info, data : *void)
-	{
-		if !info.is_directory
-		{
-			extension := get_filename_extension (info.name);
-			if extension == "amber_doc"
-			{
-				doc_file : Doc_File;
-				ok := parse_doc_file (info.full_name, *doc_file);
-				if ok
-				{
-					builder : String_Builder;
-					init_string_builder (*builder, 10000, HEAP);
-					generate_markdown (*builder, doc_file);
-					name := strip_extension_from_path (info.name);
-					md_filename := make_path (HEAP, "docs/generated/api/", name, ".md");
-					write_to_file (md_filename, to_string (builder));
-				}
-			}
-		}
-	}
-
-	delete_directory ("docs/generated/");
-	inspect_directory ("docs/api/", true, null, visitor);
-}
-
 quick_sort :: (array : []$T, compare_func : (T, T) -> $R)
 {
 	partition :: (array : *T, low_index : s64, high_index : s64, compare_func : (T, T) -> R) -> s64

@@ -13,7 +13,6 @@ else #if OS == .LINUX #load "linux.jai";
 #load "array.jai";
 #load "string.jai";
 #load "string_to.jai";
-#load "string_to_float.jai";
 #load "string_builder.jai";
 #load "print.jai";
 #load "logging.jai";

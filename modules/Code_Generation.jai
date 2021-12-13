@@ -1,7 +1,176 @@
 #import "Compiler";	// For code nodes
-#import "Common";	// For String_Builder
+#import "Common";	// For alloc, free
 
-code_print_identifier :: inline (builder : *String_Builder, using ident : *Code_Ident)
+Code_Builder :: struct
+{
+	count : s64;
+	data  : *u8;
+	allocated : s64;
+
+	indentation_level : s64;
+	line, column : s64;
+
+	allocator : Allocator;
+}
+
+init_code_builder :: inline (builder : *Code_Builder, capacity : s64, allocator : Allocator)
+{
+	builder.count = 0;
+	builder.data = alloc (capacity, allocator);
+	builder.allocated = capacity;
+	builder.indentation_level = 0;
+	builder.line = 1;
+	builder.column = 1;
+	builder.allocator = allocator;
+}
+
+to_string :: inline (using builder : Code_Builder) -> string #must
+{
+	str : string = ---;
+	str.data = data;
+	str.count = count;
+
+	return str;
+}
+
+indent :: inline (using builder : *Code_Builder)
+{
+	for 0..indentation_level - 1
+		print_char_to_builder (builder, #char "\t");
+}
+
+grow_builder :: inline (using builder : *Code_Builder, additional_capacity : s64)
+{
+	if additional_capacity <= 0
+		return;
+	new_capacity := allocated + additional_capacity;
+	new_data := alloc (new_capacity, allocator);
+	memcpy (new_data, data, count);
+	free (data, allocator);
+	data = new_data;
+	allocated = new_capacity;
+}
+
+print_char_to_builder :: inline (using builder : *Code_Builder, char : u8)
+{
+	if count >= allocated
+		grow_builder (builder, allocated + 128);
+	data[count] = char;
+	count += 1;
+	if char == #char "\n"
+	{
+		line += 1;
+		column = 0;
+	}
+	column += 1;
+}
+
+print_escaped_char_to_builder :: inline (builder : *Code_Builder, char : u8)
+{
+	if char ==
+	{
+	case #char "\r";
+		print_to_builder (builder, "\\r");
+	case #char "\n";
+		print_to_builder (builder, "\\n");
+	case #char "\t";
+		print_to_builder (builder, "\\t");
+	case #char "\"";
+		print_to_builder (builder, "\\\"");
+	case #char "\\";
+		print_to_builder (builder, "\\\\");
+	case;
+		print_char_to_builder (builder, char);
+	}
+}
+
+print_escaped_string_to_builder :: (using builder : *Code_Builder, str : string)
+{
+	if count + str.count >= allocated
+		grow_builder (builder, allocated + 128);
+	print_char_to_builder (builder, #char "\"");
+	for i : 0..str.count - 1
+		print_escaped_char_to_builder (builder, str[i]);
+	print_char_to_builder (builder, #char "\"");
+}
+
+print_to_builder :: inline (using builder : *Code_Builder, str : string)
+{
+	if count + str.count >= allocated
+		grow_builder (builder, allocated + 128);
+	for i : 0..str.count - 1
+		print_char_to_builder (builder, str[i]);
+}
+
+print_to_builder :: inline (using builder : *Code_Builder, str : string, strs : ..string)
+{
+	print_to_builder (builder, str);
+	for strs
+		print_to_builder (builder, it);
+}
+
+print_line_to_builder :: inline (using builder : *Code_Builder, str : string)
+{
+	print_to_builder (builder, str);
+	print_newline_to_builder (builder);
+}
+
+print_line_to_builder :: inline (using builder : *Code_Builder, str : string, strs : ..string)
+{
+	print_to_builder (builder, str);
+	for strs
+		print_to_builder (builder, it);
+	print_newline_to_builder (builder);
+}
+
+print_newline_to_builder :: inline (using builder : *Code_Builder)
+{
+	print_char_to_builder (builder, #char "\n");
+}
+
+print_s64_to_builder :: inline (using builder : *Code_Builder, value : s64, base := 10)
+{
+	unsigned_value : u64 = xx value;
+	if value < 0
+	{
+		unsigned_value = xx -value;
+		print_char_to_builder (builder, #char "-");
+	}
+	print_u64_to_builder (builder, unsigned_value, base);
+}
+
+print_u64_to_builder :: inline (builder : *Code_Builder, value : u64, base := 10)
+{
+	assert (base > 1 && base <= 16, "Invalid base (got %, expected base in [2, 16]).", base);
+
+	if base ==
+	{
+	case 2;  print_to_builder (builder, "0b");
+	case 16; print_to_builder (builder, "0x");
+	}
+	dummy_value := value;
+	digit_count := 0;
+	if dummy_value == 0 then digit_count = 1;
+	while dummy_value
+	{
+		digit_count += 1;
+		dummy_value /= (xx base);
+	}
+
+	// The minimum base we can have is 2, and for a 64 bit number we can at most print 64 digits
+	character_buffer : [64]u8 = ---;
+	for i : 0..digit_count - 1
+	{
+		digit := value % (xx base);
+		character_buffer[digit_count - 1 - i] = "0123456789abcdef"[digit];
+		value /= xx base;
+	}
+
+	for i : 0..digit_count - 1
+		print_char_to_builder (builder, character_buffer[i]);
+}
+
+code_print_identifier :: inline (builder : *Code_Builder, using ident : *Code_Ident)
 {
 	if flags & .DEFINES_POLYMORPH_VARIABLE
 		print_to_builder (builder, "$");
@@ -10,7 +179,7 @@ code_print_identifier :: inline (builder : *String_Builder, using ident : *Code_
 	print_to_builder (builder, name);
 }
 
-code_print_literal :: (builder : *String_Builder, using lit : *Code_Literal)
+code_print_literal :: (builder : *Code_Builder, using lit : *Code_Literal)
 {
 	if #complete value_type ==
 	{
@@ -22,13 +191,15 @@ code_print_literal :: (builder : *String_Builder, using lit : *Code_Literal)
 		else if numeric_flags & .HEX
 			base = 16;
 		if numeric_flags & .FLOAT64
-			print_f64_to_builder (builder, _float64, -1);
+			//print_f64_to_builder (builder, _float64);
+			print_to_builder (builder, "0.0");
 		else if numeric_flags & .FLOAT
-			print_f32_to_builder (builder, _float32, -1);
+			//print_f32_to_builder (builder, _float32);
+			print_to_builder (builder, "0.0");
 		else if numeric_flags & .MINUS_SIGN
-			print_s64_to_builder (builder, _s64, base, true);
+			print_s64_to_builder (builder, _s64, base);
 		else
-			print_u64_to_builder (builder, _u64, base, true);
+			print_u64_to_builder (builder, _u64, base);
 
 	case .STRING;
 		print_escaped_string_to_builder (builder, _string);
@@ -82,11 +253,11 @@ code_print_literal :: (builder : *String_Builder, using lit : *Code_Literal)
 			code_print_declaration (builder, info.global_symbol);
 		}
 
-	case .DATA_FIELD_PLUS_OFFSET;
+	case .DATA_FIELD_PLUS_OFFSET;	// @Note (stefan): What is that ???
 	}
 }
 
-code_print_procedure_header :: (builder : *String_Builder, using header : *Code_Procedure_Header)
+code_print_procedure_header :: (builder : *Code_Builder, using header : *Code_Procedure_Header)
 {
 	print_to_builder (builder, "(");
 	for decl : arguments
@@ -117,7 +288,7 @@ code_print_procedure_header :: (builder : *String_Builder, using header : *Code_
 		print_to_builder (builder, "#dump ");
 }
 
-code_print_procedure_body :: (builder : *String_Builder, using header : *Code_Procedure_Header)
+code_print_procedure_body :: (builder : *Code_Builder, using header : *Code_Procedure_Header)
 {
 	if modify_directives.count != 0
 	{
@@ -141,7 +312,7 @@ code_print_procedure_body :: (builder : *String_Builder, using header : *Code_Pr
 	}
 }
 
-code_print_note :: inline (builder : *String_Builder, using note : *Code_Note)
+code_print_note :: inline (builder : *Code_Builder, using note : *Code_Note)
 {
 	string_literal := false;
 	for i : 0..text.count - 1
@@ -164,10 +335,10 @@ code_print_note :: inline (builder : *String_Builder, using note : *Code_Note)
 	if string_literal
 		print_escaped_string_to_builder (builder, text);
 	else
-		print_string_to_builder (builder, text);
+		print_to_builder (builder, text);
 }
 
-code_print_struct :: (builder : *String_Builder, using code : *Code_Struct)
+code_print_struct :: (builder : *Code_Builder, using code : *Code_Struct)
 {
 	if struct_flags & .UNION
 		print_to_builder (builder, "union");
@@ -192,7 +363,7 @@ code_print_struct :: (builder : *String_Builder, using code : *Code_Struct)
 		code_print_block (builder, block);
 }
 
-code_print_enum :: (builder : *String_Builder, using code : *Code_Enum)
+code_print_enum :: (builder : *Code_Builder, using code : *Code_Enum)
 {
 	if is_flags
 		print_to_builder (builder, "enum_flags ");
@@ -211,7 +382,7 @@ code_print_enum :: (builder : *String_Builder, using code : *Code_Enum)
 		code_print_block (builder, block);
 }
 
-code_print_scope_entry :: (builder : *String_Builder, using entry : *Code_Scope_Entry)
+code_print_scope_entry :: (builder : *Code_Builder, using entry : *Code_Scope_Entry)
 {
 	if entry.kind ==
 	{
@@ -222,7 +393,7 @@ code_print_scope_entry :: (builder : *String_Builder, using entry : *Code_Scope_
 	}
 }
 
-code_print_sequence :: (builder : *String_Builder, using sequence : *Code_Sequence)
+code_print_sequence :: (builder : *Code_Builder, using sequence : *Code_Sequence)
 {
 	for expressions
 	{
@@ -231,7 +402,7 @@ code_print_sequence :: (builder : *String_Builder, using sequence : *Code_Sequen
 	}
 }
 
-code_print_declaration :: (builder : *String_Builder, using decl : *Code_Declaration)
+code_print_declaration :: (builder : *Code_Builder, using decl : *Code_Declaration)
 {
 	if flags & .IS_ITERATOR
 		return;
@@ -291,7 +462,7 @@ code_print_declaration :: (builder : *String_Builder, using decl : *Code_Declara
 	}
 }
 
-code_print_compound_declaration :: (builder : *String_Builder, using compound : *Code_Compound_Declaration)
+code_print_compound_declaration :: (builder : *Code_Builder, using compound : *Code_Compound_Declaration)
 {
 	if alignment_expression
 	{
@@ -310,7 +481,7 @@ code_print_compound_declaration :: (builder : *String_Builder, using compound : 
 	}
 }
 
-code_print_arguments :: (builder : *String_Builder, args : []Code_Argument)
+code_print_arguments :: (builder : *Code_Builder, args : []Code_Argument)
 {
 	for args
 	{
@@ -325,7 +496,7 @@ code_print_arguments :: (builder : *String_Builder, args : []Code_Argument)
 	}
 }
 
-code_print_argument_decls :: (builder : *String_Builder, args : []*Code_Scope_Entry)
+code_print_argument_decls :: (builder : *Code_Builder, args : []*Code_Scope_Entry)
 {
 	for args
 	{
@@ -335,7 +506,7 @@ code_print_argument_decls :: (builder : *String_Builder, args : []*Code_Scope_En
 	}
 }
 
-code_print_comma_separated_arguments :: (builder : *String_Builder, using args : *Code_Comma_Separated_Arguments)
+code_print_comma_separated_arguments :: (builder : *Code_Builder, using args : *Code_Comma_Separated_Arguments)
 {
 	for expressions
 	{
@@ -345,7 +516,7 @@ code_print_comma_separated_arguments :: (builder : *String_Builder, using args :
 	}
 }
 
-code_print_type_instantiation :: (builder : *String_Builder, using inst : *Code_Type_Instantiation)
+code_print_type_instantiation :: (builder : *Code_Builder, using inst : *Code_Type_Instantiation)
 {
 	if inst_flags & .TYPE_DIRECTIVE
 	{
@@ -371,7 +542,11 @@ code_print_type_instantiation :: (builder : *String_Builder, using inst : *Code_
 		else if inst_flags & .RESIZABLE
 			print_to_builder (builder, "[..]");
 		else if array_dimension
-			print_to_builder (builder, "[%]", array_dimension);
+		{
+			print_to_builder (builder, "[");
+			code_print_expression (builder, array_dimension);
+			print_to_builder (builder, "]");
+		}
 		else
 			print_to_builder (builder, "[]");
 		code_print_type_instantiation (builder, array_element_type);
@@ -382,20 +557,24 @@ code_print_type_instantiation :: (builder : *String_Builder, using inst : *Code_
 	}
 }
 
-code_print_block :: (builder : *String_Builder, using block : *Code_Block)
+code_print_block :: (builder : *Code_Builder, using block : *Code_Block)
 {
 	if block_flags & .BLOCK_NO_ARRAY_BOUNDS_CHECK
 		print_to_builder (builder, "#no_abc ");
 	print_braces := cast (bool) (node_flags & .IS_PARENTHESIZED) || statements.count > 1 || members.count > 1;
 	if print_braces
+	{
 		print_to_builder (builder, "\n{\n");
-		// @Todo (stefan): Indentation level.
+		builder.indentation_level += 1;
+	}
 	else
 		print_to_builder (builder, " ");
 	if block_type != .IMPERATIVE
 	{
 		for members
 		{
+			if print_braces
+				indent (builder);
 			code_print_scope_entry (builder, it);
 			root_expr : *Code_Node;
 			if it.kind == .DECLARATION
@@ -419,19 +598,23 @@ code_print_block :: (builder : *String_Builder, using block : *Code_Block)
 		}
 		if it.node_flags & .STATEMENT_IS_DEFERRED
 			print_to_builder (builder, "defer ");
-		// @Todo (stefan): Indentation.
+		if print_braces
+			indent (builder);
 		code_print_expression (builder, it);
 		code_print_semicolon (builder, it);
 	}
 
 	if print_braces
+	{
+		builder.indentation_level -= 1;
+		indent (builder);
 		print_to_builder (builder, "}\n");
-		// @Todo (stefan): Indentation level.
+	}
 	else
 		print_to_builder (builder, " ");
 }
 
-code_print_operator :: inline (builder : *String_Builder, op : Operator_Type.loose)
+code_print_operator :: inline (builder : *Code_Builder, op : Operator_Type.loose)
 {
 	using Operator_Type;
 	if op ==
@@ -491,13 +674,13 @@ code_print_operator :: inline (builder : *String_Builder, op : Operator_Type.loo
 	}
 }
 
-code_print_unary_operator :: (builder : *String_Builder, using op : *Code_Unary_Operator)
+code_print_unary_operator :: (builder : *Code_Builder, using op : *Code_Unary_Operator)
 {
 	code_print_operator (builder, operator_type);
 	code_print_expression (builder, subexpression);
 }
 
-code_print_binary_operator :: (builder : *String_Builder, using op : *Code_Binary_Operator)
+code_print_binary_operator :: (builder : *Code_Builder, using op : *Code_Binary_Operator)
 {
 	code_print_expression (builder, left);
 	if operator_type != xx Operator_Type.ARRAY_SUBSCRIPT
@@ -515,7 +698,7 @@ code_print_binary_operator :: (builder : *String_Builder, using op : *Code_Binar
 		print_to_builder (builder, "]");
 }
 
-code_print_if :: (builder : *String_Builder, using code : *Code_If)
+code_print_if :: (builder : *Code_Builder, using code : *Code_If)
 {
 	if is_ifx
 		print_to_builder (builder, "ifx ");
@@ -541,7 +724,7 @@ code_print_if :: (builder : *String_Builder, using code : *Code_If)
 	}
 }
 
-code_print_while :: (builder : *String_Builder, using code : *Code_While)
+code_print_while :: (builder : *Code_Builder, using code : *Code_While)
 {
 	print_to_builder (builder, "while ");
 	code_print_expression (builder, condition);
@@ -549,7 +732,7 @@ code_print_while :: (builder : *String_Builder, using code : *Code_While)
 	code_print_block (builder, block);
 }
 
-code_print_for :: (builder : *String_Builder, using code : *Code_For)
+code_print_for :: (builder : *Code_Builder, using code : *Code_For)
 {
 	print_to_builder (builder, "for ");
 	if want_pointer_expression
@@ -596,7 +779,7 @@ code_print_for :: (builder : *String_Builder, using code : *Code_For)
 	code_print_block (builder, block);
 }
 
-code_print_case :: (builder : *String_Builder, using code : *Code_Case)
+code_print_case :: (builder : *Code_Builder, using code : *Code_Case)
 {
 	print_to_builder (builder, "case");
 	if condition
@@ -605,12 +788,13 @@ code_print_case :: (builder : *String_Builder, using code : *Code_Case)
 		code_print_expression (builder, condition);
 	}
 	print_to_builder (builder, ";");
+	indent (builder);
 	code_print_block (builder, then_block);
 	if marked_as_fallthrough
 		print_line_to_builder (builder, "#through;");
 }
 
-code_print_loop_control :: (builder : *String_Builder, using control : *Code_Loop_Control)
+code_print_loop_control :: (builder : *Code_Builder, using control : *Code_Loop_Control)
 {
 	if #complete control_type ==
 	{
@@ -625,7 +809,7 @@ code_print_loop_control :: (builder : *String_Builder, using control : *Code_Loo
 		code_print_identifier (builder, target_ident);
 }
 
-code_print_cast :: (builder : *String_Builder, using expr : *Code_Cast)
+code_print_cast :: (builder : *Code_Builder, using expr : *Code_Cast)
 {
 	if cast_flags & .IS_AUTO
 	{
@@ -645,7 +829,7 @@ code_print_cast :: (builder : *String_Builder, using expr : *Code_Cast)
 	code_print_expression (builder, expression);
 }
 
-code_print_return :: (builder : *String_Builder, using ret : *Code_Return)
+code_print_return :: (builder : *Code_Builder, using ret : *Code_Return)
 {
 	if is_backticked
 		print_to_builder (builder, "`");
@@ -660,7 +844,7 @@ code_print_return :: (builder : *String_Builder, using ret : *Code_Return)
 	}
 }
 
-code_print_procedure_call :: (builder : *String_Builder, using call : *Code_Procedure_Call)
+code_print_procedure_call :: (builder : *Code_Builder, using call : *Code_Procedure_Call)
 {
 	code_print_expression (builder, procedure_expression);
 	print_to_builder (builder, " (");
@@ -668,7 +852,7 @@ code_print_procedure_call :: (builder : *String_Builder, using call : *Code_Proc
 	print_to_builder (builder, ")");
 }
 
-code_print_compiler_query :: (builder : *String_Builder, using expr : *Code_Size_Or_Type_Info)
+code_print_compiler_query :: (builder : *Code_Builder, using expr : *Code_Size_Or_Type_Info)
 {
 	if #complete query_kind ==
 	{
@@ -695,7 +879,7 @@ code_print_compiler_query :: (builder : *String_Builder, using expr : *Code_Size
 	}
 }
 
-code_print_directive_import :: (builder : *String_Builder, using directive : *Code_Directive_Import)
+code_print_directive_import :: (builder : *Code_Builder, using directive : *Code_Directive_Import)
 {
 	print_to_builder (builder, "#import");
 	if flags & .UNSHARED
@@ -717,12 +901,12 @@ code_print_directive_import :: (builder : *String_Builder, using directive : *Co
 	print_line_to_builder (builder, ";");
 }
 
-code_print_directive_through :: (builder : *String_Builder, using directive : *Code_Directive_Through)
+code_print_directive_through :: (builder : *Code_Builder, using directive : *Code_Directive_Through)
 {
 	print_to_builder (builder, "#through");
 }
 
-code_print_directive_run :: (builder : *String_Builder, using directive : *Code_Directive_Run)
+code_print_directive_run :: (builder : *Code_Builder, using directive : *Code_Directive_Run)
 {
 	block := procedure.body_or_null.block;
 	if flags & .ASSERTION
@@ -736,7 +920,7 @@ code_print_directive_run :: (builder : *String_Builder, using directive : *Code_
 	code_print_expression (builder, block.statements[0]);
 }
 
-code_print_directive_code :: (builder : *String_Builder, using directive : *Code_Directive_Code)
+code_print_directive_code :: (builder : *Code_Builder, using directive : *Code_Directive_Code)
 {
 	if code_flags & .NULL || !expression
 		print_to_builder (builder, "#code, null");
@@ -747,7 +931,7 @@ code_print_directive_code :: (builder : *String_Builder, using directive : *Code
 	}
 }
 
-code_print_directive_bake :: (builder : *String_Builder, using directive : *Code_Directive_Bake)
+code_print_directive_bake :: (builder : *Code_Builder, using directive : *Code_Directive_Bake)
 {
 	if #complete bake_type ==
 	{
@@ -761,17 +945,17 @@ code_print_directive_bake :: (builder : *String_Builder, using directive : *Code
 	code_print_procedure_call (builder, procedure_call);
 }
 
-code_print_directive_modify :: (builder : *String_Builder, using directive : *Code_Directive_Modify)
+code_print_directive_modify :: (builder : *Code_Builder, using directive : *Code_Directive_Modify)
 {
 	print_to_builder (builder, "#modify ");
 	code_print_block (builder, block);
 }
-code_print_directive_foreign_library :: (builder : *String_Builder, using directive : *Code_Directive_Foreign_Library)
+code_print_directive_foreign_library :: (builder : *Code_Builder, using directive : *Code_Directive_Foreign_Library)
 {
 	print_line_to_builder (builder, "#foreign_library \"%\";", name);
 }
 
-code_print_push_context :: (builder : *String_Builder, using push : *Code_Push_Context)
+code_print_push_context :: (builder : *Code_Builder, using push : *Code_Push_Context)
 {
 	print_to_builder (builder, "push_context ");
 	code_print_expression (builder, to_push);
@@ -779,7 +963,7 @@ code_print_push_context :: (builder : *String_Builder, using push : *Code_Push_C
 	code_print_block (builder, block);
 }
 
-code_print_directive_scope :: (builder : *String_Builder, using directive : *Code_Directive_Scope)
+code_print_directive_scope :: (builder : *Code_Builder, using directive : *Code_Directive_Scope)
 {
 	if #complete scope_type ==
 	{
@@ -792,7 +976,7 @@ code_print_directive_scope :: (builder : *String_Builder, using directive : *Cod
 	}
 }
 
-code_print_directive_static_if :: (builder : *String_Builder, using directive : *Code_Directive_Static_If)
+code_print_directive_static_if :: (builder : *Code_Builder, using directive : *Code_Directive_Static_If)
 {
 	if is_ifx
 		print_to_builder (builder, "#ifx ");
@@ -808,7 +992,7 @@ code_print_directive_static_if :: (builder : *String_Builder, using directive : 
 	}
 }
 
-code_print_directive_location :: (builder : *String_Builder, using directive : *Code_Directive_Location)
+code_print_directive_location :: (builder : *Code_Builder, using directive : *Code_Directive_Location)
 {
 	if is_caller_location
 		print_to_builder (builder, "#caller_location");
@@ -821,7 +1005,7 @@ code_print_directive_location :: (builder : *String_Builder, using directive : *
 	}
 }
 
-code_print_defer :: (builder : *String_Builder, using code : *Code_Defer)
+code_print_defer :: (builder : *Code_Builder, using code : *Code_Defer)
 {
 	if is_backticked
 		print_to_builder (builder, "`");
@@ -829,19 +1013,19 @@ code_print_defer :: (builder : *String_Builder, using code : *Code_Defer)
 	code_print_block (builder, block);
 }
 
-code_print_using :: (builder : *String_Builder, using code : *Code_Using)
+code_print_using :: (builder : *Code_Builder, using code : *Code_Using)
 {
 	print_to_builder (builder, "using ");
 	code_print_expression (builder, expression);
 }
 
-code_print_placeholder :: (builder : *String_Builder, using placeholder : *Code_Placeholder)
+code_print_placeholder :: (builder : *Code_Builder, using placeholder : *Code_Placeholder)
 {
 	// @Note (stefan): Code_Placeholder has an ident member, but it's commented out.
 	print_to_builder (builder, "#placeholder");
 }
 
-code_print_directive_insert :: (builder : *String_Builder, using directive : *Code_Directive_Insert)
+code_print_directive_insert :: (builder : *Code_Builder, using directive : *Code_Directive_Insert)
 {
 	if is_internal
 		print_to_builder (builder, "#insert_internal ");
@@ -850,7 +1034,7 @@ code_print_directive_insert :: (builder : *String_Builder, using directive : *Co
 	code_print_expression (builder, expression);
 }
 
-code_print_expression :: (builder : *String_Builder, using expr : *Code_Node)
+code_print_expression :: (builder : *Code_Builder, using expr : *Code_Node)
 {
 	assert (expr != null, "Expression was null.");
 	// Don't print parenthesis around blocks. We print braces instead, when
@@ -962,7 +1146,7 @@ code_print_expression :: (builder : *String_Builder, using expr : *Code_Node)
 	}
 }
 
-code_print_semicolon :: inline (builder : *String_Builder, using expr : *Code_Node)
+code_print_semicolon :: inline (builder : *Code_Builder, using expr : *Code_Node)
 {
 	if !expr
 	{

@@ -183,13 +183,41 @@ parse_doc_file :: (filename : string, using doc : *Doc_File) -> bool
 	return true;
 }
 
-generate_markdown :: (builder : *String_Builder, using doc : Doc_File)
+generate_documentation :: ()
+{
+	visitor :: (info : *File_Visit_Info, data : *void)
+	{
+		if !info.is_directory
+		{
+			extension := get_filename_extension (info.name);
+			if extension == "amber_doc"
+			{
+				doc_file : Doc_File;
+				ok := parse_doc_file (info.full_name, *doc_file);
+				if ok
+				{
+					builder : Code_Builder;
+					init_code_builder (*builder, 10000, HEAP);
+					generate_markdown (*builder, doc_file);
+					name := strip_extension_from_path (info.name);
+					md_filename := make_path (HEAP, "docs/generated/api/", name, ".md");
+					write_to_file (md_filename, to_string (builder));
+				}
+			}
+		}
+	}
+
+	delete_directory ("docs/generated/");
+	inspect_directory ("docs/api/", true, null, visitor);
+}
+
+generate_markdown :: (builder : *Code_Builder, using doc : Doc_File)
 {
 	pr :: print_to_builder;
 	ln :: print_line_to_builder;
 	nl :: print_newline_to_builder;
 
-	ln (builder, "# %", name);
+	ln (builder, "# ", name);
 	nl (builder);
 
 	for entries
@@ -204,14 +232,14 @@ generate_markdown :: (builder : *String_Builder, using doc : Doc_File)
 	}
 }
 
-generate_markdown :: (builder : *String_Builder, using entry : Doc_File.Entry)
+generate_markdown :: (builder : *Code_Builder, using entry : Doc_File.Entry)
 {
 	pr :: print_to_builder;
 	ln :: print_line_to_builder;
 	nl :: print_newline_to_builder;
 
-	ln (builder, "[%]: #%", name, name);
-	ln (builder, "<h2 id=\"%\">", name);
+	ln (builder, "[", name, "]: #", name);
+	ln (builder, "<h2 id=\"", name, "\">");
 	if #complete kind ==
 	{
 	case .UNKNOWN;
@@ -250,7 +278,7 @@ generate_markdown :: (builder : *String_Builder, using entry : Doc_File.Entry)
 	}
 	else
 	{
-		ln (builder, "// Could not find API procedure declaration.");
+		ln (builder, "// Could not find API declaration.");
 	}
 	ln (builder, "```");
 	nl (builder);
@@ -265,10 +293,8 @@ generate_markdown :: (builder : *String_Builder, using entry : Doc_File.Entry)
 	}
 	for params
 	{
-		pr (builder, "**");
-		pr (builder, it.name);
-		pr (builder, "** ");
-		ln (builder, "%  ", it.desc);
+		ln (builder, "**", it.name, "** ");
+		ln (builder, it.desc, "  ");
 	}
 
 	if members.count > 0
@@ -278,10 +304,8 @@ generate_markdown :: (builder : *String_Builder, using entry : Doc_File.Entry)
 	}
 	for members
 	{
-		pr (builder, "**");
-		pr (builder, it.name);
-		pr (builder, "** ");
-		ln (builder, "%  ", it.desc);
+		ln (builder, "**", it.name, "** ");
+		ln (builder, it.desc, "  ");
 	}
 
 	if returns.count > 0
@@ -292,12 +316,7 @@ generate_markdown :: (builder : *String_Builder, using entry : Doc_File.Entry)
 	for returns
 	{
 		if it.name
-		{
-			pr (builder, "**");
-			ln (builder, it.name);
-			pr (builder, "** ");
-		}
-		
-		ln (builder, "%  ", it.desc);
+			ln (builder, "**", it.name, "** ");
+		ln (builder, it.desc, "  ");
 	}
 }
