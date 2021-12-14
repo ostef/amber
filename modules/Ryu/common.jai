@@ -86,17 +86,17 @@ copy_special_str :: inline (result : *u8, sign : bool, exponent : bool, mantissa
 {
 	if mantissa
 	{
-		memcpy (result, "NaN".data, 3);
+		memcpy (result, NAN_STRING.data, NAN_STRING.count);
 
-		return 3;
+		return NAN_STRING.count;
 	}
 	if sign
 		result[0] = #char "-";
 	if exponent
 	{
-		memcpy (result + cast (s32) sign, "Inf".data, 3);
+		memcpy (result + cast (s32) sign, INF_STRING.data, INF_STRING.count);
 
-		return cast (s32) sign + 3;
+		return cast (s32) sign + INF_STRING.count;
 	}
 
 	memcpy (result + cast (s32) sign, "0e0".data, 3);
@@ -106,7 +106,7 @@ copy_special_str :: inline (result : *u8, sign : bool, exponent : bool, mantissa
 
 f32_to_bits :: inline (f : f32) -> u32 #must
 {
-	bits : u32 = 0;
+	bits : u32 = ---;
 	memcpy (*bits, *f, size_of (f32));
 
 	return bits;
@@ -114,7 +114,7 @@ f32_to_bits :: inline (f : f32) -> u32 #must
 
 f64_to_bits :: inline (f : f64) -> u64 #must
 {
-	bits : u64 = 0;
+	bits : u64 = ---;
 	memcpy (*bits, *f, size_of (f64));
 
 	return bits;

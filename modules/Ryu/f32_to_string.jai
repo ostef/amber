@@ -176,63 +176,6 @@ f32_to_decimal :: inline (ieee_mantissa : u32, ieee_exponent : u32) -> F32_Decim
 
 #scope_file
 
-to_chars_unoptimized :: (v : F32_Decimal, sign : bool, result : *u8) -> s32
-{
-	index : s32 = 0;
-	if sign
-	{
-		result[index] = #char "-";
-		index += 1;
-	}
-	output := v.mantissa;
-	length := cast (s32) decimal_length9 (output);
-
-	i : s32 = 0;
-	while output >= 10
-	{
-		result[index + length - i] = cast (u8) (#char "0" + (output % 10));
-		output /= 10;
-		i += 1;
-	}
-	result[index] = cast (u8) (#char "0" + (output % 10));
-
-	// Print the decimal point if needed
-	if length > 1
-	{
-		result[index + 1] = #char ".";
-		index += length + 1;
-	}
-	else
-	{
-		index += 1;
-	}
-
-	// Print the exponent
-	result[index] = #char "e";
-	index += 1;
-	exp := v.exponent + cast (s32) length - 1;
-	if exp < 0
-	{
-		result[index] = #char "-";
-		index += 1;
-		exp = -exp;
-	}
-	if exp >= 10
-	{
-		result[index] = cast (u8) (#char "0" + (exp / 10));
-		index += 1;
-		result[index] = cast (u8) (#char "0" + (exp % 10));
-		index += 1;
-	}
-	else
-	{
-		result[index] = cast (u8) (#char "0" + exp);
-		index += 1;
-	}
-
-	return index;
-}
-
 to_chars :: (v : F32_Decimal, sign : bool, result : *u8) -> s32
 {
 	// Write v into result, reversed.
@@ -334,7 +277,7 @@ f32_to_string_buffered :: (f : f32, result : *u8) -> s32
 		return copy_special_str (result, ieee_sign, ieee_exponent != 0, ieee_mantissa != 0);
 	v := f32_to_decimal (ieee_mantissa, ieee_exponent);
 
-	return to_chars_unoptimized (v, ieee_sign, result);
+	return to_chars (v, ieee_sign, result);
 }
 
 f32_to_string :: (f : f32, allocator : Allocator) -> string #must

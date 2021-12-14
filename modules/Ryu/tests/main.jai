@@ -1,27 +1,8 @@
-#load "../module.jai";
+#import "Ryu" (DEBUG = false);
+#import "Common";
+#import "Math";
 
-F32_MIN :: 0h0080_0000;
-F32_MAX :: 0h7f7f_ffff;
-F32_MIN_SUBNORMAL :: 0h0000_0001;
-F32_MAX_SUBNORMAL :: 0h007f_ffff;
-F32_EPSILON :: 0h3400_0000;
-F32_POSITIVE_INFINITY :: 0h7f80_0000;
-F32_NEGATIVE_INFINITY :: 0hff80_0000;
-F32_NAN :: 0h7fc0_0000;
-PI :: 3.1415927;
-
-print :: (str : string)
-{
-	write_string (str);
-}
-
-println :: (str : string)
-{
-	print (str);
-	print ("\n");
-}
-
-main :: ()
+test_f32_to_string :: ()
 {
 	println (f32_to_string (F32_NAN, context.allocator));
 	println (f32_to_string (F32_POSITIVE_INFINITY, context.allocator));
@@ -42,4 +23,34 @@ main :: ()
 	println (f32_to_string (12, context.allocator));
 	println (f32_to_string (0.123456, context.allocator));
 	println (f32_to_string (0.001234, context.allocator));
+}
+
+test_f64_to_fixed :: ()
+{
+	println ("% : %", f64_to_fixed (F32_NAN, 17, context.allocator), F32_NAN);
+	println ("% : %", f64_to_fixed (F32_POSITIVE_INFINITY, 17, context.allocator), F32_POSITIVE_INFINITY);
+	println ("% : %", f64_to_fixed (F32_NEGATIVE_INFINITY, 17, context.allocator), F32_NEGATIVE_INFINITY);
+	println ("% : %", f64_to_fixed (0.0, 17, context.allocator), 0.0);
+	println ("% : %", f64_to_fixed (-0.0, 17, context.allocator), -0.0);
+	println ("% : %", f64_to_fixed (F32_MIN_SUBNORMAL, 50, context.allocator), F32_MIN_SUBNORMAL);
+	println ("% : %", f64_to_fixed (F32_MAX_SUBNORMAL, 50, context.allocator), F32_MAX_SUBNORMAL);
+	println ("% : %", f64_to_fixed (F32_MIN, 40, context.allocator), F32_MIN);
+	println ("% : %", f64_to_fixed (F32_EPSILON, 17, context.allocator), F32_EPSILON);
+	println ("% : %", f64_to_fixed (F32_MAX, 17, context.allocator), F32_MAX);
+	println ("% : %", f64_to_fixed (1.0, 17, context.allocator), 1.0);
+	println ("% : %", f64_to_fixed (-1.0, 17, context.allocator), -1.0);
+	println ("% : %", f64_to_fixed (123.456, 17, context.allocator), 123.456);
+	println ("% : %", f64_to_fixed (-123.456, 17, context.allocator), -123.456);
+	println ("% : %", f64_to_fixed (PI, 17, context.allocator), PI);
+	println ("% : %", f64_to_fixed (PI64, 17, context.allocator), PI64);
+	println ("% : %", f64_to_fixed (12345678, 17, context.allocator), 12345678);
+	println ("% : %", f64_to_fixed (12, 17, context.allocator), 12);
+	println ("% : %", f64_to_fixed (0.123456, 17, context.allocator), 0.123456);
+	println ("% : %", f64_to_fixed (0.001234, 17, context.allocator), 0.001234);
+}
+
+main :: ()
+{
+	//test_f32_to_string ();
+	test_f64_to_fixed ();
 }
