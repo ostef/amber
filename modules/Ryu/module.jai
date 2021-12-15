@@ -11,10 +11,10 @@
 
 #load "common.jai";
 #load "digit_table.jai";
-#load "f32_to_string_full_table.jai";
-#load "f32_to_string_intrinsics.jai";
-#load "f32_to_string.jai";
-#load "f64_to_string_intrinsics.jai";
+#load "f32_intrinsics.jai";
+#load "f32_to_shortest_full_table.jai";
+#load "f32_to_shortest.jai";
+#load "f64_intrinsics.jai";
 #load "f64_to_fixed_full_table.jai";
 #load "f64_to_fixed.jai";
 

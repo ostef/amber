@@ -107,5 +107,6 @@ main :: ()
 	iterations := 1000;
 	precision := 6;
 	verbose := false;
+	println ("Ryu: Mean   Stddev    Min    Max        stb_sprintf: Mean   Stddev    Min    Max");
 	bench64_fixed (xx samples, xx iterations, xx precision, verbose);
 }
