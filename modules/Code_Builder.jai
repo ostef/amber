@@ -345,6 +345,22 @@ print_u64_to_builder :: inline (builder : *Code_Builder, value : u64, base := 10
 		print_char_to_builder (builder, character_buffer[i]);
 }
 
+print_f64_to_builder :: (builder : *Code_Builder, value : f64, precision : int)
+{
+	ryu :: #import "Ryu";
+
+	buffer : [2000]u8;
+	str : string = ---;
+	str.data = buffer.data;
+	str.count = ryu.f64_to_fixed_buffered (value, xx precision, str.data);
+	print_to_builder (builder, str);
+}
+
+print_f32_to_builder :: (builder : *Code_Builder, value : f32, precision : int)
+{
+	inline print_f64_to_builder (builder, xx value, precision);
+}
+
 code_print_identifier :: inline (builder : *Code_Builder, using ident : *Code_Ident)
 {
 	if flags & .DEFINES_POLYMORPH_VARIABLE
@@ -359,6 +375,8 @@ code_print_literal :: (builder : *Code_Builder, using lit : *Code_Literal)
 	if #complete value_type ==
 	{
 	case .UNINITIALIZED;
+		print_to_builder (builder, "---");
+
 	case .NUMBER;
 		base := 10;
 		if numeric_flags & .BINARY
@@ -366,11 +384,9 @@ code_print_literal :: (builder : *Code_Builder, using lit : *Code_Literal)
 		else if numeric_flags & .HEX
 			base = 16;
 		if numeric_flags & .FLOAT64
-			//print_f64_to_builder (builder, _float64);
-			print_to_builder (builder, "0.0");
+			print_f64_to_builder (builder, _float64, 6);
 		else if numeric_flags & .FLOAT
-			//print_f32_to_builder (builder, _float32);
-			print_to_builder (builder, "0.0");
+			print_f32_to_builder (builder, _float32, 6);
 		else if numeric_flags & .MINUS_SIGN
 			print_s64_to_builder (builder, _s64, base);
 		else
@@ -419,7 +435,7 @@ code_print_literal :: (builder : *Code_Builder, using lit : *Code_Literal)
 			if info.offset_from_symbol == 0
 				print_to_builder (builder, "null");
 			else
-				print_s64_to_builder (builder, info.offset_from_symbol);	// @Todo (stefan): Print in hex.
+				print_s64_to_builder (builder, info.offset_from_symbol, base = 16);
 
 		case .DATA_POINTER;
 			code_print_literal (builder, info.string_or_array_literal);
@@ -467,7 +483,7 @@ code_print_declaration :: (builder : *Code_Builder, using decl : *Code_Declarati
 			else if flags & .AUTO_VALUE_BAKE
 				print_to_builder (builder, "$$");
 		}
-		print_to_builder (builder, decl.name);
+		print_to_builder (builder, name);
 		print_to_builder (builder, " :");
 		if type_inst || !fmt.print_expression
 			print_to_builder (builder, " ");
@@ -780,17 +796,14 @@ code_print_block :: (builder : *Code_Builder, using block : *Code_Block)
 			if print_braces
 				indent (builder);
 			code_print_scope_entry (builder, it);
-			root_expr : *Code_Node;
-			if it.kind == .DECLARATION
-				root_expr = (cast (*Code_Declaration) it).expression;
-			else if it.kind == .COMPOUND_DECLARATION
-				root_expr = (cast (*Code_Compound_Declaration) it).declaration_properties.expression;
-			code_print_semicolon (builder, root_expr);
+			code_print_semicolon (builder, it);
 		}
 	}
 	
 	for statements
 	{
+		if !it then continue;
+
 		if it.node_flags & .CREATED_BY_DESUGARING
 			continue;
 		if block_type == .DATA_DECLARATIONS
@@ -1240,7 +1253,7 @@ code_print_directive_insert :: (builder : *Code_Builder, using directive : *Code
 
 code_print_expression :: (builder : *Code_Builder, using expr : *Code_Node, fmt := Code_Format.{})
 {
-	assert (expr != null, "Expression was null.");
+	if !expr then return;
 	// Don't print parenthesis around blocks. We print braces instead, when
 	// calling code_print_block.
 	if (node_flags & .IS_PARENTHESIZED) && kind != .BLOCK

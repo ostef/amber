@@ -26,6 +26,59 @@ Holds information about a buffer cursor. Cursors are identified by a [Buffer_Cur
 
 ---
 
+@enum: Buffer_Edit_Kind
+
+@desc:
+Describes the kind of an edit that has been made to a buffer.
+
+@member INSERT: is an insert operation.
+@member BACKSPACE: is a backspace operation.
+@member DELETE: is a delete operation.
+@member MOVE_LINE_UP: is a move line up operation.
+@member MOVE_LINE_DOWN: is a move line down operation.
+@member BATCH_BEGIN: is a batch begin operation.
+When undoing or redoing a BATCH_END/BEGIN operation, everything is undone/redone until the matching BATCH_BEGIN/END operation.
+@member BATCH_END: is a batch end operation.
+When undoing or redoing a BATCH_END/BEGIN operation, everything is undone/redone until the matching BATCH_BEGIN/END operation.
+
+---
+
+@struct: Buffer_Edit
+
+@desc:
+Holds information about an edit made to a buffer.
+
+@member kind: is the kind of edit that has been made. See [Buffer_Edit_Kind].
+@member line_index: is the line index of the cursor on which the edit has been made. Used in move line up/down edits.
+@member cursor_id: is the id of the cursor on which the edit has been made.
+@member cursor: is the value state of the cursor when the edit has been made.
+@member offset_in_edit_buffer: is the offset of the first character in the edit buffer.
+The edit buffer holds the text data of the edits (see [Buffer_History]).
+
+---
+
+@enum: History_Buffering
+
+@desc:
+Describes how an operation should modify the buffer history.
+
+@member DONT_PUSH: does not push a new edit to the history.
+@member PUSH_TEXT: only pushes the text that was inserted/deleted.
+@member PUSH_EDIT: pushes a new edit to the history, as well as the text.
+
+---
+
+@enum: EOL_Sequence
+
+@desc:
+Describe how lines must be ended when writing the contents of a buffer to a file.
+
+@member LF: appends a line feed ('\n') character at ends of lines.
+@member CRLF: appends a carriage return and a line feed ('\r\n') at ends of lines.
+@member PLATFORM: is `CRLF` is `OS == .WINDOWS`, `LF` otherwise.
+
+---
+
 @proc: get_buffer_count
 
 @desc:
@@ -241,6 +294,19 @@ The unicode codepoint at the given index.
 
 ---
 
+@proc: buffer_get_codepoint_no_abc
+
+@desc:
+Get the unicode codepoint at **index** in the given buffer.
+
+@param buffer_id: is the id of the buffer.
+@param index: is the index.
+
+@return:
+The unicode codepoint at the given index, 0 if the index is not in the range [0; `buffer_get_count (buffer_id)` - 1].
+
+---
+
 @proc: buffer_get_count
 
 @desc:
@@ -419,9 +485,437 @@ Move the given cursor to a given offset.
 
 @param buffer_id: is the id of the buffer.
 @param new_offset: is the offset to move the cursor to.
-@param cursor_id: is the id of the cursor to move.
+@param cursor_id: is the id of the cursor to move. This parameter cannot be `ALL_CURSORS`.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_move_cursor_to_bol
+
+@desc:
+Move the given cursor to the beginning of the line.
+
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to move. This parameter can be `ALL_CURSORS` to move all cursors.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+
+---
+
+@proc: buffer_move_cursor_to_eol
+
+@desc:
+Move the given cursor to the end of the line.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to move. This parameter can be `ALL_CURSORS` to move all cursors.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_move_cursor_to_previous_line
+
+@desc:
+Move the cursor to the previous line, without changing the column index. If the cursor is already at the first line, move it to the beginning of the line.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to move. This parameter can be `ALL_CURSORS` to move all cursors.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_move_cursor_to_next_line
+
+@desc:
+Move the cursor to the next line, without changing the column index. If the cursor is already at the last line, move it to the end of the line.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to move. This parameter can be `ALL_CURSORS` to move all cursors.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_move_cursor_to_line
+
+@desc:
+Move the given cursor to a new line index.
+
+@param buffer_id: is the id of the buffer.
+@param line_index: is the new line index to move the cursor to.
+This parameter can be any signed integer, the cursor will stop at the first or last line in the buffer if the line index is outside the boundaries of the buffer.
+@param cursor_id: is the id of the cursor to move. This parameter cannot be `ALL_CURSORS`.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_move_cursor_to_column
+
+@desc:
+Move the given cursor to a new column index.
+
+@param buffer_id: is the id of the buffer.
+@param column_index: is the new column index to move the cursor to.
+This parameter can be any signed integer, the cursor will stop at the beginning or end of the line if the column index is outside the line boundaries.
+@param cursor_id: is the id of the cursor to move. This parameter cannot be `ALL_CURSORS`.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_move_cursor_to_line_and_column
+
+@desc:
+Move the given cursor to a new line and column index.
+
+@param buffer_id: is the id of the buffer.
+@param line_index: is the new line index to move the cursor to.
+This parameter can be any signed integer, the cursor will stop at the first or last line in the buffer if the line index is outside the boundaries of the buffer.
+@param column_index: is the new column index to move the cursor to.
+This parameter can be any signed integer, the cursor will stop at the beginning or end of the line if the column index is outside the line boundaries.
+@param cursor_id: is the id of the cursor to move. This parameter cannot be `ALL_CURSORS`.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_move_cursor_to_beginning
+
+@desc:
+Move the given cursor to the beginning of the buffer.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to move. This parameter cannot be `ALL_CURSORS`.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_move_cursor_to_end
+
+@desc:
+Move the given cursor to the end of the buffer.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to move. This parameter cannot be `ALL_CURSORS`.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_skip_word_forward
+
+@desc:
+Move the cursor with id **cursor_id** forward to the next alpha numeric boundary, treating end of lines as alpha numeric boundaries.
+
+@param buffer_id: is the id of the buffer.
+@param stop_at_word_separators: treat '_' as alpha numeric boundary.
+@param cursor_id: is the id of the cursor to move. This parameter can be `ALL_CURSORS` to move all cursors.
 @param select: is set to *true* to select text while moving the cursor, *false* otherwise.
 If this parameter is set to *false*, then the selection is cleared and the cursor is not moved if the selection is not 0.
 
 @return:
 *true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_skip_word_backward
+
+@desc:
+Move the cursor with id **cursor_id** backward to the previous alpha numeric boundary, treating end of lines as alpha numeric boundaries.
+
+@param buffer_id: is the id of the buffer.
+@param stop_at_word_separators: treat '_' as alpha numeric boundary.
+@param cursor_id: is the id of the cursor to move. This parameter can be `ALL_CURSORS` to move all cursors.
+@param select: is set to *true* to select text while moving the cursor, *false* otherwise.
+If this parameter is set to *false*, then the selection is cleared and the cursor is not moved if the selection is not 0.
+
+@return:
+*true* if the cursor was modified (it has been moved, or the selection was cleared), *false* otherwise.
+
+---
+
+@proc: buffer_clear_selection
+
+@desc:
+Clear the selection of all the cursors in the buffer.
+
+@param buffer_id: is the id of the buffer.
+
+---
+
+@proc: buffer_clear_cursors
+
+@desc:
+Remove all cursors except the write head.
+
+@param buffer_id: is the id of the buffer.
+---
+
+@proc: buffer_merge_duplicate_cursors
+
+@desc:
+Merge all cursors that overlap each other, including their selections.
+
+@param buffer_id: is the id of the buffer.
+---
+
+@proc: buffer_sort_cursors_by_offset
+
+@desc:
+Sort additional cursors by their offset in ascending order. The write head has a fixed index, so it cannot be moved and it has to be treated with a special case when iterating in a sorted manner.
+
+@param buffer_id: is the id of the buffer.
+
+---
+
+@proc: buffer_add_cursor_at_offset
+
+@desc:
+Create an additional cursor at the given offset, if it does not overlap another cursor (including its selection).
+
+@param buffer_id: is the id of the buffer.
+@param target_offset: is the offset of the cursor to create. This is effectively clamped to the boundaries of the buffer.
+
+@return:
+*true* if a new cursor was added, *false* otherwise. If the cursor was not added, it is because would have overlapped another cursor, including its selection.
+
+---
+
+@proc: buffer_add_cursor_on_previous_line
+
+@desc:
+Create an additional cursor at the line above the given cursor, if it does not overlap another cursor (including its selection).
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the reference cursor. This parameter can be `ALL_CURSORS` to add a new cursor above all the cursors in the buffer at the time this function was called.
+
+@return:
+*true* if at least one cursor was added, *false* otherwise. If a cursor was not added, it is because would have overlapped another cursor, including its selection, or the reference cursor is on the first line in the buffer.
+
+---
+
+@proc: buffer_add_cursor_on_next_line
+
+@desc:
+Create an additional cursor at the line below the given cursor, if it does not overlap another cursor (including its selection).
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the reference cursor. This parameter can be `ALL_CURSORS` to add a new cursor below all the cursors in the buffer at the time this function was called.
+
+@return:
+*true* if at least one cursor was added, *false* otherwise. If a cursor was not added, it is because would have overlapped another cursor, including its selection, or the reference cursor is on the last line in the buffer.
+
+---
+
+@proc: buffer_remove_cursor
+
+@desc:
+Remove the cursor with the given id in the buffer. The order of the cursors is preserved. This parameter cannot be `WRITE_HEAD` `ALL_CURSORS` (prefer [buffer_clear_cursors] for that).
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor to remove.
+
+---
+
+@proc: buffer_history_push_edit
+
+@desc:
+Push a new edit to the buffer history. The properties of the [Buffer_Edit] are filled appropriately.
+
+@param buffer_id: is the id of the buffer.
+@param kind: is the kind of edit to push.
+@param cursor_id: is the id of the cursors on which the edit was made. This parameter must be set to `ALL_CURSORS` for edit kinds `BATCH_BEGIN`, `BATCH_END` (prefer [buffer_begin_batch_edit] and [buffer_end_batch_edit] for these kinds of edits).
+
+@return:
+A pointer to the newly added Buffer_Edit.
+
+---
+
+@proc: buffer_history_push_char
+
+@desc:
+Push a character to the buffer history edit buffer.
+
+@param buffer_id: is the id of the buffer.
+@param codepoint: is the Unicode codepoint to push into the edit buffer.
+
+---
+
+@proc: buffer_history_push_text
+
+@desc:
+Push text to the buffer history edit buffer.
+
+@param buffer_id: is the id of the buffer.
+@param text: is the Unicode codepoints to push into the edit buffer.
+
+---
+
+@proc: buffer_begin_batch_edit
+
+@desc:
+Push a new `BATCH_BEGIN` edit to the buffer history.
+
+@param buffer_id: is the id of the buffer.
+
+---
+
+@proc: buffer_end_batch_edit
+
+@desc:
+Push a new `BATCH_END` edit to the buffer history.
+
+@param buffer_id: is the id of the buffer.
+
+---
+
+@proc: buffer_insert_at_cursor
+
+@desc:
+Insert a Unicode codepoint to the buffer, at the given cursor.
+
+@param buffer_id: is the id of the buffer.
+@param codepoint: is the Unicode codepoint to insert.
+@param cursor_id: is the cursor id at which to insert the codepoint. This parameter can be `ALL_CURSORS` to insert a character at all cursors.
+@param history_buffering: is the kind of history buffering to do for this operation (see [History_Buffering] for more information).
+
+---
+
+@proc: buffer_insert_text_at_cursor
+
+@desc:
+Insert Unicode text to the buffer, at the given cursor.
+
+@param buffer_id: is the id of the buffer.
+@param text: is the Unicode text to insert.
+@param cursor_id: is the cursor id at which to insert the codepoint. This parameter can be `ALL_CURSORS` to insert text at all cursors.
+@param history_buffering: is the kind of history buffering to do for this operation (see [History_Buffering] for more information).
+
+---
+
+@proc: buffer_insert_utf8_text_at_cursor
+
+@desc:
+Insert UTF-8 text to the buffer, at the given cursor.
+
+@param buffer_id: is the id of the buffer.
+@param text: is the UTF-8 text to insert.
+@param cursor_id: is the cursor id at which to insert the codepoint. This parameter can be `ALL_CURSORS` to insert text at all cursors.
+@param history_buffering: is the kind of history buffering to do for this operation (see [History_Buffering] for more information).
+
+---
+
+@proc: buffer_delete_selection
+
+@desc:
+Delete the selected text at the given cursor, or the character at the cursor if the selection is 0.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the cursor id at which to delete the selection. This parameter can be `ALL_CURSORS` to delete selection at all cursors.
+@param history_buffering: is the kind of history buffering to do for this operation (see [History_Buffering] for more information).
+
+@return:
+*true* if at least one character was deleted, *false* otherwise.
+
+---
+
+@proc: buffer_backspace_selection
+
+@desc:
+Delete the character at the right of the cursor, unless the selection is not 0, in which case [buffer_delete_selection] is called instead.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the cursor id at which to backspace the selection. This parameter can be `ALL_CURSORS` to backspace selection at all cursors.
+@param history_buffering: is the kind of history buffering to do for this operation (see [History_Buffering] for more information).
+
+@return:
+*true* if at least one character was deleted, *false* otherwise.
+
+---
+
+@proc: buffer_move_line_up
+
+@desc:
+Move the line the given cursor is on by one towards the beginning of the buffer.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor. This parameter can be `ALL_CURSORS` to move all the lines that have at least one cursor on them. The algorithm sorts the cursors in ascending offset order if **cursor_id** is `ALL_CURSORS`.
+@param history_buffering: is the kind of history buffering to do for this operation (see [History_Buffering] for more information).
+
+@return:
+*true* if at least one line was moved, *false* otherwise.
+
+---
+
+@proc: buffer_move_line_down
+
+@desc:
+Move the line the given cursor is on by one towards the end of the buffer.
+
+@param buffer_id: is the id of the buffer.
+@param cursor_id: is the id of the cursor. This parameter can be `ALL_CURSORS` to move all the lines that have at least one cursor on them. The algorithm sorts the cursors in ascending offset order if **cursor_id** is `ALL_CURSORS`.
+@param history_buffering: is the kind of history buffering to do for this operation (see [History_Buffering] for more information).
+
+@return:
+*true* if at least one line was moved, *false* otherwise.
+
+---
+
+@proc: buffer_undo_last_edit
+
+@desc:
+Undo the last edit in the buffer history. Batch begin are handled as expected.
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+**true** if an edit was undone, **false** otherwise.
+
+---
+
+@proc: buffer_redo_last_edit
+
+@desc:
+Redo the last edit in the buffer history. Batch begin are handled as expected.
+
+@param buffer_id: is the id of the buffer.
+
+@return:
+**true** if an edit was redone, **false** otherwise.

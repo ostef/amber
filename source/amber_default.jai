@@ -177,7 +177,7 @@ command_line :: (using hooks : *Amber_Hooks, line : s64) -> bool
 	if buffer_id == NULL_BUFFER
 		return false;
 	buffer_clear_cursors (buffer_id);
-	buffer_move_write_head_to_line (buffer_id, line - 1, false);
+	buffer_move_cursor_to_line (buffer_id, line - 1, WRITE_HEAD, false);
 	buffer_move_cursor_to_bol (buffer_id, WRITE_HEAD, false);
 	
 	return true;

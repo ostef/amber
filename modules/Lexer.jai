@@ -113,6 +113,8 @@ lexer_get_next_line :: inline (using lexer : Lexer) -> string #must
 	result.data = curr;
 	while result.data + result.count < end && result.data[result.count] != #char "\n"
 		result.count += 1;
+	if result.count > 0 && result.data[result.count - 1] == #char "\r"
+		result.count -= 1;
 	
 	return result;
 }

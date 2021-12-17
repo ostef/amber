@@ -292,6 +292,16 @@ buffer_get_codepoint :: inline (buffer_id : Buffer_ID, index : s64) -> u32 #must
 }
 @Amber_API
 
+buffer_get_codepoint_no_abc :: inline (buffer_id : Buffer_ID, index : s64) -> u32 #must
+{
+	using buffer := get_buffer (buffer_id);
+	if index < 0 || index >= buffer_get_count (buffer_id)
+		return 0;
+	
+	return data[cast (s64) (index >= offset) * gap + index];
+}
+@Amber_API
+
 buffer_get_count :: inline (buffer_id : Buffer_ID) -> s64 #must
 {
 	using buffer := get_buffer (buffer_id);
@@ -517,15 +527,6 @@ buffer_move_cursor_to_offset :: (buffer_id : Buffer_ID, new_offset : s64, cursor
 	profile ();
 	
 	using buffer := get_buffer (buffer_id);
-
-	if cursor_id == ALL_CURSORS
-	{
-		moved := false;
-		for i : 0..other_cursors.count
-			moved |= buffer_move_cursor_to_offset (buffer_id, new_offset, xx i, select);
-		
-		return moved;
-	}
 	
 	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
 	moved := false;
@@ -540,17 +541,6 @@ buffer_move_cursor_to_offset :: (buffer_id : Buffer_ID, new_offset : s64, cursor
 		moved |= buffer_move_cursor_backward (buffer_id, cursor_id, select);
 	while cursor.offset < new_offset
 		moved |= buffer_move_cursor_forward (buffer_id, cursor_id, select);
-	
-	return moved;
-}
-@Amber_API
-
-buffer_move_write_head_to_line_and_column :: inline (buffer_id : Buffer_ID, new_line : s64, new_column : s64, select := false) -> bool
-{
-	profile ();
-	
-	moved := buffer_move_write_head_to_line (buffer_id, new_line, select);
-	moved |= buffer_move_cursor_to_column (buffer_id, new_column, WRITE_HEAD, select);
 	
 	return moved;
 }
@@ -612,34 +602,6 @@ buffer_move_cursor_to_eol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_I
 	while !buffer_cursor_is_at_eol (buffer_id, cursor_id)
 		moved |= buffer_move_cursor_forward (buffer_id, cursor_id, select);
 	
-	return moved;
-}
-@Amber_API
-
-buffer_move_cursor_to_column :: inline (buffer_id : Buffer_ID, column : s64, cursor_id : Buffer_Cursor_ID, select := false) -> bool
-{
-	profile ();
-	
-	using buffer := get_buffer (buffer_id);
-	moved := false;
-	if !select && selection != 0
-	{
-		selection = 0;
-		moved = true;
-	}
-	
-	cursor_column_index := buffer_get_cursor_column_index (buffer_id, cursor_id);
-	while !buffer_cursor_is_at_eol (buffer_id, cursor_id) && cursor_column_index < column
-	{
-		moved |= buffer_move_cursor_forward (buffer_id, cursor_id, select);
-		cursor_column_index += 1;
-	}
-	while cursor_column_index > 0 && cursor_column_index > column
-	{
-		moved |= buffer_move_cursor_backward (buffer_id, cursor_id, select);
-		cursor_column_index -= 1;
-	}
-
 	return moved;
 }
 @Amber_API
@@ -710,43 +672,78 @@ buffer_move_cursor_to_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cu
 }
 @Amber_API
 
-buffer_move_write_head_to_line :: inline (buffer_id : Buffer_ID, line : s64, select := false) -> bool
+buffer_move_cursor_to_line :: inline (buffer_id : Buffer_ID, line : s64, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
 	profile ();
-	
-	using buffer := get_buffer (buffer_id);
+
+	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
 	moved := false;
-	if !select && selection != 0
+	if !select && cursor.selection != 0
 	{
-		selection = 0;
+		cursor.selection = 0;
 		moved = true;
 	}
 	
-	line = clamp (line, 0, lines.count - 1);
+	line = clamp (line, 0, buffer_get_line_count (buffer_id) - 1);
+	line_index := buffer_get_cursor_line_index (buffer_id, cursor_id);
 	while line_index > line
-		moved |= buffer_move_cursor_to_previous_line (buffer_id, WRITE_HEAD, select);
+	{
+		moved |= buffer_move_cursor_to_previous_line (buffer_id, cursor_id, select);
+		line_index -= 1;
+	}
 	while line_index < line
-		moved |= buffer_move_cursor_to_next_line (buffer_id, WRITE_HEAD, select);
+	{
+		moved |= buffer_move_cursor_to_next_line (buffer_id, cursor_id, select);
+		line_index += 1;
+	}
+
+	return moved;
+}
+@Amber_API
+
+buffer_move_cursor_to_column :: inline (buffer_id : Buffer_ID, column_index : s64, cursor_id : Buffer_Cursor_ID, select := false) -> bool
+{
+	profile ();
+	
+	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
+	moved := false;
+	if !select && cursor.selection != 0
+	{
+		cursor.selection = 0;
+		moved = true;
+	}
+	
+	cursor_column_index := buffer_get_cursor_column_index (buffer_id, cursor_id);
+	while !buffer_cursor_is_at_eol (buffer_id, cursor_id) && cursor_column_index < column_index
+	{
+		moved |= buffer_move_cursor_forward (buffer_id, cursor_id, select);
+		cursor_column_index += 1;
+	}
+	while cursor_column_index > 0 && cursor_column_index > column_index
+	{
+		moved |= buffer_move_cursor_backward (buffer_id, cursor_id, select);
+		cursor_column_index -= 1;
+	}
+
+	return moved;
+}
+@Amber_API
+
+buffer_move_cursor_to_line_and_column :: inline (buffer_id : Buffer_ID, line_index : s64, column_index : s64, cursor_id : Buffer_Cursor_ID, select := false) -> bool
+{
+	profile ();
+	
+	moved := buffer_move_cursor_to_line (buffer_id, line_index, cursor_id, select);
+	moved |= buffer_move_cursor_to_column (buffer_id, column_index, cursor_id, select);
 	
 	return moved;
 }
 @Amber_API
 
-buffer_move_cursor_to_beginning :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
+buffer_move_cursor_to_beginning :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
 	profile ();
-	
-	using buffer := get_buffer (buffer_id);
 
-	if cursor_id == ALL_CURSORS
-	{
-		moved := false;
-		for i : 0..other_cursors.count
-			moved |= buffer_move_cursor_to_beginning (buffer_id, xx i, select);
-		
-		return moved;
-	}
-	
 	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
 	moved := false;
 	if !select && cursor.selection != 0
@@ -762,20 +759,9 @@ buffer_move_cursor_to_beginning :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cu
 }
 @Amber_API
 
-buffer_move_cursor_to_end :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
+buffer_move_cursor_to_end :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
 	profile ();
-	
-	using buffer := get_buffer (buffer_id);
-	
-	if cursor_id == ALL_CURSORS
-	{
-		moved := false;
-		for i : 0..other_cursors.count
-			moved |= buffer_move_cursor_to_end (buffer_id, xx i, select);
-		
-		return moved;
-	}
 
 	cursor := buffer_get_cursor_ptr (buffer_id, cursor_id);
 	moved := false;
@@ -1067,8 +1053,8 @@ buffer_add_cursor_on_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cur
 buffer_remove_cursor :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID)
 {
 	using buffer := get_buffer (buffer_id);
-	assert (cursor_id > 0 && cursor_id < xx other_cursors.count,
-		"Invalid cursor id, expected (0;%), got %.", other_cursors.count, cursor_id);
+	assert (cursor_id != WRITE_HEAD, "Cannot remove the write head.");
+	assert (buffer_cursor_exists (buffer_id, cursor_id), "Invalid cursor id (%).", cursor_id);
 	sorted_remove_from_array (*other_cursors, xx (cursor_id - 1));
 }
 @Amber_API
@@ -1536,6 +1522,7 @@ buffer_move_line_up :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, his
 
 	return true;
 }
+@Amber_API
 
 buffer_move_line_down :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, history_buffering := History_Buffering.PUSH_EDIT) -> bool
 {
@@ -1636,6 +1623,7 @@ buffer_move_line_down :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, h
 
 	return true;
 }
+@Amber_API
 
 buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 {
@@ -1678,12 +1666,12 @@ buffer_undo_last_edit :: (buffer_id : Buffer_ID) -> bool
 
 	case .MOVE_LINE_UP;
 		buffer_clear_cursors (buffer_id);
-		buffer_move_write_head_to_line (buffer_id, edit.line_index - 1);
+		buffer_move_cursor_to_line (buffer_id, edit.line_index - 1, WRITE_HEAD);
 		buffer_move_line_down (buffer_id, WRITE_HEAD, .DONT_PUSH);
 	
 	case .MOVE_LINE_DOWN;
 		buffer_clear_cursors (buffer_id);
-		buffer_move_write_head_to_line (buffer_id, edit.line_index + 1);
+		buffer_move_cursor_to_line (buffer_id, edit.line_index + 1, WRITE_HEAD);
 		buffer_move_line_up (buffer_id, WRITE_HEAD, .DONT_PUSH);
 
 	case .BATCH_END;
@@ -1740,12 +1728,12 @@ buffer_redo_last_edit :: (buffer_id : Buffer_ID) -> bool
 
 	case .MOVE_LINE_UP;
 		buffer_clear_cursors (buffer_id);
-		buffer_move_write_head_to_line (buffer_id, edit.line_index);
+		buffer_move_cursor_to_line (buffer_id, edit.line_index, WRITE_HEAD);
 		buffer_move_line_up (buffer_id, WRITE_HEAD, .DONT_PUSH);
 	
 	case .MOVE_LINE_DOWN;
 		buffer_clear_cursors (buffer_id);
-		buffer_move_write_head_to_line (buffer_id, edit.line_index);
+		buffer_move_cursor_to_line (buffer_id, edit.line_index, WRITE_HEAD);
 		buffer_move_line_down (buffer_id, WRITE_HEAD, .DONT_PUSH);
 
 	case .BATCH_BEGIN;

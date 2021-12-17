@@ -24,6 +24,7 @@ Amber_Hooks :: struct #type_info_none
 	buffer_end_batch_edit : (Buffer_ID);
 	buffer_exists : (Buffer_ID) -> bool;
 	buffer_get_codepoint : (Buffer_ID, s64) -> u32;
+	buffer_get_codepoint_no_abc : (Buffer_ID, s64) -> u32;
 	buffer_get_count : (Buffer_ID) -> s64;
 	buffer_get_cursor : (Buffer_ID, Buffer_Cursor_ID) -> Buffer_Cursor;
 	buffer_get_cursor_column_index : (Buffer_ID, Buffer_Cursor_ID) -> s64;
@@ -53,11 +54,13 @@ Amber_Hooks :: struct #type_info_none
 	buffer_move_cursor_to_column : (Buffer_ID, s64, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_end : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_eol : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
+	buffer_move_cursor_to_line : (Buffer_ID, s64, Buffer_Cursor_ID, bool) -> bool;
+	buffer_move_cursor_to_line_and_column : (Buffer_ID, s64, s64, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_next_line : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_offset : (Buffer_ID, s64, Buffer_Cursor_ID, bool) -> bool;
 	buffer_move_cursor_to_previous_line : (Buffer_ID, Buffer_Cursor_ID, bool) -> bool;
-	buffer_move_write_head_to_line : (Buffer_ID, s64, bool) -> bool;
-	buffer_move_write_head_to_line_and_column : (Buffer_ID, s64, s64, bool) -> bool;
+	buffer_move_line_down : (Buffer_ID, Buffer_Cursor_ID, History_Buffering) -> bool;
+	buffer_move_line_up : (Buffer_ID, Buffer_Cursor_ID, History_Buffering) -> bool;
 	buffer_redo_last_edit : (Buffer_ID) -> bool;
 	buffer_remove_cursor : (Buffer_ID, Buffer_Cursor_ID);
 	buffer_set_eol_sequence : (Buffer_ID, EOL_Sequence);
