@@ -141,10 +141,10 @@ split_update_area :: inline (split_id : Split_ID)
 	}
 }
 
-split_set_area :: inline (split_id : Split_ID, new_area : Rectf)
+split_set_area :: inline (split_id : Split_ID, area : Rectf)
 {
-	using split := get_split (split_id);
-	area = new_area;
+	split := get_split (split_id);
+	split.area = area;
 	split_update_area (split_id);
 }
 @Amber_API

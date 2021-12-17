@@ -60,11 +60,11 @@ Buffer_Edit_Kind :: enum
 {
 	INSERT :: 0.000000;
 	BACKSPACE :: 0.000000;
-	DELETE :: 0.000000;
-	MOVE_LINE_UP :: 0.000000;
-	MOVE_LINE_DOWN :: 0.000000;
-	BATCH_BEGIN :: 0.000000;
-	BATCH_END :: 0.000000;
+	DELETE :: 2;
+	MOVE_LINE_UP :: 0b11;
+	MOVE_LINE_DOWN :: 4;
+	BATCH_BEGIN :: 0b1100100;
+	BATCH_END :: 101;
 }
 ```
 
@@ -145,8 +145,8 @@ Enum:
 ```jai
 EOL_Sequence :: enum u8 
 {
-	LF :: 0.000000;
-	CRLF :: 0.000000;
+	LF :: 0;
+	CRLF :: 0b1;
 	PLATFORM :: CRLF;
 }
 ```
