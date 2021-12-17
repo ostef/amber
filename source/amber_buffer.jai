@@ -144,8 +144,7 @@ buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
 buffer_write_to_file :: inline (buffer_id : Buffer_ID) -> bool
 {
 	profile ();
-	
-	// @Todo (stefan): EOL sequence.
+
 	buffer := get_buffer (buffer_id);
 	if !buffer.filename then return false;
 	
