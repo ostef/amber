@@ -157,7 +157,7 @@ Describe how lines must be ended when writing the contents of a buffer to a file
 ## Members:
 **LF** appends a line feed ('\n') character at ends of lines.  
 **CRLF** appends a carriage return and a line feed ('\r\n') at ends of lines.  
-**PLATFORM** is `CRLF` is `OS == .WINDOWS`, `LF` otherwise.  
+**PLATFORM** is `CRLF` if `OS == .WINDOWS`, `LF` otherwise.  
 
 ---
 
