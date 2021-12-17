@@ -901,7 +901,7 @@ Move the line the given cursor is on by one towards the end of the buffer.
 @proc: buffer_undo_last_edit
 
 @desc:
-Undo the last edit in the buffer history. Batch begin are handled as expected.
+Undo the last edit in the buffer history. Batch edits are handled as expected.
 
 @param buffer_id: is the id of the buffer.
 
@@ -913,7 +913,7 @@ Undo the last edit in the buffer history. Batch begin are handled as expected.
 @proc: buffer_redo_last_edit
 
 @desc:
-Redo the last edit in the buffer history. Batch begin are handled as expected.
+Redo the last edit in the buffer history. Batch edits are handled as expected.
 
 @param buffer_id: is the id of the buffer.
 

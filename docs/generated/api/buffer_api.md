@@ -63,8 +63,8 @@ Buffer_Edit_Kind :: enum
 	DELETE :: 0.000000;
 	MOVE_LINE_UP :: 0.000000;
 	MOVE_LINE_DOWN :: 0.000000;
-	BATCH_BEGIN :: 100;
-	BATCH_END :: 0b1100101;
+	BATCH_BEGIN :: 0.000000;
+	BATCH_END :: 0.000000;
 }
 ```
 
@@ -145,8 +145,8 @@ Enum:
 ```jai
 EOL_Sequence :: enum u8 
 {
-	LF :: 0b0;
-	CRLF :: 1;
+	LF :: 0.000000;
+	CRLF :: 0.000000;
 	PLATFORM :: CRLF;
 }
 ```
@@ -1712,7 +1712,7 @@ buffer_undo_last_edit :: (
 ```
 
 ## Description:
-Undo the last edit in the buffer history. Batch begin are handled as expected.
+Undo the last edit in the buffer history. Batch edits are handled as expected.
 
 ## Params:
 **buffer_id** is the id of the buffer.  
@@ -1734,7 +1734,7 @@ buffer_redo_last_edit :: (
 ```
 
 ## Description:
-Redo the last edit in the buffer history. Batch begin are handled as expected.
+Redo the last edit in the buffer history. Batch edits are handled as expected.
 
 ## Params:
 **buffer_id** is the id of the buffer.  
