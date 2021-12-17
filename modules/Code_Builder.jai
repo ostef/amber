@@ -13,6 +13,30 @@ Code_Builder :: struct
 	allocator : Allocator;
 }
 
+Code_Format :: struct
+{
+	declaration : *Code_Declaration_Format;
+	procedure_header : *Code_Procedure_Header_Format;
+}
+
+Code_Declaration_Format :: struct
+{
+	print_compiler_directives := true;
+	print_using := true;
+	print_bake := true;
+	print_expression := true;
+	print_notes := true;
+	expression_fmt : Code_Format;
+}
+
+Code_Procedure_Header_Format :: struct
+{
+	one_arg_per_line := false;
+	argument_fmt : Code_Declaration_Format;
+	return_fmt : Code_Declaration_Format;
+	print_compiler_directives := true;
+}
+
 init_code_builder :: inline (builder : *Code_Builder, capacity : s64, allocator : Allocator)
 {
 	builder.count = 0;
@@ -92,6 +116,157 @@ print_escaped_string_to_builder :: (using builder : *Code_Builder, str : string)
 	for i : 0..str.count - 1
 		print_escaped_char_to_builder (builder, str[i]);
 	print_char_to_builder (builder, #char "\"");
+}
+
+
+print_type_to_builder :: (builder : *Code_Builder, info : *Type_Info)
+{
+	if info.type ==
+	{
+	case .STRUCT;
+		info_struct := cast (*Type_Info_Struct) info;
+
+		if info_struct.name
+		{
+			print_to_builder (builder, info_struct.name);
+		}
+		else
+		{
+			if info_struct.struct_flags & .UNION
+				print_to_builder (builder, "(anonymous union)");
+			else
+				print_to_builder (builder, "(anonymous struct)");
+		}
+
+		if info_struct.polymorph_source_struct
+		{
+			print_to_builder (builder, "(");
+			for * param : info_struct.specified_parameters
+			{
+				if it_index != 0 then print_to_builder (builder, ", ");
+				print_to_builder (builder, param.name);
+
+				/*
+				if param.offset_into_constant_storage >= 0
+				{
+					print_to_builder (builder, " = ");
+					param_value : Any;
+					param_value.type = param.type;
+					param_value.value_pointer = info_struct.constant_storage_buffer + param.offset_into_constant_storage;
+					print_any_to_builder (builder, param_value, "");
+				}
+				*/
+			}
+			print_to_builder (builder, ")");
+		}
+
+	case .POINTER;
+		info_pointer := cast (*Type_Info_Pointer) info;
+		print_to_builder (builder, "*");
+		if info_pointer.relative_pointer_size ==
+		{
+		case 1; print_to_builder (builder, "~s8 ");
+		case 2; print_to_builder (builder, "~s16 ");
+		case 4; print_to_builder (builder, "~s32 ");
+		case 8; print_to_builder (builder, "~s64 ");
+		}
+		print_type_to_builder (builder, info_pointer.pointer_to);
+
+	case .ARRAY;
+		info_array := cast (*Type_Info_Array) info;
+		if info_array.array_type ==
+		{
+		case .FIXED;
+			print_to_builder (builder, "[");
+			print_s64_to_builder (builder, info_array.array_count);
+			print_to_builder (builder, "]");
+		case .VIEW;      print_to_builder (builder, "[]");
+		case .RESIZABLE; print_to_builder (builder, "[..]");
+		}
+		print_type_to_builder (builder, info_array.element_type);
+
+	case .TYPE;
+		print_to_builder (builder, "Type");
+
+	case .ENUM;
+		info_enum := cast (*Type_Info_Enum) info;
+		if info_enum.name
+			print_to_builder (builder, info_enum.name);
+		else
+			print_to_builder (builder, "(anonymous enum)");
+
+	case .STRING;
+		info_string := cast (*Type_Info_String) info;
+		print_to_builder (builder, "string");
+		if info_string.relative_pointer_size ==
+		{
+		case 1; print_to_builder (builder, "~s8");
+		case 2; print_to_builder (builder, "~s16");
+		case 4; print_to_builder (builder, "~s32");
+		case 8; print_to_builder (builder, "~s64");
+		}
+
+	case .PROCEDURE;
+		info_procedure := cast (*Type_Info_Procedure) info;
+		print_to_builder (builder, "(");
+		for info_procedure.argument_types
+		{
+			if it_index != 0 then print_to_builder (builder, ", ");
+			print_type_to_builder (builder, it);
+		}
+		print_to_builder (builder, ")");
+
+		if info_procedure.return_types
+		{
+			print_to_builder (builder, " -> ");
+			if info_procedure.return_types.count > 1 then print_to_builder (builder, "(");
+			for info_procedure.return_types
+			{
+				if it_index != 0 then print_to_builder (builder, ", ");
+				print_type_to_builder (builder, it);
+			}
+			if info_procedure.return_types.count > 1 then print_to_builder (builder, ")");
+		}
+
+		proc_flags := info_procedure.procedure_flags;
+		if proc_flags & .IS_ELSEWHERE    then print_to_builder (builder, " #elsewhere");
+		if proc_flags & .IS_COMPILE_TIME then print_to_builder (builder, " #compiler");
+		if proc_flags & .IS_C_CALL       then print_to_builder (builder, " #c_call");
+		if proc_flags & .IS_INTRINSIC    then print_to_builder (builder, " #intrinsic");
+
+	case .CODE;
+		print_to_builder (builder, "Code");
+
+	case .INTEGER;
+		info_integer := cast (*Type_Info_Integer) info;
+		if info_integer.runtime_size ==
+		{
+		case 1; print_to_builder (builder, ifx info_integer.signed then "s8"  else "u8");
+		case 2; print_to_builder (builder, ifx info_integer.signed then "s16" else "u16");
+		case 4; print_to_builder (builder, ifx info_integer.signed then "s32" else "u32");
+		case 8; print_to_builder (builder, ifx info_integer.signed then "s64" else "u64");
+		}
+
+	case .FLOAT;
+		if info.runtime_size == 
+		{
+		case 4; print_to_builder (builder, "f32");
+		case 8; print_to_builder (builder, "f64");
+		}
+
+	case .BOOL;
+		print_to_builder (builder, "bool");
+
+	case .VOID;
+		print_to_builder (builder, "void");
+
+	case .VARIANT;
+		info_variant := cast (*Type_Info_Variant) info;
+		print_to_builder (builder, info_variant.name);
+	
+	case;
+		print_to_builder (builder, "(unhandled type)");
+	}
 }
 
 print_to_builder :: inline (using builder : *Code_Builder, str : string)
@@ -257,15 +432,119 @@ code_print_literal :: (builder : *Code_Builder, using lit : *Code_Literal)
 	}
 }
 
-code_print_procedure_header :: (builder : *Code_Builder, using header : *Code_Procedure_Header)
+code_print_declaration :: (builder : *Code_Builder, using decl : *Code_Declaration, fmt := Code_Declaration_Format.{})
+{
+	if flags & .IS_ITERATOR
+		return;
+	if flags & .IS_IMPORTED
+		return;
+
+	start_line := builder.line;
+	if fmt.print_compiler_directives
+	{
+		if flags & .PROGRAM_EXPORT
+		{
+			print_to_builder (builder, "#program_export ");
+			if program_export_name
+			{
+				print_to_builder (builder, "\"");
+				print_to_builder (builder, <<program_export_name);
+				print_to_builder (builder, "\" ");
+			}
+		}
+		if flags & .NO_RESET
+			print_to_builder (builder, "#no_reset ");
+	}
+
+	if fmt.print_using && flags & .IS_MARKED_AS_USING
+		print_to_builder (builder, "using ");
+	if name
+	{
+		if fmt.print_bake
+		{
+			if flags & .AUTO_VALUE_BAKE_IS_REQUIRED
+				print_to_builder (builder, "$");
+			else if flags & .AUTO_VALUE_BAKE
+				print_to_builder (builder, "$$");
+		}
+		print_to_builder (builder, decl.name);
+		print_to_builder (builder, " :");
+		if type_inst || !fmt.print_expression
+			print_to_builder (builder, " ");
+	}
+	if type_inst
+	{
+		code_print_type_instantiation (builder, type_inst);
+		if fmt.print_expression && expression
+			print_to_builder (builder, " ");
+	}
+	else if !fmt.print_expression && expression		// If we don't have a type instantiation, we still want to print the type if we don't print the expression
+	{
+		print_type_to_builder (builder, expression.type);
+	}
+	
+	if fmt.print_expression && expression
+	{
+		if flags & .IS_CONSTANT
+			print_to_builder (builder, ": ");
+		else
+			print_to_builder (builder, "= ");
+		code_print_expression (builder, expression, fmt.expression_fmt);
+	}
+
+	if fmt.print_compiler_directives && flags & .MUST_BE_RECEIVED
+		print_to_builder (builder, " #must");
+
+	if fmt.print_notes
+	{
+		for notes
+		{
+			if it_index == 0 && start_line != builder.line
+				print_to_builder (builder, "\n");
+			else
+				print_to_builder (builder, " ");
+			code_print_note (builder, it);
+		}
+	}
+}
+
+code_print_compound_declaration :: (builder : *Code_Builder, using compound : *Code_Compound_Declaration)
+{
+	if alignment_expression
+	{
+		print_to_builder (builder, "#align (");
+		code_print_expression (builder, alignment_expression);
+		print_to_builder (builder, ")");
+	}
+	if declaration_properties.flags & .IS_MARKED_AS_USING
+		print_to_builder (builder, "using ");
+	code_print_comma_separated_arguments (builder, comma_separated_assignment);
+	code_print_declaration (builder, declaration_properties);
+	for notes
+	{
+		print_to_builder (builder, " ");
+		code_print_note (builder, it);
+	}
+}
+
+code_print_procedure_header :: (builder : *Code_Builder, using header : *Code_Procedure_Header, fmt := Code_Procedure_Header_Format.{})
 {
 	print_to_builder (builder, "(");
+	builder.indentation_level += 1;
 	for decl : arguments
 	{
-		if it_index > 0
+		if fmt.one_arg_per_line
+		{
+			print_to_builder (builder, "\n");
+			indent (builder);
+		}
+		code_print_declaration (builder, decl, fmt.argument_fmt);
+		if it_index < arguments.count - 1
 			print_to_builder (builder, ", ");
-		code_print_declaration (builder, decl);
+		else if fmt.one_arg_per_line
+			print_to_builder (builder, "\n");
 	}
+	builder.indentation_level -= 1;
 	print_to_builder (builder, ")");
 	for decl : returns
 	{
@@ -273,19 +552,22 @@ code_print_procedure_header :: (builder : *Code_Builder, using header : *Code_Pr
 			print_to_builder (builder, " -> ");
 		else
 			print_to_builder (builder, ", ");
-		code_print_declaration (builder, decl);
+		code_print_declaration (builder, decl, fmt.return_fmt);
 	}
 
-	if procedure_flags & .DEPRECATED
+	if fmt.print_compiler_directives
 	{
-		print_to_builder (builder, "#deprecated ");
-		if deprecation_string
-			print_escaped_string_to_builder (builder, deprecation_string);
+		if procedure_flags & .DEPRECATED
+		{
+			print_to_builder (builder, "#deprecated ");
+			if deprecation_string
+				print_escaped_string_to_builder (builder, deprecation_string);
+		}
+		if procedure_flags & .SYNTACTICALLY_MARKED_AS_NO_CONTEXT
+			print_to_builder (builder, "#no_context ");
+		if procedure_flags & .DEBUG_DUMP
+			print_to_builder (builder, "#dump ");
 	}
-	if procedure_flags & .SYNTACTICALLY_MARKED_AS_NO_CONTEXT
-		print_to_builder (builder, "#no_context ");
-	if procedure_flags & .DEBUG_DUMP
-		print_to_builder (builder, "#dump ");
 }
 
 code_print_procedure_body :: (builder : *Code_Builder, using header : *Code_Procedure_Header)
@@ -320,6 +602,7 @@ code_print_note :: inline (builder : *Code_Builder, using note : *Code_Note)
 		char := text[i];
 		if char ==
 		{
+		case #char " "; #through;
 		case #char "\r"; #through;
 		case #char "\n"; #through;
 		case #char "\t"; #through;
@@ -399,85 +682,6 @@ code_print_sequence :: (builder : *Code_Builder, using sequence : *Code_Sequence
 	{
 		code_print_expression (builder, it);
 		code_print_semicolon (builder, it);
-	}
-}
-
-code_print_declaration :: (builder : *Code_Builder, using decl : *Code_Declaration)
-{
-	if flags & .IS_ITERATOR
-		return;
-	if flags & .IS_IMPORTED
-		return;
-
-	if flags & .PROGRAM_EXPORT
-	{
-		print_to_builder (builder, "#program_export ");
-		if program_export_name
-		{
-			print_to_builder (builder, "\"");
-			print_to_builder (builder, <<program_export_name);
-			print_to_builder (builder, "\" ");
-		}
-	}
-	if flags & .NO_RESET
-		print_to_builder (builder, "#no_reset ");
-	if flags & .IS_MARKED_AS_USING
-		print_to_builder (builder, "using ");
-	
-	if name
-	{
-		if flags & .AUTO_VALUE_BAKE_IS_REQUIRED
-			print_to_builder (builder, "$");
-		else if flags & .AUTO_VALUE_BAKE
-			print_to_builder (builder, "$$");
-		print_to_builder (builder, decl.name);
-		print_to_builder (builder, " :");
-		if type_inst
-			print_to_builder (builder, " ");
-	}
-	if type_inst
-	{
-		code_print_type_instantiation (builder, type_inst);
-		if expression
-			print_to_builder (builder, " ");
-	}
-	
-	if expression
-	{
-		if flags & .IS_CONSTANT
-			print_to_builder (builder, ": ");
-		else
-			print_to_builder (builder, "= ");
-
-		code_print_expression (builder, expression);
-	}
-
-	if flags & .MUST_BE_RECEIVED
-		print_to_builder (builder, " #must");
-
-	for notes
-	{
-		print_to_builder (builder, " ");
-		code_print_note (builder, it);
-	}
-}
-
-code_print_compound_declaration :: (builder : *Code_Builder, using compound : *Code_Compound_Declaration)
-{
-	if alignment_expression
-	{
-		print_to_builder (builder, "#align (");
-		code_print_expression (builder, alignment_expression);
-		print_to_builder (builder, ")");
-	}
-	if declaration_properties.flags & .IS_MARKED_AS_USING
-		print_to_builder (builder, "using ");
-	code_print_comma_separated_arguments (builder, comma_separated_assignment);
-	code_print_declaration (builder, declaration_properties);
-	for notes
-	{
-		print_to_builder (builder, " ");
-		code_print_note (builder, it);
 	}
 }
 
@@ -608,7 +812,7 @@ code_print_block :: (builder : *Code_Builder, using block : *Code_Block)
 	{
 		builder.indentation_level -= 1;
 		indent (builder);
-		print_to_builder (builder, "}\n");
+		print_to_builder (builder, "}");
 	}
 	else
 		print_to_builder (builder, " ");
@@ -1034,7 +1238,7 @@ code_print_directive_insert :: (builder : *Code_Builder, using directive : *Code
 	code_print_expression (builder, expression);
 }
 
-code_print_expression :: (builder : *Code_Builder, using expr : *Code_Node)
+code_print_expression :: (builder : *Code_Builder, using expr : *Code_Node, fmt := Code_Format.{})
 {
 	assert (expr != null, "Expression was null.");
 	// Don't print parenthesis around blocks. We print braces instead, when
@@ -1060,6 +1264,18 @@ code_print_expression :: (builder : *Code_Builder, using expr : *Code_Node)
 		code_print_unary_operator (builder, cast (*Code_Unary_Operator) expr);
 	case .BINARY_OPERATOR;
 		code_print_binary_operator (builder, cast (*Code_Binary_Operator) expr);
+	case .DECLARATION;
+		declaration_fmt : Code_Declaration_Format;
+		if fmt.declaration
+			declaration_fmt = <<fmt.declaration;
+		code_print_declaration (builder, cast (*Code_Declaration) expr, declaration_fmt);
+	case .COMPOUND_DECLARATION;
+		code_print_compound_declaration (builder, cast (*Code_Compound_Declaration) expr);
+	case .PROCEDURE_HEADER;
+		procedure_header_fmt : Code_Procedure_Header_Format;
+		if fmt.procedure_header
+			procedure_header_fmt = <<fmt.procedure_header;
+		code_print_procedure_header (builder, cast (*Code_Procedure_Header) expr, procedure_header_fmt);
 	case .PROCEDURE_BODY;
 		code_print_procedure_body (builder, (cast (*Code_Procedure_Body) expr).header);
 	case .PROCEDURE_CALL;
@@ -1084,8 +1300,6 @@ code_print_expression :: (builder : *Code_Builder, using expr : *Code_Node)
 		code_print_type_instantiation (builder, cast (*Code_Type_Instantiation) expr);
 	case .ENUM;
 		code_print_enum (builder, cast (*Code_Enum) expr);
-	case .PROCEDURE_HEADER;
-		code_print_procedure_header (builder, cast (*Code_Procedure_Header) expr);
 	case .STRUCT;
 		code_print_struct (builder, cast (*Code_Struct) expr);
 	case .COMMA_SEPARATED_ARGUMENTS;
@@ -1094,8 +1308,6 @@ code_print_expression :: (builder : *Code_Builder, using expr : *Code_Node)
 	case .SEQUENCE;
 		code_print_sequence (builder, cast (*Code_Sequence) expr);
 	case .MAKE_VARARGS;
-	case .DECLARATION;
-		code_print_declaration (builder, cast (*Code_Declaration) expr);
 	case .CAST;
 		code_print_cast (builder, cast (*Code_Cast) expr);
 	case .DIRECTIVE_IMPORT;
@@ -1133,8 +1345,6 @@ code_print_expression :: (builder : *Code_Builder, using expr : *Code_Node)
 		code_print_directive_location (builder, cast (*Code_Directive_Location) expr);
 	case .DIRECTIVE_ALIGN;
 	case .DIRECTIVE_ADD_CONTEXT;
-	case .COMPOUND_DECLARATION;
-		code_print_compound_declaration (builder, cast (*Code_Compound_Declaration) expr);
 	case .DEFER;
 		code_print_defer (builder, cast (*Code_Defer) expr);
 	case .USING;

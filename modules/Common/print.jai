@@ -230,12 +230,6 @@ print_u64_to_builder :: (builder : *String_Builder, value : u64, base := 10, pri
 	for i : 0..digit_count - 1  print_char_to_builder (builder, character_buffer[i]);
 }
 
-#scope_file
-
-#import "stb_sprintf";
-
-#scope_export
-
 Float_Format :: struct
 {
 	digits_after_decimal := -1;
@@ -259,19 +253,20 @@ parse_float_formatting_string :: (format : string) -> Float_Format #must, format
 	return float_format, format_was_valid;
 }
 
-print_f32_to_builder :: (builder : *String_Builder, value : f32, digits_after_decimal : int)
+print_f32_to_builder :: (builder : *String_Builder, value : f32, precision : int)
 {
-	inline print_f64_to_builder (builder, xx value, digits_after_decimal);
+	inline print_f64_to_builder (builder, xx value, precision);
 }
 
-print_f64_to_builder :: (builder : *String_Builder, value : f64, digits_after_decimal : int)
+print_f64_to_builder :: (builder : *String_Builder, value : f64, precision : int)
 {
-	buffer : [100]u8;
-	fmt : *u8;
-	if digits_after_decimal != -1 then fmt = format_string_to_cstring (TEMP, "%%.%f", digits_after_decimal);
-	else fmt = "%f";
-	stbsp_snprintf (buffer.data, buffer.count, fmt, value);
-	print_cstring_to_builder (builder, buffer.data);
+	ryu :: #import "Ryu";
+
+	buffer : [2000]u8;
+	str : string = ---;
+	str.data = buffer.data;
+	str.count = ryu.f64_to_fixed_buffered (value, xx precision, str.data);
+	print_string_to_builder (builder, str);
 }
 
 print_bool_to_builder :: (builder : *String_Builder, value : bool)

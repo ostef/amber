@@ -2,7 +2,7 @@
 // source code data gathered from the metaprogram.
 
 #import "Lexer";
-#import "Code_Generation";
+#import "Code_Builder";
 
 Doc_File :: struct
 {
@@ -261,6 +261,7 @@ generate_markdown :: (builder : *Code_Builder, using entry : Doc_File.Entry)
 	nl (builder);
 
 	ln (builder, "```jai");
+	// Find declaration
 	decl : *Compiler.Code_Declaration;
 	for amber_api_decls
 	{
@@ -271,15 +272,27 @@ generate_markdown :: (builder : *Code_Builder, using entry : Doc_File.Entry)
 			break;
 		}
 	}
+
+	declaration_fmt : Code_Declaration_Format;
+	declaration_fmt.print_notes = false;
+	declaration_fmt.print_using = false;
+	declaration_fmt.print_compiler_directives = false;
+	arg_fmt := declaration_fmt;
+	arg_fmt.print_expression = false;
+	procedure_header_fmt : Code_Procedure_Header_Format;
+	procedure_header_fmt.one_arg_per_line = true;
+	procedure_header_fmt.argument_fmt = arg_fmt;
+	procedure_header_fmt.return_fmt = arg_fmt;
+	fmt : Code_Format;
+	fmt.procedure_header = *procedure_header_fmt;
+	fmt.declaration = *declaration_fmt;
+	declaration_fmt.expression_fmt = fmt;
+
 	if decl
-	{
-		code_print_declaration (builder, decl);
-		nl (builder);
-	}
+		code_print_declaration (builder, decl, declaration_fmt);
 	else
-	{
-		ln (builder, "// Could not find API declaration.");
-	}
+		pr (builder, "// Could not find API declaration.");
+	nl (builder);
 	ln (builder, "```");
 	nl (builder);
 
@@ -293,7 +306,7 @@ generate_markdown :: (builder : *Code_Builder, using entry : Doc_File.Entry)
 	}
 	for params
 	{
-		ln (builder, "**", it.name, "** ");
+		pr (builder, "**", it.name, "** ");
 		ln (builder, it.desc, "  ");
 	}
 
@@ -304,7 +317,7 @@ generate_markdown :: (builder : *Code_Builder, using entry : Doc_File.Entry)
 	}
 	for members
 	{
-		ln (builder, "**", it.name, "** ");
+		pr (builder, "**", it.name, "** ");
 		ln (builder, it.desc, "  ");
 	}
 
@@ -316,7 +329,7 @@ generate_markdown :: (builder : *Code_Builder, using entry : Doc_File.Entry)
 	for returns
 	{
 		if it.name
-			ln (builder, "**", it.name, "** ");
+			pr (builder, "**", it.name, "** ");
 		ln (builder, it.desc, "  ");
 	}
 }
