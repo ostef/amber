@@ -1,0 +1,409 @@
+@name: Text Layout API
+
+---
+
+@type: Text_Layout_ID
+
+@desc:
+Used to identify a text layout in the editor. You can check if a text layout exists by calling [text_layout_exists].
+
+---
+
+@proc: get_text_layout_count
+
+@desc:
+Ask the editor for the total number of opened text layouts.
+
+@return:
+The number of opened text layoutes in the editor.
+
+---
+
+@proc: get_active_text_layout
+
+@desc:
+Ask the editor for the id of the currently active text layout.
+Shorthand for `buffer_get_text_layout (get_active_buffer ())`.
+
+@return:
+The id of the active text layout.
+
+---
+
+@proc: text_layout_exists
+
+@desc:
+Ask the editor if a text layout with a given id exists.
+
+@param id: is the id of the text layout.
+
+@return:
+*true* if the text layout exists, *false* otherwise.
+
+---
+
+@proc: text_layout_clear
+
+@desc:
+Clear the cached data in the text layout. `is_dirty` is set to *true*.
+
+@param layout_id: is the id of the text layout.
+
+---
+
+@proc: text_layout_get_split
+
+@desc:
+Get the split associated with the text layout.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The id of the split associated with the text layout.
+
+---
+
+@proc: text_layout_get_buffer
+
+@desc:
+Get the buffer associated with the text layout.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The id of the buffer associated with the text layout.
+
+---
+
+@proc: text_layout_get_font
+
+@desc:
+Get the font associated with the text layout.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The id of the font associated with the text layout.
+
+---
+
+@proc: text_layout_set_font
+
+@desc:
+Set the font associated with the text layout. `is_dirty` is set to *true*.
+
+@param layout_id: is the id of the text layout.
+@param font_id: is the id of the new font.
+
+---
+
+@proc: text_layout_get_font_height
+
+@desc:
+Get the font height of the text layout.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The font height of the text layout.
+
+---
+
+@proc: text_layout_set_font_height
+
+@desc:
+Set the font height of the text layout. `is_dirty` is set to *true*.
+
+@param layout_id: is the id of the text layout.
+@param font_height: is the new font height.
+
+---
+
+@proc: text_layout_get_column_width
+
+@desc:
+Get the column width used by the text layout. Effectively this returns the space advance of the font with the layout font height. We currently assume fonts are monospace.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The column width used by the text layout.
+
+---
+
+@proc: text_layout_get_line_height
+
+@desc:
+Get the line height of the text layout. Effectively this returns the line height of the font with the layout font height.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The line height of the text layout.
+
+---
+
+@proc: text_layout_is_dirty
+
+@desc:
+Ask the editor if the given text layout should be recomputed.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The dirty state of the text layout.
+
+---
+
+@proc: text_layout_set_dirty
+
+@desc:
+Notify the editor that the given text layout should be recomputed.
+
+@param layout_id: is the id of the text layout.
+
+---
+
+@proc: text_layout_get_area
+
+@desc:
+Get the area available to the text layout.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The area used by the text layout.
+
+---
+
+@proc: text_layout_set_area
+
+@desc:
+Set the area available to the text layout. `is_dirty` is set to *true*.
+
+@param layout_id: is the id of the text layout.
+@param area: is the new area.
+
+---
+
+@proc: text_layout_update_area
+
+@desc:
+Set the area available to the text layout to `split_get_text_layout_area (text_layout_get_split (layout_id))`. `is_dirty` is set to *true*.
+
+@param layout_id: is the id of the text layout.
+
+---
+
+@proc: text_layout_get_extents
+
+@desc:
+Get the extents of the text, computed by the text layout (see [text_layout_compute]).
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The extents of the text.
+
+---
+
+@proc: text_layout_get_scroll
+
+@desc:
+Get the scroll on the x and y axis (column and line) of the text layout.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The scroll on the x and y axis (column and line) of the text layout in (column width, line height) units.
+
+---
+
+@proc: text_layout_set_scroll
+
+@desc:
+Set the scroll on the x and y axis (column and line) of the text layout.
+
+@param layout_id: is the id of the text layout.
+@param scroll: is the new scroll value, in (column width, line height) units.
+
+---
+
+@proc: text_layout_set_scroll_x
+
+@desc:
+Set the scroll on the x axis (column) of the text layout.
+
+@param layout_id: is the id of the text layout.
+@param scroll_x: is the new scroll value, in column width units.
+
+---
+
+@proc: text_layout_set_scroll_y
+
+@desc:
+Set the scroll on the y axis (column and line) of the text layout.
+
+@param layout_id: is the id of the text layout.
+@param scroll_y: is the new scroll value, in line height units.
+
+---
+
+@proc: text_layout_scroll_x
+
+@desc:
+Scroll the text layout on the x axis.
+
+@param layout_id: is the id of the text layout.
+@param add_scroll: is the scroll value to add on the x axis, in column width.
+
+---
+
+@proc: text_layout_get_max_scroll
+
+@desc:
+Get the maximum scroll of the text layout on the x and y axis.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The maximum scroll on the x and y axis (column and line) of the text layout in (column width, line height) units.
+
+---
+
+@proc: text_layout_get_visual_scroll
+
+@desc:
+Get the visual scroll of the text layout on the x and y axis.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The visual scroll on the x and y axis, in (column width, line height) units.
+
+---
+
+@proc: text_layout_set_visual_scroll
+
+@desc:
+Set the visual scroll of the text layout on the x and y axis.
+
+@param layout_id: is the id of the text layout.
+@param scroll: is the new visual scroll.
+
+---
+
+@proc: text_layout_get_rect
+
+@desc:
+Get the *absolute* rect (as displayed on the screen) of the character at **index**, computed by the text layout.
+
+@param layout_id: is the id of the text layout.
+@param index: is the index of the character.
+
+@return:
+The *absolute* rect of the character at **index**.
+
+---
+
+@proc: text_layout_get_relative_rect
+
+@desc:
+Get the *relative* rect (without scroll) of the character at **index**, computed by the text layout.
+
+@param layout_id: is the id of the text layout.
+@param index: is the index of the character.
+
+@return:
+The *relative* rect of the character at **index**.
+
+---
+
+@proc: text_layout_get_visible_range
+
+@desc:
+Get the range of visible characters on the screen, as dictated by the scroll amount and area of the text layout.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The range of visible characters on the screen.
+
+---
+
+@proc: text_layout_get_visible_line_range
+
+@desc:
+Get the range of visible *wrapped* lines on the screen, as dictated by the scroll amount and area of the text layout.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The range of visible lines on the screen.
+
+---
+
+@proc: text_layout_get_line_range
+
+@desc:
+Get the character range of the given *wrapped* line in the text layout.
+
+@param layout_id: is the id of the text layout.
+@param line_index: is the index of the *wrapped* line.
+
+@return:
+The range of characters in the given line.
+
+---
+
+@proc: text_layout_get_closest_character
+
+@desc:
+Get the index of closest character to **position** as displayed on the screen.
+
+@param layout_id: is the id of the text layout.
+@param position: is the position of the point.
+
+@return:
+The index of the closest character to the given point.
+
+---
+
+@proc: text_layout_get_base_line
+
+@desc:
+Get the first visible line of the text layout.
+
+@param layout_id: is the id of the text layout.
+
+@return:
+The first visible line.
+
+---
+
+@proc: text_layout_clear_colors
+
+@desc:
+Clear the array of colors in the text layout.
+
+@param layout_id: is the id of the text layout.
+
+---
+
+@proc: text_layout_push_color
+
+@desc:
+Push a new color at the end of the colors array in the text layout.
+
+@param layout_id: is the id of the text layout.
+@param range: is the range of characters affected by the color.
+@param color: is the color to push.
+
+---
+
+@proc: text_layout_compute
+
+@desc:
+Process the associated buffer, and compute the rectangles of each character, as well as the wrapped lines array of the text layout. `is_dirty` is set to *false*.
+
+@param layout_id: is the id of the text layout.

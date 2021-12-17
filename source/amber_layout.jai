@@ -123,11 +123,11 @@ text_layout_get_font :: inline (layout_id : Text_Layout_ID) -> Font_ID #must
 }
 @Amber_API
 
-text_layout_set_font :: inline (layout_id : Text_Layout_ID, new_font_id : Font_ID)
+text_layout_set_font :: inline (layout_id : Text_Layout_ID, font_id : Font_ID)
 {
-	using layout := get_text_layout (layout_id);
-	is_dirty = true;
-	font_id = new_font_id;
+	layout := get_text_layout (layout_id);
+	layout.is_dirty = true;
+	layout.font_id = font_id;
 }
 @Amber_API
 
@@ -139,11 +139,11 @@ text_layout_get_font_height :: inline (layout_id : Text_Layout_ID) -> u32 #must
 }
 @Amber_API
 
-text_layout_set_font_height :: inline (layout_id : Text_Layout_ID, new_font_height : u32)
+text_layout_set_font_height :: inline (layout_id : Text_Layout_ID, font_height : u32)
 {
-	using layout := get_text_layout (layout_id);
-	is_dirty = true;
-	font_height = new_font_height;
+	layout := get_text_layout (layout_id);
+	layout.is_dirty = true;
+	layout.font_height = font_height;
 }
 @Amber_API
 
@@ -188,11 +188,11 @@ text_layout_get_area :: inline (layout_id : Text_Layout_ID) -> Rectf #must
 }
 @Amber_API
 
-text_layout_set_area :: inline (layout_id : Text_Layout_ID, new_area : Rectf)
+text_layout_set_area :: inline (layout_id : Text_Layout_ID, area : Rectf)
 {
-	using layout := get_text_layout (layout_id);
-	area = new_area;
-	is_dirty = true;
+	layout := get_text_layout (layout_id);
+	layout.area = area;
+	layout.is_dirty = true;
 }
 @Amber_API
 
@@ -218,27 +218,24 @@ text_layout_get_scroll :: inline (layout_id : Text_Layout_ID) -> Vec2f #must
 }
 @Amber_API
 
-text_layout_set_scroll :: inline (layout_id : Text_Layout_ID, new_scroll : Vec2f)
+text_layout_set_scroll :: inline (layout_id : Text_Layout_ID, scroll : Vec2f)
 {
-	using layout := get_text_layout (layout_id);
-	
-	scroll = new_scroll;
+	layout := get_text_layout (layout_id);
+	layout.scroll = scroll;
 }
 @Amber_API
 
-text_layout_set_scroll_x :: inline (layout_id : Text_Layout_ID, new_scroll_x : f32)
+text_layout_set_scroll_x :: inline (layout_id : Text_Layout_ID, scroll_x : f32)
 {
-	using layout := get_text_layout (layout_id);
-	
-	scroll.x = new_scroll_x;
+	layout := get_text_layout (layout_id);
+	layout.scroll.x = scroll_x;
 }
 @Amber_API
 
-text_layout_set_scroll_y :: inline (layout_id : Text_Layout_ID, new_scroll_y : f32)
+text_layout_set_scroll_y :: inline (layout_id : Text_Layout_ID, scroll_y : f32)
 {
-	using layout := get_text_layout (layout_id);
-	
-	scroll.y = new_scroll_y;
+	layout := get_text_layout (layout_id);
+	layout.scroll.y = scroll_y;
 }
 @Amber_API
 
@@ -281,11 +278,10 @@ text_layout_get_visual_scroll :: inline (layout_id : Text_Layout_ID) -> Vec2f #m
 }
 @Amber_API
 
-text_layout_set_visual_scroll :: inline (layout_id : Text_Layout_ID, new_scroll : Vec2f)
+text_layout_set_visual_scroll :: inline (layout_id : Text_Layout_ID, scroll : Vec2f)
 {
-	using layout := get_text_layout (layout_id);
-	
-	visual_scroll = new_scroll;
+	layout := get_text_layout (layout_id);
+	layout.visual_scroll = scroll;
 }
 @Amber_API
 
