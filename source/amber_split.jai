@@ -753,11 +753,12 @@ split_draw :: (split_id : Split_ID)
 		vec2f (split.area.x1, split.area.y2 - line_height),
 		fstring (
 			TEMP,
-			"Ln %, Col % ~ % line(s) ~ %",
+			"Ln %, Col % ~ % line(s) ~ % ~ %",
 			buffer_get_cursor_line_index (active_buffer_id, WRITE_HEAD) + 1,
 			buffer_get_cursor_column_index (active_buffer_id, WRITE_HEAD) + 1,
 			buffer_get_line_count (active_buffer_id),
-			language_name
+			language_name,
+			buffer_get_eol_sequence (active_buffer_id)
 		),
 		RGBA_BLACK
 	);

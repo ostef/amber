@@ -152,10 +152,16 @@ buffer_write_to_file :: inline (buffer_id : Buffer_ID) -> bool
 	utf8_str : string;
 	for buffer
 		utf8_str.count += utf8_codepoint_size (it);
+	if buffer.eol_sequence == .CRLF
+		utf8_str.count += buffer.lines.count - 1;
 	utf8_str.data = alloc (utf8_str.count, TEMP);
 	byte_offset := 0;
 	for buffer
+	{
+		if buffer.eol_sequence == .CRLF && it == #char "\n"
+			byte_offset += utf8_encode (advance (to_array (utf8_str), byte_offset), #char "\r");
 		byte_offset += utf8_encode (advance (to_array (utf8_str), byte_offset), it);
+	}
 	written, ok := platform_write_to_file (buffer.filename, utf8_str);
 
 	return ok;
