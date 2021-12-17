@@ -467,6 +467,22 @@ File_Attributes :: enum_flags
 	TEMPORARY :: 0x10;
 }
 
+File_Change_Kind :: enum
+{
+	UNKNOWN  :: 0;
+	ADDED    :: 1;
+	MODIFIED :: 2;
+	RENAMED  :: 3;
+}
+
+File_Change :: struct
+{
+	kind : File_Change_Kind;
+	dirname  : string;
+	basename : string;
+	last_change_time : f64;
+}
+
 File_Info :: struct
 {
 	name : string;

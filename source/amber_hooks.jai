@@ -166,6 +166,8 @@ Amber_Hooks :: struct #type_info_none
 	platform_heap_alloc : (s64) -> *void;
 	platform_heap_free : (*void);
 	platform_heap_realloc : (*void, s64) -> *void;
+	platform_is_directory_watched : (string) -> bool;
+	platform_is_file_watched : (string) -> bool;
 	platform_is_key_down : (Key_Code) -> bool;
 	platform_is_mouse_button_down : (Mouse_Button) -> bool;
 	platform_is_window_focused : () -> bool;
@@ -174,6 +176,7 @@ Amber_Hooks :: struct #type_info_none
 	platform_move_file : (string, string) -> bool;
 	platform_open_error_box : (string, []Any);
 	platform_open_file : (string, File_Open_Flags, File_Attributes) -> *void;
+	platform_pull_file_changes : () -> [..]File_Change;
 	platform_purge_directory : (string) -> bool;
 	platform_read_entire_file : (string, Allocator) -> (string, bool);
 	platform_read_file : (*void, *void, s64) -> (s64, bool);
@@ -184,6 +187,10 @@ Amber_Hooks :: struct #type_info_none
 	platform_set_file_cursor : (*void, s64, File_Cursor) -> (s64, bool);
 	platform_set_working_directory : (string) -> bool;
 	platform_sleep_milliseconds : (s64);
+	platform_unwatch_directory : (string) -> bool;
+	platform_unwatch_file : (string) -> bool;
+	platform_watch_directory : (string) -> bool;
+	platform_watch_file : (string) -> bool;
 	platform_write_file : (*void, *void, s64) -> (s64, bool);
 	platform_write_to_file : (string, string) -> (s64, bool);
 	set_active_split : (Split_ID);

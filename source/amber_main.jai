@@ -188,6 +188,7 @@ main :: ()
 		text_layout_compute (buffer_get_text_layout (buffer.id));
 	}
 	
+	platform_watch_file (platform_get_full_filename ("get_next_line.c", TEMP));
 	running = true;
 	frame_start := platform_get_time ();
 	while running
@@ -212,7 +213,10 @@ main :: ()
 			if !is_inputting_command && active_split_id != NULL_SPLIT
 				event_result ||= split_handle_event (active_split_id, event);
 		}
-		
+		file_changes := platform_pull_file_changes ();
+		for file_changes
+			println ("% in directory % was % at %.", it.basename, it.dirname, it.kind, it.last_change_time);
+
 		if active_split_id != NULL_SPLIT
 			split_update (active_split_id, *event_result, delta_time);
 		memset (*event_result, 0, size_of (Event_Result));

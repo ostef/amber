@@ -10,7 +10,7 @@
 
 // @Todo (stefan): Make sure we respect the above naming conventions everywhere
 
-platform_get_module_filename :: (allocator : Allocator) -> string #must
+platform_get_module_filename :: inline (allocator : Allocator) -> string #must
 {
 	buffer := alloc (2 * MAX_PATH, TEMP);
 	length := GetModuleFileNameW (null, buffer, MAX_PATH);
@@ -19,7 +19,7 @@ platform_get_module_filename :: (allocator : Allocator) -> string #must
 }
 @Amber_API
 
-platform_get_full_filename :: (filename : string, allocator : Allocator) -> string #must
+platform_get_full_filename :: inline (filename : string, allocator : Allocator) -> string #must
 {
 	wstr_filename := utf8_to_wide (filename, TEMP);
 	length := GetFullPathNameW (wstr_filename, 0, null, null);
@@ -31,7 +31,7 @@ platform_get_full_filename :: (filename : string, allocator : Allocator) -> stri
 }
 @Amber_API
 
-platform_open_file :: (filename : string, flags : File_Open_Flags, attributes := File_Attributes.NORMAL) -> File_Handle #must
+platform_open_file :: inline (filename : string, flags : File_Open_Flags, attributes := File_Attributes.NORMAL) -> File_Handle #must
 {
 	access, share_mode : DWORD;
 	if flagged (flags, .ACCESS_READ)
@@ -58,25 +58,25 @@ platform_open_file :: (filename : string, flags : File_Open_Flags, attributes :=
 }
 @Amber_API
 
-platform_close_file :: (file : File_Handle)
+platform_close_file :: inline (file : File_Handle)
 {
 	CloseHandle (file);
 }
 @Amber_API
 
-platform_delete_file :: (filename : string) -> bool
+platform_delete_file :: inline (filename : string) -> bool
 {
 	return DeleteFileW (utf8_to_wide (filename, TEMP)) != 0;
 }
 @Amber_API
 
-platform_move_file :: (src : string, dest : string) -> bool
+platform_move_file :: inline (src : string, dest : string) -> bool
 {
 	return MoveFileW (utf8_to_wide (src, TEMP), utf8_to_wide (dest, TEMP)) != 0;
 }
 @Amber_API
 
-platform_get_file_cursor :: (file : File_Handle) -> offset : s64
+platform_get_file_cursor :: inline (file : File_Handle) -> offset : s64
 {
 	offset := SetFilePointer (file, 0, null, FILE_CURRENT);
 	
@@ -84,7 +84,7 @@ platform_get_file_cursor :: (file : File_Handle) -> offset : s64
 }
 @Amber_API
 
-platform_set_file_cursor :: (file : File_Handle, offset : s64, cursor := File_Cursor.BEGIN) -> moved : s64, success : bool
+platform_set_file_cursor :: inline (file : File_Handle, offset : s64, cursor := File_Cursor.BEGIN) -> moved : s64, success : bool
 {
 	win32_cursor : DWORD;
 	if #complete cursor ==
@@ -100,13 +100,13 @@ platform_set_file_cursor :: (file : File_Handle, offset : s64, cursor := File_Cu
 }
 @Amber_API
 
-platform_set_eof_to_cursor :: (file : File_Handle) -> bool
+platform_set_eof_to_cursor :: inline (file : File_Handle) -> bool
 {
 	return SetEndOfFile (file) != 0;
 }
 @Amber_API
 
-platform_read_file :: (file : File_Handle, buffer : *void, buffer_size : s64) -> read : s64, success : bool
+platform_read_file :: inline (file : File_Handle, buffer : *void, buffer_size : s64) -> read : s64, success : bool
 {
 	read : u32;
 	ok := ReadFile (file, buffer, xx buffer_size, *read, null);
@@ -115,7 +115,7 @@ platform_read_file :: (file : File_Handle, buffer : *void, buffer_size : s64) ->
 }
 @Amber_API
 
-platform_write_file :: (file : File_Handle, buffer : *void, count : s64) -> written : s64, success : bool
+platform_write_file :: inline (file : File_Handle, buffer : *void, count : s64) -> written : s64, success : bool
 {
 	written : u32;
 	ok := WriteFile (file, buffer, xx count, *written, null); 
@@ -124,7 +124,7 @@ platform_write_file :: (file : File_Handle, buffer : *void, count : s64) -> writ
 }
 @Amber_API
 
-platform_file_exists :: (filename : string) -> bool #must
+platform_file_exists :: inline (filename : string) -> bool #must
 {
 	return GetFileAttributesW (utf8_to_wide (filename, TEMP)) != INVALID_FILE_ATTRIBUTES;
 }
@@ -132,7 +132,7 @@ platform_file_exists :: (filename : string) -> bool #must
 
 #scope_file
 
-win32_to_file_attributes :: (win32_attrs : DWORD) -> File_Attributes #must
+win32_to_file_attributes :: inline (win32_attrs : DWORD) -> File_Attributes #must
 {
 	result : File_Attributes;
 	if flagged (win32_attrs, FILE_ATTRIBUTE_DIRECTORY)
@@ -149,7 +149,7 @@ win32_to_file_attributes :: (win32_attrs : DWORD) -> File_Attributes #must
 	return result;
 }
 
-file_attributes_to_win32 :: (attributes : File_Attributes) -> DWORD #must
+file_attributes_to_win32 :: inline (attributes : File_Attributes) -> DWORD #must
 {
 	win32_attrs : DWORD;
 	if flagged (attributes, .DIRECTORY)
@@ -168,7 +168,7 @@ file_attributes_to_win32 :: (attributes : File_Attributes) -> DWORD #must
 
 #scope_export
 
-platform_get_file_attributes :: (filename : string) -> File_Attributes, exists : bool
+platform_get_file_attributes :: inline (filename : string) -> File_Attributes, exists : bool
 {
 	win32_attrs := GetFileAttributesW (utf8_to_wide (filename, TEMP));
 	if win32_attrs == INVALID_FILE_ATTRIBUTES then return 0, false;
@@ -177,7 +177,7 @@ platform_get_file_attributes :: (filename : string) -> File_Attributes, exists :
 }
 @Amber_API
 
-platform_set_file_attributes :: (filename : string, attributes : File_Attributes) -> bool
+platform_set_file_attributes :: inline (filename : string, attributes : File_Attributes) -> bool
 {
 	remove_flag (*attributes, .DIRECTORY);
 	remove_flag (*attributes, .SYMLINK);
@@ -243,7 +243,7 @@ list_files_helper :: (dirname : string, parent_index : s64, all_files : *[..]Fil
 // @Note (stefan): The File_Infos are allocated contiguously, and the first File_Info is also the root.
 // This means you can ignore the all_files array, and only care about the root when you have to free the
 // allocated File_Infos.
-platform_list_files_in_directory :: (dirname : string, allocator : Allocator) -> root : *File_Info #must, all_files : []File_Info
+platform_list_files_in_directory :: inline (dirname : string, allocator : Allocator) -> root : *File_Info #must, all_files : []File_Info
 {
 	all_files : [..]File_Info;
 	all_files.allocator = allocator;;
@@ -262,19 +262,19 @@ platform_list_files_in_directory :: (dirname : string, allocator : Allocator) ->
 }
 @Amber_API
 
-platform_create_directory :: (dirname : string) -> bool
+platform_create_directory :: inline (dirname : string) -> bool
 {
 	return CreateDirectoryW (utf8_to_wide (dirname, TEMP), null) != 0;
 }
 @Amber_API
 
-platform_delete_empty_directory :: (dirname : string) -> bool
+platform_delete_empty_directory :: inline (dirname : string) -> bool
 {
 	return RemoveDirectoryW (utf8_to_wide (dirname, TEMP)) != 0;
 }
 @Amber_API
 
-platform_get_working_directory :: (allocator : Allocator) -> string #must
+platform_get_working_directory :: inline (allocator : Allocator) -> string #must
 {
 	length := GetCurrentDirectoryW (0, null);
 	buffer := alloc (2 * (length + 1), TEMP);
@@ -284,13 +284,313 @@ platform_get_working_directory :: (allocator : Allocator) -> string #must
 }
 @Amber_API
 
-platform_set_working_directory :: (dirname : string) -> bool
+platform_set_working_directory :: inline (dirname : string) -> bool
 {
 	return SetCurrentDirectoryW (utf8_to_wide (dirname, TEMP)) != 0;
 }
 @Amber_API
 
-platform_load_library :: (filename : string) -> Library_Handle #must
+#scope_file
+
+Watched_Directory :: struct
+{
+	full_name : string;
+	watched_files : [..]string;
+	handle : HANDLE;
+	overlapped : OVERLAPPED;	// OVERLAPPED contains information about asynchronous I/O
+	bytes_returned : DWORD;
+	notify_information : *FILE_NOTIFY_INFORMATION;
+}
+
+NOTIFY_LEN :: 8000;
+FILE_CHANGE_MIN_DELAY :: 0.1;
+
+watched_directories : [..]Watched_Directory;
+pending_file_changes : [..]File_Change;
+
+#scope_export
+
+platform_is_directory_watched :: inline (full_name : string) -> bool
+{
+	for watched_directories
+	{
+		if it.full_name == full_name
+			return true;
+	}
+
+	return false;
+}
+@Amber_API
+
+platform_is_file_watched :: inline (full_name : string) -> bool
+{
+	parent_dir := filename_remove_basename (full_name);
+	for watched_directories
+	{
+		if it.full_name == parent_dir
+		{
+			for filename : it.watched_files
+			{
+				if filename == full_name
+					return true;
+			}
+			return false;
+		}
+	}
+
+	return false;
+}
+@Amber_API
+
+platform_watch_directory :: inline (full_name : string) -> bool
+{
+	if platform_is_directory_watched (full_name)
+		return true;
+	event := CreateEventW (null, 0, 0, null);
+	if !event
+		return false;
+	handle := CreateFileW (
+		utf8_to_wide (full_name, TEMP),
+		FILE_LIST_DIRECTORY,
+		FILE_SHARE_READ |
+		FILE_SHARE_DELETE |
+		FILE_SHARE_WRITE,
+		null,
+		OPEN_EXISTING,
+		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+		null
+	);
+	if handle == INVALID_HANDLE_VALUE
+	{
+		CloseHandle (event);
+
+		return false;
+	}
+	if !watched_directories.allocator.proc
+		init_array (*watched_directories, 10, HEAP);
+	watched := push_into_array (*watched_directories);
+	watched.full_name = clone_string (full_name, HEAP);
+	watched.watched_files.allocator = HEAP;
+	watched.overlapped.hEvent = event;
+	watched.overlapped.Offset = 0;
+	watched.handle = handle;
+	watched.notify_information = alloc (NOTIFY_LEN, HEAP);
+
+	return true;
+}
+@Amber_API
+
+platform_unwatch_directory :: inline (full_name : string) -> bool
+{
+	watched : *Watched_Directory;
+	for * watched_directories
+	{
+		if it.full_name == full_name
+		{
+			watched = it;
+
+			break;
+		}
+	}
+	if !watched then return false;
+
+	free (watched.full_name, HEAP);
+	for watched.watched_files
+		free (it, HEAP);
+	reset_array (*watched.watched_files);
+	CloseHandle (watched.overlapped.hEvent);
+	CloseHandle (watched.handle);
+	free (watched.notify_information, HEAP);
+
+	return true;
+}
+@Amber_API
+
+platform_watch_file :: inline (full_name : string) -> bool
+{
+	parent_dir := filename_remove_basename (full_name);
+	basename := filename_get_basename (full_name);
+	if !parent_dir then return false;
+	watched : *Watched_Directory;
+	for * watched_directories
+	{
+		if it.full_name == parent_dir
+		{
+			watched = it;
+
+			break;
+		}
+	}
+	if !watched
+	{
+		if !platform_watch_directory (parent_dir)
+			return false;
+		watched = *watched_directories[watched_directories.count - 1];
+	}
+	for watched.watched_files
+	{
+		if it == basename
+			return true;
+	}
+	push_into_array (*watched.watched_files, clone_string (basename, HEAP));
+
+	return true;
+}
+@Amber_API
+
+platform_unwatch_file :: inline (full_name : string) -> bool
+{
+	parent_dir := filename_remove_basename (full_name);
+	basename := filename_get_basename (full_name);
+	if !parent_dir then return false;
+	watched : *Watched_Directory;
+	for * watched_directories
+	{
+		if it.full_name == parent_dir
+		{
+			watched = it;
+
+			break;
+		}
+	}
+	if !watched then return false;
+	found := false;
+	for watched.watched_files
+	{
+		if it == basename
+		{
+			found = true;
+			free (it, HEAP);
+			remove it;
+			break;
+		}
+	}
+	if watched.watched_files.count == 0
+		platform_unwatch_directory (parent_dir);
+
+	return found;
+}
+@Amber_API
+
+#scope_file
+
+read_directory_changes :: inline (info : *Watched_Directory)
+{
+	info.bytes_returned = 0;
+	success := ReadDirectoryChangesW (
+		info.handle,
+		info.notify_information,
+		NOTIFY_LEN,
+		0,
+		FILE_NOTIFY_CHANGE_LAST_WRITE |
+		FILE_NOTIFY_CHANGE_FILE_NAME |
+		FILE_NOTIFY_CHANGE_SIZE |
+		FILE_NOTIFY_CHANGE_SECURITY |
+		FILE_NOTIFY_CHANGE_ATTRIBUTES,
+		*info.bytes_returned,
+		*info.overlapped,
+		null
+	);
+}
+
+check_for_file_changes :: ()
+{
+	for * watched_directories
+	{
+		if !HasOverlappedIoCompleted (it.overlapped) then continue;
+		bytes_transferred : DWORD;
+		success := GetOverlappedResult (it.handle, *it.overlapped, *bytes_transferred, 0);
+		read_directory_changes (it);
+		if bytes_transferred == 0 then continue;
+
+		notify := it.notify_information;
+		while notify
+		{
+			defer {
+				if notify.NextEntryOffset == 0
+					notify = null;
+				else
+					notify = cast (*FILE_NOTIFY_INFORMATION) ((cast (*u8) notify) + notify.NextEntryOffset);
+			}
+
+			kind := File_Change_Kind.UNKNOWN;
+			if notify.Action == FILE_ACTION_ADDED
+				kind = .ADDED;
+			else if notify.Action == FILE_ACTION_MODIFIED
+				kind = .MODIFIED;
+			else if notify.Action == FILE_ACTION_RENAMED_NEW_NAME
+				kind = .RENAMED;
+			else
+				continue;
+
+			// Create a copy of the notify.FileName, because it is not null terminated.
+			wstr_name := cast (*u16) alloc (notify.FileNameLength + size_of (u16), TEMP);
+			memcpy (wstr_name, notify.FileName.data, notify.FileNameLength);
+			wstr_name[notify.FileNameLength / 2] = 0;
+			basename := wide_to_utf8 (wstr_name, TEMP);
+			add_file_change (it, basename, kind);
+		}
+	}
+}
+
+add_file_change :: (info : *Watched_Directory, basename : string, kind : File_Change_Kind) -> bool
+{
+	for * change : pending_file_changes
+	{
+		if change.dirname == info.full_name && change.basename == basename && change.kind == kind
+		{
+			change.last_change_time = platform_get_time ();
+
+			return true;
+		}
+	}
+
+	for info.watched_files
+	{
+		if it == basename
+		{
+			change := push_into_array (*pending_file_changes);
+			change.dirname = info.full_name;
+			change.basename = clone_string (basename, HEAP);
+			change.kind = kind;
+			change.last_change_time = platform_get_time ();
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+#scope_export
+
+platform_pull_file_changes :: () -> [..]File_Change #must
+{
+	if !pending_file_changes.allocator.proc
+		init_array (*pending_file_changes, 100, HEAP);
+	check_for_file_changes ();
+	file_changes : [..]File_Change;
+	init_array (*file_changes, 10, TEMP);
+	now := platform_get_time ();
+	for * change : pending_file_changes
+	{
+		// Oftentimes when programs modify files, they do more
+		// than one operation on it, so we want to wait a bit
+		// to let the program modifying the file do its job.
+		// (btw, why tf does VS Code modify the file three times
+		// when saving a buffer ?!?).
+		delta := now - change.last_change_time;
+		if delta < FILE_CHANGE_MIN_DELAY
+			continue;
+		push_into_array (*file_changes, <<change);
+		remove change;
+	}
+
+	return file_changes;
+}
+@Amber_API
+
+platform_load_library :: inline (filename : string) -> Library_Handle #must
 {
 	result := LoadLibraryW (utf8_to_wide (filename, TEMP));
 	if result == INVALID_HANDLE_VALUE then return null;
@@ -299,13 +599,13 @@ platform_load_library :: (filename : string) -> Library_Handle #must
 }
 @Amber_API
 
-platform_free_library :: (lib : Library_Handle)
+platform_free_library :: inline (lib : Library_Handle)
 {
 	FreeLibrary (lib);
 }
 @Amber_API
 
-platform_get_proc_address :: (lib : Library_Handle, proc_name : string) -> *void #must
+platform_get_proc_address :: inline (lib : Library_Handle, proc_name : string) -> *void #must
 {
 	cstr_proc_name := clone_to_cstring (proc_name, TEMP);
 
@@ -1142,11 +1442,14 @@ SECURITY_ATTRIBUTES :: struct
 	bInheritHandle : BOOL;
 }
 
+STATUS_PENDING : s32 : 0x00000103;
+
 GENERIC_EXECUTE : DWORD : 0x2000_0000;
 GENERIC_WRITE   : DWORD : 0x4000_0000;
 GENERIC_READ    : DWORD : 0x8000_0000;
-FILE_SHARE_READ  : DWORD : 0x01;
-FILE_SHARE_WRITE : DWORD : 0x02;
+FILE_SHARE_READ   : DWORD : 0x01;
+FILE_SHARE_WRITE  : DWORD : 0x02;
+FILE_SHARE_DELETE : DWORD : 0x04;
 
 CREATE_ALWAYS : DWORD : 2;
 OPEN_EXISTING : DWORD : 3;
@@ -1158,6 +1461,9 @@ FILE_ATTRIBUTE_READONLY : DWORD : 0x01;
 FILE_ATTRIBUTE_REPARSE_POINT : DWORD : 0x400;
 FILE_ATTRIBUTE_HIDDEN : DWORD : 0x02;
 FILE_ATTRIBUTE_TEMPORARY : DWORD : 0x100;
+
+FILE_FLAG_BACKUP_SEMANTICS : DWORD : 0x02000000;
+FILE_FLAG_OVERLAPPED       : DWORD : 0x40000000;
 
 CreateFileW :: (
 	lpFileName : *u16,
@@ -1188,22 +1494,6 @@ INVALID_SET_FILE_POINTER : DWORD : 0xffff_ffff;
 
 SetEndOfFile :: (hFile : HANDLE) -> BOOL #foreign kernel32;
 
-OVERLAPPED :: struct
-{
-	Internal : *ULONG;
-	InternalHigh : *ULONG;
-	union
-	{
-		struct
-		{
-			Offset : DWORD;
-			OffsetHigh : DWORD;
-		};
-		Pointer : *void;
-	};
-	hEvent : HANDLE;
-}
-
 ReadFile :: (
 	hFile : HANDLE,
 	lpBuffer : *void,
@@ -1223,6 +1513,84 @@ WriteFile :: (
 INVALID_FILE_ATTRIBUTES : DWORD : 0xffff_ffff;
 
 MAX_PATH :: 260;
+
+CreateEventW :: (
+	lpEventAttributes : *SECURITY_ATTRIBUTES,
+	bManualReset : BOOL,
+	bInitialState : BOOL,
+	lpName : *u16
+) -> HANDLE #foreign kernel32;
+
+HasOverlappedIoCompleted :: inline (overlapped : OVERLAPPED) -> bool
+{
+	return (cast (s32) overlapped.Internal) != STATUS_PENDING;
+}
+
+GetOverlappedResult :: (
+	hFile : HANDLE,
+	lpOverlapped : *OVERLAPPED,
+	lpNumberOfBytesTransferred : *DWORD,
+	bWait : BOOL
+) -> BOOL #foreign kernel32;
+
+ReadDirectoryChangesW :: (
+	hDirectory : HANDLE,
+	lpBuffer : *void,
+	nBufferLength : DWORD,
+	bWatchSubtree : BOOL,
+	dwNotifyFilter : DWORD,
+	lpBytesReturned : *DWORD,
+	lpOverlapped : *OVERLAPPED,
+	lpCompletionRoutine : *void
+) -> BOOL #foreign kernel32;
+
+FILE_NOTIFY_INFORMATION :: struct
+{
+	NextEntryOffset : DWORD;
+	Action : DWORD;
+	FileNameLength : DWORD;
+	FileName : [1]s16;
+}
+
+FILE_LIST_DIRECTORY : DWORD : 0x01;
+
+FILE_NOTIFY_CHANGE_FILE_NAME    :: 0x00000001;
+FILE_NOTIFY_CHANGE_DIR_NAME     :: 0x00000002;
+FILE_NOTIFY_CHANGE_ATTRIBUTES   :: 0x00000004;
+FILE_NOTIFY_CHANGE_SIZE         :: 0x00000008;
+FILE_NOTIFY_CHANGE_LAST_WRITE   :: 0x00000010;
+FILE_NOTIFY_CHANGE_LAST_ACCESS  :: 0x00000020;
+FILE_NOTIFY_CHANGE_CREATION     :: 0x00000040;
+FILE_NOTIFY_CHANGE_EA           :: 0x00000080;
+FILE_NOTIFY_CHANGE_SECURITY     :: 0x00000100;
+FILE_NOTIFY_CHANGE_STREAM_NAME  :: 0x00000200;
+FILE_NOTIFY_CHANGE_STREAM_SIZE  :: 0x00000400;
+FILE_NOTIFY_CHANGE_STREAM_WRITE :: 0x00000800;
+
+FILE_ACTION_ADDED            : DWORD : 1;
+FILE_ACTION_REMOVED          : DWORD : 2;
+FILE_ACTION_MODIFIED         : DWORD : 3;
+FILE_ACTION_RENAMED_OLD_NAME : DWORD : 4;
+FILE_ACTION_RENAMED_NEW_NAME : DWORD : 5;
+FILE_ACTION_ADDED_STREAM     : DWORD : 6;
+FILE_ACTION_REMOVED_STREAM   : DWORD : 7;
+FILE_ACTION_MODIFIED_STREAM  : DWORD : 8;
+
+OVERLAPPED :: struct
+{
+	Internal : u64;
+	InternalHigh : u64;
+	union
+	{
+		struct
+		{
+			Offset : DWORD;
+			OffsetHigh : DWORD;
+		};
+		Pointer : *void;
+	};
+	hEvent : HANDLE;
+}
 
 FILETIME :: struct
 {

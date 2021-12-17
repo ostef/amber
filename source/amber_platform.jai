@@ -26,8 +26,6 @@ platform_write_to_file :: (filename : string, buffer : string) -> written : s64,
 	file := platform_open_file (filename, File_Open_Flags.ACCESS_WRITE | .OPEN_OR_CREATE);
 	if !file then return 0, false;
 	defer platform_close_file (file);
-	platform_set_file_cursor (file, 0, .BEGIN);
-	platform_set_eof_to_cursor (file);
 	written, success := platform_write_file (file, buffer.data, buffer.count);
 	
 	return written, success;
