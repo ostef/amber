@@ -906,7 +906,7 @@ Undo the last edit in the buffer history. Batch begin are handled as expected.
 @param buffer_id: is the id of the buffer.
 
 @return:
-**true** if an edit was undone, **false** otherwise.
+*true* if an edit was undone, *false* otherwise.
 
 ---
 
@@ -918,4 +918,4 @@ Redo the last edit in the buffer history. Batch begin are handled as expected.
 @param buffer_id: is the id of the buffer.
 
 @return:
-**true** if an edit was redone, **false** otherwise.
+*true* if an edit was redone, *false* otherwise.
