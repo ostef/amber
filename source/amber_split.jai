@@ -426,7 +426,11 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 			buffer_clear_selection (active_buffer_id);
 		
 		case .RETURN;
+			if event.mods == Mods.CONTROL | .SHIFT
+				buffer_move_cursor_to_bol (active_buffer_id, ALL_CURSORS);
 			buffer_insert_at_cursor (active_buffer_id, #char "\n", ALL_CURSORS);
+			if event.mods == Mods.CONTROL | .SHIFT
+				buffer_move_cursor_backward (active_buffer_id, ALL_CURSORS);
 			buffer_modified = true;
 			scroll_to_cursor = true;
 		
