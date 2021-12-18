@@ -23,6 +23,8 @@ Text_Layout :: struct
 	colors : [..]Color_Range;
 }
 
+TAB_WIDTH :: 4;
+
 Color_Range :: struct
 {
 	range : Rangei;
@@ -418,7 +420,7 @@ text_layout_compute :: (layout_id : Text_Layout_ID)
 	{
 		push_into_array (*`wrapped_lines, `line);
 		`line.first_character = `i;
-		`pen.x = page.space_advance * 4.0 * (indentation_level + 1);
+		`pen.x = page.space_advance * cast (f32) TAB_WIDTH * (indentation_level + 1);
 		`pen.y += `page.ascent - `page.descent;
 	}
 
@@ -456,7 +458,7 @@ text_layout_compute :: (layout_id : Text_Layout_ID)
 			if start_of_line
 				indentation_level += 1;
 			glyph := load_glyph (page, 0x2192);
-			advance := snap_up (pen.x + glyph.advance, page.space_advance * 4.0) - pen.x;
+			advance := snap_up (pen.x + glyph.advance, page.space_advance * cast (f32) TAB_WIDTH) - pen.x;
 			if pen.x + advance > rect_width (area)
 				wrap_line ();
 			rect = xywhf (pen.x, pen.y, advance, line_height);

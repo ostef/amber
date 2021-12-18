@@ -509,14 +509,15 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 			}
 			
 		case .PAGE_UP;
+			page_height := cast (s64) (rect_height (text_layout_get_area (active_layout_id)) / text_layout_get_line_height (active_layout_id));
 			if remove_flag (event.mods, .SHIFT) == .CONTROL
 			{
-				text_layout_scroll_y (active_layout_id, -30);
+				text_layout_scroll_y (active_layout_id, cast (f32) -page_height);
 				show_scrollbar = true;
 			}
 			else
 			{
-				for 1..30
+				for 1..page_height
 				{
 					if !buffer_move_cursor_to_previous_line (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
 						break;
@@ -526,14 +527,16 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 			}
 
 		case .PAGE_DOWN;
+			page_height := cast (s64) (rect_height (text_layout_get_area (active_layout_id)) / text_layout_get_line_height (active_layout_id));
 			if remove_flag (event.mods, .SHIFT) == .CONTROL
 			{
-				text_layout_scroll_y (active_layout_id, 30);
+				text_layout_scroll_y (active_layout_id, cast (f32) page_height);
 				show_scrollbar = true;
 			}
 			else
 			{
-				for 1..30
+				page_height := cast (s64) (rect_height (text_layout_get_area (active_layout_id)) / text_layout_get_line_height (active_layout_id));
+				for 1..page_height
 				{
 					if !buffer_move_cursor_to_next_line (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
 						break;

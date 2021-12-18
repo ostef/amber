@@ -1,13 +1,14 @@
 * config files
-* documentation
+* platform API documentation
+* language API documentation
+* types documentation
+* commands API documentation
 * undo/redo
 * auto indent
 * insert line above
 * move lines up/down
 * space indentation
-* tab width
 * color themes
-* clipboard
 * advanced clipboard (multi-cursor copy/pasting and such)
 * C extensions
 * command history
@@ -18,7 +19,6 @@
 * custom layouting
 * better tab ui
 * custom window caption on windows
-* file changes and hot reloading
 
 # Bugs:
 
