@@ -5,13 +5,12 @@
 * commands API documentation
 * undo/redo
 * auto indent
-* insert line above
 * move lines up/down
 * space indentation
 * color themes
 * advanced clipboard (multi-cursor copy/pasting and such)
 * C extensions
-* command history
+* command completion
 * message buffer
 * try to cache the line_index and column_index of other cursors
 * multi-cursor selection with mouse
