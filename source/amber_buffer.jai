@@ -91,6 +91,8 @@ buffer_init :: (buffer_id : Buffer_ID, capacity : s64)
 buffer_reset :: (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
+	if filename
+		platform_unwatch_file (filename);
 	free (filename, HEAP);
 	free (name, HEAP);
 	free (data, HEAP);
@@ -127,15 +129,36 @@ buffer_load_file :: inline (buffer_id : Buffer_ID, filename : string) -> bool
 	// @Todo (stefan): Encoding
 	// @Note (stefan): We always use the full filename because the working directory
 	// might change later.
-	full_filename := platform_get_full_filename (filename, HEAP);
-	str, ok := platform_read_entire_file (full_filename, TEMP);
+	full_filename := platform_get_full_filename (filename, TEMP);
+	str, ok := platform_read_entire_file (full_filename, HEAP);
 	if !ok then return false;
+	defer free (str, HEAP);
 	buffer_clear (buffer_id);
 	utf8_str := utf8 (str);
 	for utf8_str
 		buffer_insert_at_cursor (buffer_id, it, WRITE_HEAD, .DONT_PUSH);
 	buffer_set_filename (buffer_id, full_filename);
 	buffer_set_name (buffer_id, filename_get_basename (full_filename));
+
+	return true;
+}
+@Amber_API
+
+buffer_reload :: inline (buffer_id : Buffer_ID) -> bool
+{
+	profile ();
+
+	buffer := get_buffer (buffer_id);
+	if !buffer.filename then return false;
+	str, ok := platform_read_entire_file (buffer.filename, HEAP);
+	if !ok then return false;
+	defer free (str, HEAP);
+	previous_offset := buffer.offset;
+	buffer_clear (buffer_id);
+	utf8_str := utf8 (str);
+	for utf8_str
+		buffer_insert_at_cursor (buffer_id, it, WRITE_HEAD, .DONT_PUSH);
+	buffer_move_cursor_to_offset (buffer_id, previous_offset, WRITE_HEAD);
 
 	return true;
 }
@@ -265,10 +288,17 @@ buffer_get_filename :: inline (buffer_id : Buffer_ID, allocator : Allocator) -> 
 
 buffer_set_filename :: inline (buffer_id : Buffer_ID, filename : string)
 {
+	full_name := platform_get_full_filename (filename, TEMP);
 	buffer := get_buffer (buffer_id);
-	free (buffer.filename, HEAP);
-	buffer.filename = clone_string (filename, HEAP);
+	if buffer.filename
+	{
+		platform_unwatch_file (buffer.filename);
+		free (buffer.filename, HEAP);
+	}
+	buffer.filename = clone_string (full_name, HEAP);
 	buffer_set_language (buffer_id, language_detect (buffer.filename));
+	if !platform_watch_file (full_name)
+		println ("Could not watch file '%'.", full_name);
 }
 @Amber_API
 

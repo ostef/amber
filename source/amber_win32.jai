@@ -303,7 +303,7 @@ Watched_Directory :: struct
 }
 
 NOTIFY_LEN :: 8000;
-FILE_CHANGE_MIN_DELAY :: 0.1;
+FILE_CHANGE_MIN_DELAY :: 0.5;
 
 watched_directories : [..]Watched_Directory;
 pending_file_changes : [..]File_Change;

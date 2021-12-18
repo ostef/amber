@@ -187,8 +187,7 @@ main :: ()
 		text_layout_update_area (buffer_get_text_layout (buffer.id));
 		text_layout_compute (buffer_get_text_layout (buffer.id));
 	}
-	
-	platform_watch_file (platform_get_full_filename ("get_next_line.c", TEMP));
+
 	running = true;
 	frame_start := platform_get_time ();
 	while running
@@ -199,6 +198,29 @@ main :: ()
 		frame_start = platform_get_time ();
 		delta_time := cast (f32) (frame_start - previous_frame_start);
 		reset_temporary_storage ();
+		
+		// Handle file changes
+		file_changes := platform_pull_file_changes ();
+		for change : file_changes
+		{
+			for buffer : buffers
+			{
+				buffer_id := cast (Buffer_ID) (it_index + 1);
+				if change.dirname == filename_remove_basename (buffer.filename) &&
+				   change.basename == filename_get_basename (buffer.filename)
+				{
+					if buffer_reload (buffer_id)
+					{
+						language_process_buffer (buffer_id);
+						text_layout_set_dirty (buffer_get_text_layout (buffer_id));
+					}
+					else
+						println ("Failed to reload buffer after file change.");
+				}
+			}
+		}
+
+		// Handle window events
 		event : Event;
 		event_result : Event_Result;
 		platform_reset_input_state ();
@@ -213,10 +235,8 @@ main :: ()
 			if !is_inputting_command && active_split_id != NULL_SPLIT
 				event_result ||= split_handle_event (active_split_id, event);
 		}
-		file_changes := platform_pull_file_changes ();
-		for file_changes
-			println ("% in directory % was % at %.", it.basename, it.dirname, it.kind, it.last_change_time);
 
+		// Update
 		if active_split_id != NULL_SPLIT
 			split_update (active_split_id, *event_result, delta_time);
 		memset (*event_result, 0, size_of (Event_Result));

@@ -62,6 +62,7 @@ Amber_Hooks :: struct #type_info_none
 	buffer_move_line_down : (Buffer_ID, Buffer_Cursor_ID, History_Buffering) -> bool;
 	buffer_move_line_up : (Buffer_ID, Buffer_Cursor_ID, History_Buffering) -> bool;
 	buffer_redo_last_edit : (Buffer_ID) -> bool;
+	buffer_reload : (Buffer_ID) -> bool;
 	buffer_remove_cursor : (Buffer_ID, Buffer_Cursor_ID);
 	buffer_set_eol_sequence : (Buffer_ID, EOL_Sequence);
 	buffer_set_filename : (Buffer_ID, string);

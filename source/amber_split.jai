@@ -608,7 +608,6 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 	if event_result.buffer_modified
 	{
 		language_process_buffer (active_buffer_id);
-		line_number_len := count_digits (buffer_get_line_count (active_buffer_id));
 		text_layout_update_area (active_layout_id);
 		text_layout_set_dirty (active_layout_id);
 	}
