@@ -58,12 +58,12 @@ Enum:
 ```jai
 Buffer_Edit_Kind :: enum 
 {
-	INSERT :: 0.000000;
-	BACKSPACE :: 0.000000;
+	INSERT :: 0;
+	BACKSPACE :: 1;
 	DELETE :: 2;
-	MOVE_LINE_UP :: 0b11;
+	MOVE_LINE_UP :: 3;
 	MOVE_LINE_DOWN :: 4;
-	BATCH_BEGIN :: 0b1100100;
+	BATCH_BEGIN :: 100;
 	BATCH_END :: 101;
 }
 ```
@@ -121,9 +121,9 @@ Enum:
 ```jai
 History_Buffering :: enum 
 {
-	DONT_PUSH :: 0.000000;
-	PUSH_TEXT :: 0.000000;
-	PUSH_EDIT :: 0.000000;
+	DONT_PUSH :: 0;
+	PUSH_TEXT :: 1;
+	PUSH_EDIT :: 2;
 }
 ```
 
@@ -146,7 +146,7 @@ Enum:
 EOL_Sequence :: enum u8 
 {
 	LF :: 0;
-	CRLF :: 0b1;
+	CRLF :: 1;
 	PLATFORM :: CRLF;
 }
 ```
