@@ -76,15 +76,6 @@ string_to_u64 :: (str : string) -> value : u64 #must, success : bool, remainder 
 
 string_to_u64 :: (str : string, base : int) -> value : u64 #must, success : bool, remainder : string
 {
-	starts_with :: (str : string, other : string) -> bool
-	{
-		if str.count < other.count then return false;
-		temp := str;
-		temp.count = other.count;
-
-		return temp == other;
-	}
-
 	if str.count == 0 then return 0, false, str;
 
 	curr := str;	

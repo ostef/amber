@@ -692,15 +692,6 @@ code_print_scope_entry :: (builder : *Code_Builder, using entry : *Code_Scope_En
 	}
 }
 
-code_print_sequence :: (builder : *Code_Builder, using sequence : *Code_Sequence)
-{
-	for expressions
-	{
-		code_print_expression (builder, it);
-		code_print_semicolon (builder, it);
-	}
-}
-
 code_print_arguments :: (builder : *Code_Builder, args : []Code_Argument)
 {
 	for args
@@ -1318,8 +1309,6 @@ code_print_expression :: (builder : *Code_Builder, using expr : *Code_Node, fmt 
 	case .COMMA_SEPARATED_ARGUMENTS;
 		code_print_comma_separated_arguments (builder, cast (*Code_Comma_Separated_Arguments) expr);
 	case .EXTRACT;
-	case .SEQUENCE;
-		code_print_sequence (builder, cast (*Code_Sequence) expr);
 	case .MAKE_VARARGS;
 	case .CAST;
 		code_print_cast (builder, cast (*Code_Cast) expr);

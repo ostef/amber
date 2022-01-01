@@ -1,11 +1,3 @@
-Profiled_Block_Identifier :: struct
-{
-	procedure_name : string;
-	block_name : string;
-	filepath : string;
-	line : s64;
-}
-
 Profiled_Block :: struct
 {
 	number_of_times_profiled : s64;

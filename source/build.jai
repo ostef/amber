@@ -16,7 +16,7 @@ EXTENSIONS       :: string.[ "amber_default", "amber_jai" ];
 ICON_FILENAME    :: "misc/icon.ico";
 
 partial_build := false;
-use_llvm := false;
+use_llvm := true;
 profile := false;
 release := false;
 target  := OS;
@@ -140,6 +140,7 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 					nl (*builder);
 					ln (*builder, "Amber_Hooks :: struct #type_info_none\n{");
 					ln (*builder, "\tusing callbacks : Extension_Callbacks;");
+					ln (*builder, "\textension_config : Any;");
 					ln (*builder, "\tHEAP : Allocator;");
 					nl (*builder);
 					
@@ -211,6 +212,7 @@ build :: ()
 		{
 		case "partial"; partial_build = true;
 		case "llvm";    use_llvm = true;
+		case "x64";     use_llvm = false;
 		case "release"; release = true;
 		case "profile"; profile = true;
 		case "windows"; target = .WINDOWS;

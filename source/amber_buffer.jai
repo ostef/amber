@@ -185,6 +185,7 @@ buffer_write_to_file :: inline (buffer_id : Buffer_ID) -> bool
 		byte_offset += utf8_encode (advance (to_array (utf8_str), byte_offset), it);
 	}
 	written, ok := platform_write_to_file (buffer.filename, utf8_str);
+	if !ok then println ("Could not write to file '%'.", buffer.filename);
 
 	return ok;
 }
@@ -322,7 +323,7 @@ buffer_get_codepoint :: inline (buffer_id : Buffer_ID, index : s64) -> u32 #must
 {
 	using buffer := get_buffer (buffer_id);
 	assert (index >= 0 && index < buffer_get_count (buffer_id), "Buffer index % is out of range [0;%).", index, buffer_get_count (buffer_id));
-	
+
 	return data[cast (s64) (index >= offset) * gap + index];
 }
 @Amber_API

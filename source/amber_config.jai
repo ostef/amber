@@ -1,4 +1,6 @@
 /*
+ * Ideas about the config system:
+ *
  * The config system uses the type information features of Jai.
  * We have an Amber_Config struct, which contains all the config
  * variables of the main program, and extensions can set the
@@ -14,16 +16,17 @@
  * pointer using the Type_Info (see config_fill_variables procedure).
  */
 
- // @Todo (stefan): Better error reporting and handling.
+// @Todo (stefan): Better error reporting and handling.
 
 Amber_Config :: struct
 {
-	extensions : []string;
+	extensions : [..]string;
 	default_font_name : string;
 	default_font_height : u32;
 	command_prompt : string;
 	some_array : [3]int = .[ 1, 2, 3 ];
 	another_array : []int;
+	treat_underscores_as_alpha_numeric_boundary : bool;
 }
 
 Config_Parser :: struct
@@ -284,6 +287,17 @@ config_parse_rvalue :: (using parser : *Config_Parser) -> *Config_RValue
 	profile ();
 
 	config_parser_skip_spaces (parser);
+
+	bool_value, bool_ok := config_parse_bool (parser);
+	if bool_ok
+	{
+		rvalue := add_to_bucket_array (*rvalues);
+		rvalue.kind = .BOOL;
+		rvalue.bool_value = bool_value;
+
+		return rvalue;
+	}
+
 	if is_alpha (config_parser_get (parser)) || config_parser_get (parser) == #char "_"
 	{
 		lvalue := config_parse_lvalue (parser);
@@ -304,17 +318,7 @@ config_parse_rvalue :: (using parser : *Config_Parser) -> *Config_RValue
 
 		return rvalue;
 	}
-	
-	bool_value, bool_ok := config_parse_bool (parser);
-	if bool_ok
-	{
-		rvalue := add_to_bucket_array (*rvalues);
-		rvalue.kind = .BOOL;
-		rvalue.bool_value = bool_value;
 
-		return rvalue;
-	}
-	
 	string_value, string_ok := config_parse_string (parser);
 	if string_ok
 	{
@@ -392,14 +396,12 @@ config_parse_int :: inline (using parser : *Config_Parser) -> int, ok : bool
 
 config_parse_bool :: inline (using parser : *Config_Parser) -> bool, ok : bool
 {
-	str : string = ---;
-	str.data = curr;
-	str.count = end - curr;
-	value, ok, remainder := string_to_bool (str);
-	if !ok then return false, false;
-	config_parser_advance (parser, remainder.data - curr);
-
-	return value, ok;
+	if config_parser_match_string (parser, "true")
+		return true, true;
+	if config_parser_match_string (parser, "false")
+		return false, true;
+	
+	return false, false;
 }
 
 config_parse_string :: inline (using parser : *Config_Parser) -> string, ok : bool
@@ -619,11 +621,12 @@ config_fill_variables :: (config : Any, root : *Config_Root) -> bool
 		lvalue := config_find_lvalue_ptr (ptr, info, it.lvalue);
 		if lvalue.value_pointer
 		{
-			print ("Found pointer for l-value ");
-			config_print_lvalue (it.lvalue);
-			print ("\n");
-			
-			config_assign (ptr, info, lvalue.value_pointer, lvalue.type, it.rvalue);
+			if !config_assign (ptr, info, lvalue.value_pointer, lvalue.type, it.rvalue)
+			{
+				print ("Could not assign to l-value ");
+				config_print_lvalue (it.lvalue);
+				print (".\n");
+			}
 		}
 	}
 
@@ -700,22 +703,104 @@ config_assign :: (config_ptr : *void, config_info : *Type_Info_Struct, ptr : *vo
 		rtti_set_string (ptr, info_str, rvalue.string_value);
 	
 	case .FLOAT;
+		if info.type != .FLOAT then return false;
+		rtti_set_float (ptr, cast (*Type_Info_Float) info, rvalue.float_value);
+
 	case .COMPOUND;
 		if info.type ==
 		{
 		case .STRUCT;
+			return config_assign_compound_struct (config_ptr, config_info, ptr, cast (*Type_Info_Struct) info, rvalue.compound);
 		case .ARRAY;
-			
+			return config_assign_compound_array (config_ptr, config_info, ptr, cast (*Type_Info_Array) info, rvalue.compound);
 		case;
 			return false;
 		}
 
 	case .LVALUE;
+		panic ("Assign to lvalue is not yet implemented (identifier was %).", rvalue.lvalue.identifier);
 		rhs := config_find_lvalue_ptr (config_ptr, config_info, rvalue.lvalue);
 		if !rhs.value_pointer then return false;
 		if !rtti_is_assignable (info, rhs.type) then return false;
 		rtti_assign (ptr, info, rhs.value_pointer, rhs.type);
 	}
 	
+	return true;
+}
+
+config_assign_compound_struct :: (config_ptr : *void, config_info : *Type_Info_Struct, ptr : *void, info : *Type_Info_Struct, compound : *Config_Compound) -> bool
+{
+	member_index := 0;
+	for elem : compound.elems
+	{
+		member : *Type_Info_Struct_Member;
+		if #complete elem.specifier.kind ==
+		{
+		case .NONE;
+			if member_index >= info.members.count then return false;
+			member = *info.members[member_index];
+
+		case .IDENTIFIER;
+			for * info.members
+			{
+				if it.name == elem.specifier.identifier
+				{
+					member = it;
+					member_index = it_index;
+
+					break;
+				}
+			}
+
+		case .INDEX;
+			return false;
+		}
+		if !member then return false;
+		member_ptr  := ptr + member.offset_in_bytes;
+		member_info := member.type;
+		member_index += 1;
+		config_assign (config_ptr, config_info, member_ptr, member_info, elem.rvalue);
+	}
+
+	return true;
+}
+
+config_assign_compound_array :: (config_ptr : *void, config_info : *Type_Info_Struct, ptr : *void, info : *Type_Info_Array, compound : *Config_Compound) -> bool
+{
+	resizable := info.array_type == .RESIZABLE;
+	count     := rtti_get_array_count (ptr, info);
+	data_ptr  := rtti_get_array_data (ptr, info);
+	allocated := 0;
+	if resizable
+		allocated = rtti_get_resizable_array_capacity (ptr, info);
+	else
+		allocated = count;
+	allocator : Allocator;
+	if resizable then allocator = rtti_get_resizable_array_allocator (ptr, info);
+	elem_info := info.element_type;
+	index := 0;
+	for elem : compound.elems
+	{
+		elem_ptr : *void;
+		if #complete elem.specifier.kind ==
+		{
+		case .NONE;
+			if index >= allocated && resizable
+				data_ptr, allocated = rtti_resize_array (ptr, info, allocated + 8);
+			if index >= allocated then return false;
+			elem_ptr = data_ptr + elem_info.runtime_size * index;
+		case .INDEX;
+			if resizable then return false;
+			index = elem.specifier.index;
+			if index >= count then return false;
+			elem_ptr = data_ptr + elem_info.runtime_size * index;
+		case .IDENTIFIER;
+			return false;
+		}
+		index += 1;
+		if resizable then rtti_set_array_count (ptr, info, index);
+		config_assign (config_ptr, config_info, elem_ptr, elem_info, elem.rvalue);
+	}
+
 	return true;
 }

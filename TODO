@@ -1,25 +1,31 @@
-* config files
+* config system
 * platform API documentation
 * language API documentation
 * types documentation
 * commands API documentation
-* undo/redo
 * auto indent
 * move lines up/down
 * space indentation
 * color themes
 * advanced clipboard (multi-cursor copy/pasting and such)
-* C extensions
-* command completion
+* C extensions?
+* read-only buffer
 * message buffer
-* try to cache the line_index and column_index of other cursors
+* cache the line_index and column_index of other cursors
 * multi-cursor selection with mouse
 * encodings
 * custom layouting
 * better tab ui
 * custom window caption on windows
+* select alpha numeric unity on double-click
+
+# Amber default:
+* bracket highlighting
 
 # Bugs:
+* buffers do not get reloaded correctly
+* buffers get reloaded by the file change watcher when they are saved
 
 # Compiler bugs:
-* #through in if-case statements
+* #through in if-case statement
+

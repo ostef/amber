@@ -5,18 +5,52 @@ extensions = {
 default_font_name = "JetBrains-Mono";
 default_font_height = 16;
 command_prompt = ">";
-shortcuts = {
+command_shortcuts = {
 	{
 		.command = "open",
-		.combination = "CTRL+O"
+		.binding = "CTRL+O"
 	},
 	{
 		.command = "new",
-		.combination = "CTRL+N"
+		.binding = "CTRL+N"
 	},
 	{
-		.0 = 10,
-		.1 = { 123 }
+		.command = "save",
+		.binding = "CTRL+S"
+	},
+	{
+		.command = "save_as",
+		.binding = "CTRL+ALT+S"
+	},
+	{
+		.command = "save_all",
+		.binding = "CTRL+SHIFT+S"
 	}
 };
-another_array = some_array;
+language_associations = {
+	{
+		.language = "Amber",
+		.extensions = { "amber" }
+	},
+	{
+		.language = "Amber Documentation",
+		.extensions = { "amber_doc" }
+	},
+	{
+		.language = "C",
+		.extensions = { "c", "h" }
+	},
+	{
+		.language = "Makefile",
+		.filenames = { "Makefile" }
+	},
+	{
+		.language = "Markdown",
+		.extensions = { "md" }
+	},
+	{
+		.language = "Jai",
+		.extensions = { "jai" }
+	}
+};
+treat_underscores_as_alpha_numeric_boundary = true;

@@ -149,14 +149,20 @@ main :: ()
 	executable_dir  = filename_remove_basename (executable_path);
 
 	config : Amber_Config;
+	config.extensions.allocator = HEAP;
 	parser : Config_Parser;
 	{
 		file_contents, ok := platform_read_entire_file ("config.amber", TEMP);
 		config_parser_init (*parser, "config.amber", file_contents);
 		config_parse (*parser);
+		config_fill_variables (*config, *parser.root);
+		println ("extensions=%", config.extensions);
+		println ("default_font_name=%", config.default_font_name);
+		println ("default_font_height=%", config.default_font_height);
+		println ("command_prompt=%", config.command_prompt);
+		println ("treat_underscores_as_alpha_numeric_boundary=%", config.treat_underscores_as_alpha_numeric_boundary);
 		//config_print (*parser.root);
 		/*
-		config_fill_variables (*config, *parser.root);
 		#insert -> string
 		{
 			builder : String_Builder;
@@ -178,9 +184,13 @@ main :: ()
 	init_slot_array (*text_layouts, 20, HEAP);
 	init_slot_array (*splits, 10, HEAP);
 	command_buffer_set_prompt (">");
-	if !load_extension ("amber_default.dll") then println ("Could not load extension 'amber_default'.");
-	load_extension ("amber_test_extension.dll");
-	load_extension ("amber_jai.dll");
+	for config.extensions
+	{
+		if load_extension (it)
+			println ("Loaded extension '%'.", it);
+		else
+			println ("Could not load extension '%'.", it);
+	}
 	init_extensions ();
 	font_load_from_file (FONT_NAME);
 	split_create_first ();

@@ -2009,7 +2009,7 @@ string_to_u64 :: (str : string, base : int) -> value : u64 #must, success : bool
 	return result, true, advance (curr, xx digit_count);
 }
 
-string_to_bool :: (str : string, $treat_01_as_bool := true) -> value : bool #must, success : bool, remainder : string
+string_to_bool :: inline (str : string, $treat_01_as_bool := true) -> value : bool #must, success : bool, remainder : string
 {
 	starts_with :: (str : string, with : string) -> bool
 	{
@@ -3479,6 +3479,30 @@ rtti_get_s64 :: inline (ptr : *void, info : *Type_Info_Integer) -> s64 #must
 	return 0;
 }
 
+rtti_set_float :: inline (ptr : *void, info : *Type_Info_Float, value : f64)
+{
+	if info.runtime_size ==
+	{
+	case 4;
+		<<cast (*f32) ptr = cast (f32) value;
+	case 8;
+		<<cast (*f64) ptr = value;
+	}
+}
+
+rtti_get_f64 :: inline (ptr : *void, info : *Type_Info_Float) -> f64 #must
+{
+	if info.runtime_size ==
+	{
+	case 4;
+		return <<cast (*f32) ptr;
+	case 8;
+		return <<cast (*f64) ptr;
+	}
+
+	return 0.0;
+}
+
 rtti_set_bool :: inline (ptr : *void, info : *Type_Info, value : bool)
 {
 	<<cast (*bool) ptr = value;
@@ -3588,6 +3612,50 @@ rtti_set_array_count :: inline (ptr : *void, info : *Type_Info_Array, count : s6
 	}
 }
 
+rtti_get_resizable_array_capacity :: inline (ptr : *void, info : *Type_Info_Array) -> s64 #must
+{
+	assert (info.array_type == .RESIZABLE, "Array is not resizable.");
+	array := cast (*Resizable_Array) ptr;
+
+	return array.allocated;
+}
+
+rtti_set_resizable_array_capacity :: inline (ptr : *void, info : *Type_Info_Array, allocated : s64)
+{
+	assert (info.array_type == .RESIZABLE, "Array is not resizable.");
+	array := cast (*Resizable_Array) ptr;
+	array.allocated = allocated;
+}
+
+rtti_get_resizable_array_allocator :: inline (ptr : *void, info : *Type_Info_Array) -> Allocator #must
+{
+	assert (info.array_type == .RESIZABLE, "Array is not resizable.");
+	array := cast (*Resizable_Array) ptr;
+
+	return array.allocator;
+}
+
+rtti_set_resizable_array_allocator :: inline (ptr : *void, info : *Type_Info_Array, allocator : Allocator)
+{
+	assert (info.array_type == .RESIZABLE, "Array is not resizable.");
+	array := cast (*Resizable_Array) ptr;
+	array.allocator = allocator;
+}
+
+rtti_resize_array :: inline (ptr : *void, info : *Type_Info_Array, additional_capacity : s64) -> new_data : *void, new_capacity : s64
+{
+	assert (info.array_type == .RESIZABLE, "Array is not resizable.");
+	array := cast (*Resizable_Array) ptr;
+	if additional_capacity <= 0 then return array.data, array.allocated;
+	new_data := alloc ((array.allocated + additional_capacity) * info.element_type.runtime_size, array.allocator);
+	memcpy (new_data, array.data, array.count * info.element_type.runtime_size);
+	free (array.data, array.allocator);
+	array.data = new_data;
+	array.allocated += additional_capacity;
+
+	return array.data, array.allocated;
+}
+
 rtti_is_assignable :: inline (left : *Type_Info, right : *Type_Info) -> bool
 {
 	if left.type == .STRUCT then return left == right;
@@ -3635,6 +3703,14 @@ rtti_assign :: inline (
 		<<cast (*string) left_ptr = clone_string (str, context.allocator);
 	
 	case .FLOAT;
+		rtti_set_float (
+			left_ptr,
+			cast (*Type_Info_Float) left_info,
+			rtti_get_f64 (
+				right_ptr,
+				cast (*Type_Info_Float) right_info
+			)
+		);
 	
 	case .ARRAY;
 		left_info_array := cast (*Type_Info_Array) left_info;
