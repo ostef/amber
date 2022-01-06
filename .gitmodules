@@ -1,0 +1,3 @@
+[submodule "modules/Ryu"]
+	path = modules/Ryu
+	url = https://github.com/ostef/jai-ryu
