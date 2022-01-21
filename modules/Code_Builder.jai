@@ -347,12 +347,15 @@ print_u64_to_builder :: inline (builder : *Code_Builder, value : u64, base := 10
 
 print_f64_to_builder :: (builder : *Code_Builder, value : f64, precision : int)
 {
-	ryu :: #import "Ryu";
+	ryu :: #import "Ryu" (IMPORT_FLOAT_TO_SHORTEST = false, IMPORT_STRING_TO_FLOAT = false);
 
-	buffer : [2000]u8;
+	ryu_fmt : ryu.Format;
+	ryu_fmt.flags |= .REMOVE_TRAILING_ZEROES;
+	ryu_fmt.precision = cast (u32) precision;
+	buffer : [500]u8;
 	str : string = ---;
 	str.data = buffer.data;
-	str.count = ryu.f64_to_fixed_buffered (value, xx precision, str.data);
+	str.count = ryu.f64_to_fixed_buffered (value, ryu_fmt, str.data);
 	print_to_builder (builder, str);
 }
 
@@ -379,21 +382,24 @@ code_print_literal :: (builder : *Code_Builder, using lit : *Code_Literal)
 
 	case .NUMBER;
 		base := 10;
-		if numeric_flags & .BINARY
+		if value_flags & .BINARY
 			base = 2;
-		else if numeric_flags & .HEX
+		else if value_flags & .HEX
 			base = 16;
-		if numeric_flags & .FLOAT64
+		if value_flags & .FLOAT64
 			print_f64_to_builder (builder, _float64, 6);
-		else if numeric_flags & .FLOAT
+		else if value_flags & .FLOAT
 			print_f32_to_builder (builder, _float32, 6);
-		else if numeric_flags & .MINUS_SIGN
+		else if value_flags & .MINUS_SIGN
 			print_s64_to_builder (builder, _s64, base);
 		else
 			print_u64_to_builder (builder, _u64, base);
 
 	case .STRING;
-		print_escaped_string_to_builder (builder, _string);
+		if value_flags & .HERE_STRING
+			print_to_builder (builder, _string);
+		else
+			print_escaped_string_to_builder (builder, _string);
 
 	case .TRUE;
 		print_to_builder (builder, "true");
@@ -1082,6 +1088,10 @@ code_print_compiler_query :: (builder : *Code_Builder, using expr : *Code_Size_O
 		print_to_builder (builder, ")");
 	case .IS_CONSTANT;
 		print_to_builder (builder, "is_constant (");
+		code_print_expression (builder, type_of_expression);
+		print_to_builder (builder, ")");
+	case .CODE_OF;
+		print_to_builder (builder, "code_of (");
 		code_print_expression (builder, type_of_expression);
 		print_to_builder (builder, ")");
 	}
