@@ -64,13 +64,14 @@ load_extension :: (filename : string) -> bool, Extension_ID
 	extension.terminate = cast (Extension.Terminate_Proc) platform_get_proc_address (extension.lib, "terminate_extension");
 	if !extension.terminate
 		return false, 0;
+	extension.hooks.amber_config = *config;
 	load_api (*extension.hooks);
 	extension.loaded = true;
 	
 	return true, extension_id;
 }
 
-init_extensions :: ()
+init_extensions :: inline ()
 {
 	for * extension : extensions
 	{
@@ -79,7 +80,17 @@ init_extensions :: ()
 	}
 }
 
-terminate_and_free_extensions :: ()
+fill_extensions_config :: inline (root : *Config_Root)
+{
+	for * extension : extensions
+	{
+		if !extension.initialized then continue;
+		if extension.hooks.extension_config.value_pointer
+			config_fill_variables (extension.hooks.extension_config, root);
+	}
+}
+
+terminate_and_free_extensions :: inline ()
 {
 	for * extension : extensions
 	{
