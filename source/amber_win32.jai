@@ -759,10 +759,10 @@ platform_set_clipboard_text :: inline (str : string) -> bool
 	if OpenClipboard (window.hwnd)
 	{
 		EmptyClipboard ();
-		wide_str, ok, size := utf8_to_wide(str, TEMP);
-		buffer := GlobalAlloc (0, size + 2);
+		wide_str, length := utf8_to_wide(str, TEMP);
+		buffer := GlobalAlloc (0, (length + 1) * 2);
 		GlobalLock (buffer);
-		memcpy (buffer, wide_str, size + 2);
+		memcpy (buffer, wide_str, (length + 1) * 2);
 		GlobalUnlock (buffer);
 		SetClipboardData (CF_UNICODETEXT, buffer);
 		CloseClipboard ();
@@ -1345,51 +1345,47 @@ window_proc :: (hwnd : HANDLE, msg : u32, wparam : WPARAM, lparam : LPARAM) -> L
 
 // @Note (stefan): We have our utf16 procedures in amber_unicode.jai, but these are big endian, and windows is little endian.
 
-wide_to_utf8 :: (data: *u16, allocator : Allocator) -> result: string, success: bool
+wide_to_utf8 :: inline (data : *u16, allocator : Allocator) -> string #must, success : bool
 {
-	query_result := WideCharToMultiByte (CP_UTF8, 0, data, -1, null, 0, null, null);
-
-	if query_result <= 0
+	result_length := WideCharToMultiByte (CP_UTF8, 0, data, -1, null, 0, null, null);
+	if result_length <= 0
 		return "", false;
-
-	name := "";
-	name_bytes := cast (*u8) alloc (query_result, allocator);
-	result := WideCharToMultiByte (CP_UTF8, 0, data, -1, name_bytes, query_result, null, null);
-
-	if result > 0
+	utf8_data := cast (*u8) alloc (result_length, allocator);
+	written := WideCharToMultiByte (CP_UTF8, 0, data, -1, utf8_data, result_length, null, null);
+	if written > 0
 	{
-		assert (result <= query_result);
-		
-		name.data  = name_bytes;
-		name.count = result - 1;  // Do not include the terminating zero.
-		assert (name.data[name.count] == 0);
-		
-		return name, true;
+		str : string = ---;
+		str.data  = utf8_data;
+		str.count = written - 1;
+
+		return str, true;
 	}
 
 	return "", false;
 }
 
-utf8_to_wide :: (utf8_str : string, allocator : Allocator) -> data: *u16, success: bool, result_length_in_bytes: s32 {
+utf8_to_wide :: inline (utf8_str : string, allocator : Allocator) -> wide_str : *u16 #must, length : s32
+{
 	if !utf8_str
-		return null, true, 0;
-	query_num_chars := MultiByteToWideChar (CP_UTF8, 0, utf8_str.data, cast(s32) utf8_str.count, null, 0);
-	if query_num_chars <= 0
-		return null, false, 0;
-	
-	name := "";
-	name_u16s := cast (*u16) alloc ((query_num_chars + 1) * size_of (u16), allocator);
-	result_num_chars := MultiByteToWideChar (CP_UTF8, 0, utf8_str.data, cast(s32) utf8_str.count, name_u16s, query_num_chars);
-
-	if result_num_chars > 0
 	{
-		assert (result_num_chars <= query_num_chars);
-		name_u16s[result_num_chars] = 0;
-		
-		return name_u16s, true, result_num_chars * 2;
+		wide_str := cast (*u16) alloc (size_of (u16), allocator);
+		wide_str[0] = 0;
+
+		return wide_str, 0;
+	}
+	result_length := MultiByteToWideChar (CP_UTF8, 0, utf8_str.data, cast (s32) utf8_str.count, null, 0);
+	if result_length <= 0
+		return null, 0;
+	wide_str := cast (*u16) alloc ((result_length + 1) * size_of (u16), allocator);
+	written := MultiByteToWideChar (CP_UTF8, 0, utf8_str.data, cast (s32) utf8_str.count, wide_str, result_length);
+	if written > 0
+	{
+		wide_str[written] = 0;
+
+		return wide_str, written;
 	}
 
-	return name_u16s, false, 0;
+	return null, 0;
 }
 
 CP_UTF8 : u32 : 65001;
@@ -1415,7 +1411,7 @@ MultiByteToWideChar :: (
 ) -> s32 #foreign kernel32;
 
 HANDLE :: *void;
-INVALID_HANDLE_VALUE : HANDLE : cast (HANDLE) -1;
+INVALID_HANDLE_VALUE :: cast (HANDLE) -1;
 WORD   :: u16;
 DWORD  :: u32;
 BOOL   :: s32;
