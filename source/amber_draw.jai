@@ -204,7 +204,7 @@ draw_init :: ()
 		glBufferData (GL_ARRAY_BUFFER, Draw_Context.MAX_VERTICES * size_of (Vertex), null, GL_DYNAMIC_DRAW);
 
 		glEnableVertexAttribArray (0);
-		glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) offset_of (Vertex, "position"));
+		glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) offset_of (Vertex, "position"));
 		
 		glEnableVertexAttribArray (1);
 		glVertexAttribPointer (1, 2, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) offset_of (Vertex, "tex_coords"));
