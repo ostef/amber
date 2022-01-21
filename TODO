@@ -18,6 +18,7 @@
 * better tab ui
 * custom window caption on windows
 * select alpha numeric unity on double-click
+* detect non documented API parts
 
 # Amber default:
 * bracket highlighting
