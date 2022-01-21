@@ -18,15 +18,49 @@
 
 // @Todo (stefan): Better error reporting and handling.
 
-Amber_Config :: struct
+parse_binding :: (binding : string) -> Mods, Key_Code, bool
 {
-	extensions : [..]string;
-	default_font_name : string;
-	default_font_height : u32;
-	command_prompt : string;
-	some_array : [3]int = .[ 1, 2, 3 ];
-	another_array : []int;
-	treat_underscores_as_alpha_numeric_boundary : bool;
+	str := binding;
+	mods : Mods;
+	while str.count > 0
+	{
+		if starts_with (str, "CTRL+")
+		{
+			mods |= .CONTROL;
+			str = advance (str, "CTRL+".count);
+		}
+		else if starts_with (str, "SHIFT+")
+		{
+			mods |= .SHIFT;
+			str = advance (str, "SHIFT+".count);
+		}
+		else if starts_with (str, "ALT+")
+		{
+			mods |= .ALT;
+			str = advance (str, "ALT+".count);
+		}
+		else
+		{
+			info_enum := type_info (Key_Code);
+			for info_enum.names
+			{
+				if str == it
+					return mods, cast (Key_Code) info_enum.values[it_index], true;
+			}
+			return .NONE, .UNKNOWN, false;
+		}
+	}
+
+	return .NONE, .UNKNOWN, false;
+}
+
+config : Amber_Config;
+
+init_config :: inline (config : *Amber_Config)
+{
+	config.extensions.allocator = HEAP;
+	config.command_shortcuts.allocator = HEAP;
+	config.language_associations.allocator = HEAP;
 }
 
 Config_Parser :: struct
@@ -137,7 +171,7 @@ config_parser_init :: inline (parser : *Config_Parser, filename : string, file_c
 	init_bucket_array (*parser.compound_elems, 200, HEAP);
 }
 
-config_parser_error :: (using parser : *Config_Parser, error_str : string)
+config_parser_error :: inline (using parser : *Config_Parser, error_str : string)
 {
 	println ("Error at line %, column %: %", line, column, error_str);
 	error : Config_Error = ---;
@@ -147,7 +181,7 @@ config_parser_error :: (using parser : *Config_Parser, error_str : string)
 	error.str = error_str;
 }
 
-config_parser_recover :: (using parser : *Config_Parser)
+config_parser_recover :: inline (using parser : *Config_Parser)
 {
 	while config_parser_is_valid (parser) && !config_parser_match_string (parser, ";")
 		config_parser_advance (parser);
@@ -672,6 +706,7 @@ config_find_lvalue_ptr :: (ptr : *void, info : *Type_Info_Struct, lvalue : *Conf
 			result : Any = ---;
 			result.type = it.type;
 			result.value_pointer = member_ptr;
+			println ("Found l-value pointer for %.", lvalue.identifier);
 
 			return result;
 		}
@@ -776,7 +811,15 @@ config_assign_compound_array :: (config_ptr : *void, config_info : *Type_Info_St
 	else
 		allocated = count;
 	allocator : Allocator;
-	if resizable then allocator = rtti_get_resizable_array_allocator (ptr, info);
+	if resizable
+	{
+		allocator = rtti_get_resizable_array_allocator (ptr, info);
+		if allocator.proc == null
+		{
+			rtti_set_resizable_array_allocator (ptr, info, HEAP);
+			allocator = HEAP;
+		}
+	}
 	elem_info := info.element_type;
 	index := 0;
 	for elem : compound.elems

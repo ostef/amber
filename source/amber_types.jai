@@ -95,13 +95,40 @@ Language :: struct
 	id : Language_ID;
 	extension_id : Extension_ID;
 	name : string;
-	associated_filenames  : []string;
-	associated_file_extensions : []string;
+	default_associated_filenames  : []string;
+	default_associated_file_extensions : []string;
 	process_buffer : Process_Buffer_Proc;
 }
 
 Language_ID :: #type, distinct u32;
 PLAIN_TEXT : Language_ID : 0;
+
+// Config
+
+Command_Shortcut :: struct
+{
+	command : string;
+	binding : string;
+}
+
+Language_Association :: struct
+{
+	language   : string;
+	extensions : [..]string;
+	filenames  : [..]string;
+}
+
+Amber_Config :: struct
+{
+	extensions : [..]string;
+	default_font_name : string;
+	default_font_height : u32;
+	command_prompt : string;
+	toggle_command_input_binding : string;
+	command_shortcuts : [..]Command_Shortcut;
+	language_associations : [..]Language_Association;
+	treat_underscores_as_alpha_numeric_boundary : bool;
+}
 
 // Extension
 
@@ -385,16 +412,30 @@ Key_Code :: enum
 	LAUNCH_APP1         :: 0xb6;
 	LAUNCH_APP2         :: 0xb7;
 	OEM_1               :: 0xba;
+	US_COLON     :: OEM_1;
+	US_SEMICOLON :: OEM_1;
 	OEM_PLUS            :: 0xbb;
 	OEM_COMMA           :: 0xbc;
 	OEM_MINUS           :: 0xbd;
 	OEM_PERIOD          :: 0xbe;
 	OEM_2               :: 0xbf;
+	US_SLASH              :: OEM_2;
+	US_INTERROGATION_MARK :: OEM_2;
 	OEM_3               :: 0xc0;
+	US_BACKTICK :: OEM_3;
+	US_TILDE    :: OEM_3;
 	OEM_4               :: 0xdb;
+	US_OPENING_SQUARE_BRACKET :: OEM_4;
+	US_OPENING_CURLY_BRACKET  :: OEM_4;
 	OEM_5               :: 0xdc;
+	US_BACKSLASH    :: OEM_5;
+	US_VERTICAL_BAR :: OEM_5;
 	OEM_6               :: 0xdd;
+	US_CLOSING_SQUARE_BRACKET :: OEM_6;
+	US_CLOSING_CURLY_BRACKET  :: OEM_6;
 	OEM_7               :: 0xde;
+	US_SINGLE_QUOTE :: OEM_7;
+	US_DOUBLE_QUOTE :: OEM_7;
 	OEM_8               :: 0xdf;
 	OEM_102             :: 0xe2;
 	PROCESS_KEY         :: 0xe5;
