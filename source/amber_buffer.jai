@@ -26,6 +26,9 @@ Buffer :: struct
 	
 	history      : Buffer_History;
 	eol_sequence := EOL_Sequence.PLATFORM;
+
+	cursors_modified : bool;
+	modified     : bool;
 }
 
 add_buffer :: inline () -> *Buffer #must
@@ -461,6 +464,46 @@ buffer_set_eol_sequence :: inline (buffer_id : Buffer_ID, eol_sequence : EOL_Seq
 }
 @Amber_API
 
+buffer_cursors_has_been_modified :: inline (buffer_id : Buffer_ID) -> bool #must
+{
+	buffer := get_buffer (buffer_id);
+
+	return buffer.cursors_modified;
+}
+@Amber_API
+
+buffer_set_cursors_modified :: inline (buffer_id : Buffer_ID)
+{
+	buffer := get_buffer (buffer_id);
+	buffer.cursors_modified = true;
+}
+
+buffer_reset_cursors_modified :: inline (buffer_id : Buffer_ID)
+{
+	buffer := get_buffer (buffer_id);
+	buffer.cursors_modified = false;
+}
+
+buffer_has_been_modified :: inline (buffer_id : Buffer_ID) -> bool #must
+{
+	buffer := get_buffer (buffer_id);
+
+	return buffer.modified;
+}
+@Amber_API
+
+buffer_set_modified :: inline (buffer_id : Buffer_ID)
+{
+	buffer := get_buffer (buffer_id);
+	buffer.modified = true;
+}
+
+buffer_reset_modified :: inline (buffer_id : Buffer_ID)
+{
+	buffer := get_buffer (buffer_id);
+	buffer.modified = false;
+}
+
 buffer_move_cursor_forward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID, select := false) -> bool
 {
 	profile ();
@@ -480,6 +523,7 @@ buffer_move_cursor_forward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 	if !select && cursor.selection != 0
 	{
 		cursor.selection = 0;
+		buffer_set_cursors_modified (buffer_id);
 		
 		return true;
 	}
@@ -499,6 +543,7 @@ buffer_move_cursor_forward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 		}
 		cursor.offset += 1;
 		if select then cursor.selection -= 1;
+		buffer_set_cursors_modified (buffer_id);
 		
 		return true;
 	}
@@ -526,6 +571,7 @@ buffer_move_cursor_backward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor
 	if !select && cursor.selection != 0
 	{
 		cursor.selection = 0;
+		buffer_set_cursors_modified (buffer_id);
 		
 		return true;
 	}
@@ -550,6 +596,7 @@ buffer_move_cursor_backward :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor
 			cursor.offset -= 1;
 			if select then cursor.selection += 1;
 		}
+		buffer_set_cursors_modified (buffer_id);
 		
 		return true;
 	}
@@ -570,6 +617,7 @@ buffer_move_cursor_to_offset :: (buffer_id : Buffer_ID, new_offset : s64, cursor
 	{
 		cursor.selection = 0;
 		moved = true;
+		buffer_set_cursors_modified (buffer_id);
 	}
 	
 	new_offset = clamp (new_offset, 0, buffer_get_count (buffer_id));
@@ -577,7 +625,7 @@ buffer_move_cursor_to_offset :: (buffer_id : Buffer_ID, new_offset : s64, cursor
 		moved |= buffer_move_cursor_backward (buffer_id, cursor_id, select);
 	while cursor.offset < new_offset
 		moved |= buffer_move_cursor_forward (buffer_id, cursor_id, select);
-	
+
 	return moved;
 }
 @Amber_API
@@ -603,6 +651,7 @@ buffer_move_cursor_to_bol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_I
 	{
 		cursor.selection = 0;
 		moved = true;
+		buffer_set_cursors_modified (buffer_id);
 	}
 	
 	while !buffer_cursor_is_at_bol (buffer_id, cursor_id)
@@ -633,6 +682,7 @@ buffer_move_cursor_to_eol :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_I
 	{
 		cursor.selection = 0;
 		moved = true;
+		buffer_set_cursors_modified (buffer_id);
 	}
 	
 	while !buffer_cursor_is_at_eol (buffer_id, cursor_id)
@@ -718,6 +768,7 @@ buffer_move_cursor_to_line :: inline (buffer_id : Buffer_ID, line : s64, cursor_
 	{
 		cursor.selection = 0;
 		moved = true;
+		buffer_set_cursors_modified (buffer_id);
 	}
 	
 	line = clamp (line, 0, buffer_get_line_count (buffer_id) - 1);
@@ -747,6 +798,7 @@ buffer_move_cursor_to_column :: inline (buffer_id : Buffer_ID, column_index : s6
 	{
 		cursor.selection = 0;
 		moved = true;
+		buffer_set_cursors_modified (buffer_id);
 	}
 	
 	cursor_column_index := buffer_get_cursor_column_index (buffer_id, cursor_id);
@@ -786,6 +838,7 @@ buffer_move_cursor_to_beginning :: inline (buffer_id : Buffer_ID, cursor_id : Bu
 	{
 		cursor.selection = 0;
 		moved = false;
+		buffer_set_cursors_modified (buffer_id);
 	}
 	
 	while cursor.offset > 0
@@ -805,6 +858,7 @@ buffer_move_cursor_to_end :: inline (buffer_id : Buffer_ID, cursor_id : Buffer_C
 	{
 		cursor.selection = 0;
 		moved = false;
+		buffer_set_cursors_modified (buffer_id);
 	}
 	
 	while cursor.offset < buffer_get_count (buffer_id)
@@ -835,6 +889,7 @@ buffer_skip_word_forward :: (buffer_id : Buffer_ID, stop_at_word_separators : bo
 	{
 		cursor.selection = 0;
 		moved = true;
+		buffer_set_cursors_modified (buffer_id);
 	}
 	if cursor.offset == buffer_get_count (buffer_id)
 		return moved;
@@ -886,6 +941,7 @@ buffer_skip_word_backward :: (buffer_id : Buffer_ID, stop_at_word_separators : b
 	{
 		cursor.selection = 0;
 		moved = true;
+		buffer_set_cursors_modified (buffer_id);
 	}
 	if cursor.offset == 0
 		return moved;
@@ -919,6 +975,7 @@ buffer_clear_selection :: inline (buffer_id : Buffer_ID)
 	using buffer := get_buffer (buffer_id);
 	for :cursors * buffer
 		it.selection = 0;
+	buffer_set_cursors_modified (buffer_id);
 }
 @Amber_API
 
@@ -926,6 +983,7 @@ buffer_clear_cursors :: inline (buffer_id : Buffer_ID)
 {
 	using buffer := get_buffer (buffer_id);
 	clear_array (*other_cursors);
+	buffer_set_cursors_modified (buffer_id);
 }
 @Amber_API
 
@@ -961,6 +1019,7 @@ buffer_merge_duplicate_cursors :: (buffer_id : Buffer_ID)
 				if cursor.offset != it.offset
 					buffer_move_cursor_to_offset (buffer_id, it.offset, cursor_id, select = true);
 				sorted_remove_from_array (*other_cursors, it_index);
+				buffer_set_cursors_modified (buffer_id);
 				merged = true;
 				
 				break;
@@ -1005,7 +1064,8 @@ buffer_add_cursor_at_offset :: (buffer_id : Buffer_ID, target_offset : s64) -> b
 	}
 	push_into_array (*other_cursors, closest);
 	buffer_move_cursor_to_offset (buffer_id, target_offset, xx other_cursors.count);
-	
+	buffer_set_cursors_modified (buffer_id);
+
 	return true;
 }
 @Amber_API
@@ -1043,7 +1103,8 @@ buffer_add_cursor_on_previous_line :: (buffer_id : Buffer_ID, cursor_id : Buffer
 
 	push_into_array (*other_cursors, <<cursor);
 	buffer_move_cursor_to_offset (buffer_id, target_offset, xx other_cursors.count);
-	
+	buffer_set_cursors_modified (buffer_id);
+
 	return true;
 }
 @Amber_API
@@ -1081,6 +1142,7 @@ buffer_add_cursor_on_next_line :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cur
 	
 	push_into_array (*other_cursors, <<cursor);
 	buffer_move_cursor_to_offset (buffer_id, target_offset, xx other_cursors.count);
+	buffer_set_cursors_modified (buffer_id);
 	
 	return true;
 }
@@ -1223,6 +1285,8 @@ buffer_insert_at_cursor :: (buffer_id : Buffer_ID, codepoint : u32, cursor_id : 
 		it := buffer_get_cursor_ptr (buffer_id, xx i);
 		if it.offset >= cursor.offset - 1 then buffer_move_cursor_forward (buffer_id, xx i);
 	}
+
+	buffer_set_modified (buffer_id);
 }
 @Amber_API
 
@@ -1381,6 +1445,7 @@ buffer_delete_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_ID,
 			it.selection = prev_selection;
 		}
 	}
+	buffer_set_modified (buffer_id);
 
 	return true;
 }
@@ -1451,6 +1516,7 @@ buffer_backspace_selection :: (buffer_id : Buffer_ID, cursor_id : Buffer_Cursor_
 		if it.offset >= cursor.offset - 1
 			buffer_move_cursor_backward (buffer_id, xx i);
 	}
+	buffer_set_modified (buffer_id);
 	
 	return true;
 }
