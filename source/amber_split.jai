@@ -390,166 +390,8 @@ split_handle_event :: (split_id : Split_ID, event : Event) -> Event_Result #must
 	{
 	case .TEXT_INPUT;
 		buffer_insert_at_cursor (active_buffer_id, event.codepoint, ALL_CURSORS);
-		buffer_modified = true;
 		scroll_to_cursor = true;
-		
-	case .KEY_PRESS; #through;
-	case .KEY_REPEAT;
-		if event.key_code ==
-		{
-		case .V;
-			if event.mods == .CONTROL
-			{
-				clipboard_text := platform_get_clipboard_text (TEMP);
-				if clipboard_text.count
-				{
-					buffer_insert_utf8_text_at_cursor (active_buffer_id, clipboard_text, ALL_CURSORS);
-					buffer_modified = true;
-					scroll_to_cursor = true;
-				}
-			}
 
-		case .Z;
-			if event.mods == .CONTROL
-			{
-				buffer_modified = buffer_undo_last_edit (active_buffer_id);
-				scroll_to_cursor = true;
-			}
-			else if event.mods == Mods.CONTROL | .SHIFT
-			{
-				buffer_modified = buffer_redo_last_edit (active_buffer_id);
-				scroll_to_cursor = true;
-			}
-		
-		case .ESCAPE;
-			buffer_clear_cursors (active_buffer_id);
-			buffer_clear_selection (active_buffer_id);
-		
-		case .RETURN;
-			if event.mods == Mods.CONTROL | .SHIFT
-				buffer_move_cursor_to_bol (active_buffer_id, ALL_CURSORS);
-			buffer_insert_at_cursor (active_buffer_id, #char "\n", ALL_CURSORS);
-			if event.mods == Mods.CONTROL | .SHIFT
-				buffer_move_cursor_backward (active_buffer_id, ALL_CURSORS);
-			buffer_modified = true;
-			scroll_to_cursor = true;
-		
-		case .BACKSPACE;
-			if event.mods == .CONTROL
-				buffer_skip_word_backward (active_buffer_id, true, ALL_CURSORS, select = true);
-			buffer_modified = buffer_backspace_selection (active_buffer_id, ALL_CURSORS);
-			buffer_merge_duplicate_cursors (active_buffer_id);
-			scroll_to_cursor = true;
-		
-		case .DELETE;
-			if event.mods == .CONTROL
-				buffer_skip_word_forward (active_buffer_id, true, ALL_CURSORS, select = true);
-			buffer_modified = buffer_delete_selection (active_buffer_id, ALL_CURSORS);
-			buffer_merge_duplicate_cursors (active_buffer_id);
-			scroll_to_cursor = true;
-		
-		case .LEFT;
-			if flagged (event.mods, .CONTROL) && !flagged (event.mods, .ALT)
-				buffer_skip_word_backward (active_buffer_id, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-			else
-				buffer_move_cursor_backward (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-			buffer_merge_duplicate_cursors (active_buffer_id);
-			scroll_to_cursor = true;
-		
-		case .RIGHT;
-			if flagged (event.mods, .CONTROL) && !flagged (event.mods, .ALT)
-				buffer_skip_word_forward (active_buffer_id, true, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-			else
-				buffer_move_cursor_forward (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-			buffer_merge_duplicate_cursors (active_buffer_id);
-			scroll_to_cursor = true;
-		
-		case .UP;
-			if event.mods == .ALT
-			{
-				buffer_modified = buffer_move_line_up (active_buffer_id, ALL_CURSORS);
-				buffer_merge_duplicate_cursors (active_buffer_id);
-				scroll_to_cursor = true;
-			}
-			else if event.mods == Mods.SHIFT | .ALT
-			{
-				buffer_add_cursor_on_previous_line (active_buffer_id, ALL_CURSORS);
-				scroll_to_cursor = true;
-			}
-			else if event.mods == Mods.CONTROL
-			{
-				text_layout_scroll_y (active_layout_id, -1);
-				show_scrollbar = true;
-			}
-			else
-			{
-				buffer_move_cursor_to_previous_line (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-				buffer_merge_duplicate_cursors (active_buffer_id);
-				scroll_to_cursor = true;
-			}
-
-		case .DOWN;
-			if event.mods == .ALT
-			{
-				buffer_modified = buffer_move_line_down (active_buffer_id, ALL_CURSORS);
-				buffer_merge_duplicate_cursors (active_buffer_id);
-				scroll_to_cursor = true;
-			}
-			else if event.mods == Mods.SHIFT | .ALT
-			{
-				buffer_add_cursor_on_next_line (active_buffer_id, ALL_CURSORS);
-				scroll_to_cursor = true;
-			}
-			else if event.mods == Mods.CONTROL
-			{
-				text_layout_scroll_y (active_layout_id, 1);
-				show_scrollbar = true;
-			}
-			else
-			{
-				buffer_move_cursor_to_next_line (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT));
-				buffer_merge_duplicate_cursors (active_buffer_id);
-				scroll_to_cursor = true;
-			}
-			
-		case .PAGE_UP;
-			page_height := cast (s64) (rect_height (text_layout_get_area (active_layout_id)) / text_layout_get_line_height (active_layout_id));
-			if remove_flag (event.mods, .SHIFT) == .CONTROL
-			{
-				text_layout_scroll_y (active_layout_id, cast (f32) -page_height);
-				show_scrollbar = true;
-			}
-			else
-			{
-				for 1..page_height
-				{
-					if !buffer_move_cursor_to_previous_line (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
-						break;
-				}
-				buffer_merge_duplicate_cursors (active_buffer_id);
-				scroll_to_cursor = true;
-			}
-
-		case .PAGE_DOWN;
-			page_height := cast (s64) (rect_height (text_layout_get_area (active_layout_id)) / text_layout_get_line_height (active_layout_id));
-			if remove_flag (event.mods, .SHIFT) == .CONTROL
-			{
-				text_layout_scroll_y (active_layout_id, cast (f32) page_height);
-				show_scrollbar = true;
-			}
-			else
-			{
-				page_height := cast (s64) (rect_height (text_layout_get_area (active_layout_id)) / text_layout_get_line_height (active_layout_id));
-				for 1..page_height
-				{
-					if !buffer_move_cursor_to_next_line (active_buffer_id, ALL_CURSORS, select = flagged (event.mods, .SHIFT))
-						break;
-				}
-				buffer_merge_duplicate_cursors (active_buffer_id);
-				scroll_to_cursor = true;
-			}
-		}
-		
 	case .MOUSE_WHEEL;
 		if contains (text_layout_get_area (active_layout_id), event.mouse_position)
 		{
@@ -611,8 +453,10 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 	font := get_font (text_layout_get_font (active_layout_id));
 	page := load_page (font, text_layout_get_font_height (active_layout_id));
 	line_height := cast (f32) (page.ascent - page.descent);
-	
-	if event_result.buffer_modified
+	defer buffer_reset_cursors_modified (active_buffer_id);
+	defer buffer_reset_modified (active_buffer_id);
+
+	if buffer_has_been_modified (active_buffer_id)
 	{
 		language_process_buffer (active_buffer_id);
 		text_layout_update_area (active_layout_id);
@@ -621,6 +465,7 @@ split_update :: (split_id : Split_ID, using event_result : *Event_Result, delta_
 	if text_layout_is_dirty (active_layout_id)
 		text_layout_compute (active_layout_id);
 	
+	scroll_to_cursor |= buffer_has_been_modified (active_buffer_id) || buffer_cursors_has_been_modified (active_buffer_id);
 	layout_area := text_layout_get_area (active_layout_id);
 	mouse_position := platform_get_mouse_position ();
 	// Select text with mouse and drag scrollbar

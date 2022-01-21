@@ -58,13 +58,39 @@ handle_event :: inline (event : Event) -> Event_Result #must, propagate : bool
 
 	case .KEY_PRESS; #through;
 	case .KEY_REPEAT;
-		if event.key_code == .F3 && event.mods == .NONE
+		toggle_mods, toggle_key_code, toggle_ok := parse_binding (config.toggle_command_input_binding);
+		if event.key_code == toggle_key_code && event.mods == toggle_mods
 		{
 			toggle_command_input ();
 			propagate = false;
 		}
 		
-		if is_inputting_command
+		if !is_inputting_command
+		{
+			for shortcut : config.command_shortcuts
+			{
+				mods, key_code, ok := parse_binding (shortcut.binding);
+				if !ok then continue;
+				for cmd : commands
+				{
+					if cmd.name == shortcut.command && event.mods == mods && event.key_code == key_code
+					{
+						if cmd.arg_count == 0 || cmd.first_optional_argument == 0
+						{
+							command_execute (utf8_to_utf32 (cmd.name, TEMP));
+						}
+						else
+						{
+							toggle_command_input ();
+							command_buffer_insert_string (cmd.name);
+							command_buffer_insert (#char " ");
+						}
+						break shortcut;
+					}
+				}
+			}
+		}
+		else
 		{
 			if event.key_code ==
 			{
@@ -87,15 +113,15 @@ handle_event :: inline (event : Event) -> Event_Result #must, propagate : bool
 			
 			case .UP;
 				command_buffer_set_cursor (command_buffer_get_count ());
-				command_buffer_set_cursor (command_buffer_get_count ());
 				match := command_history_match ();
 				match.data  += command_buffer_get_count ();
 				match.count -= command_buffer_get_count ();
 				for match
 					command_buffer_insert (it);
 
-			case .DOWN;
-
+			case .ESCAPE;
+				toggle_command_input ();
+				propagate = false;
 			}
 		}
 
@@ -148,8 +174,7 @@ main :: ()
 	executable_path = platform_get_module_filename (HEAP);
 	executable_dir  = filename_remove_basename (executable_path);
 
-	config : Amber_Config;
-	config.extensions.allocator = HEAP;
+	init_config (*config);
 	parser : Config_Parser;
 	{
 		file_contents, ok := platform_read_entire_file ("config.amber", TEMP);
@@ -160,19 +185,21 @@ main :: ()
 		println ("default_font_name=%", config.default_font_name);
 		println ("default_font_height=%", config.default_font_height);
 		println ("command_prompt=%", config.command_prompt);
-		println ("treat_underscores_as_alpha_numeric_boundary=%", config.treat_underscores_as_alpha_numeric_boundary);
-		//config_print (*parser.root);
-		/*
-		#insert -> string
+		println ("command_shortcuts=");
+		for config.command_shortcuts
+			println ("\t% : %", it.command, it.binding);
+		println ("language_associations=");
+		for config.language_associations
 		{
-			builder : String_Builder;
-			builder.allocator = TEMP;
-			for type_info (Amber_Config).members
-				print_line_to_builder (*builder, "println (\"% is %%\", config.%);", it.name, it.name);
-			
-			return to_string (builder);
+			println ("\t%", it.language);
+			println ("\textensions:");
+			for ext : it.extensions
+				println ("\t\t%", ext);
+			println ("\tfilenames:");
+			for name : it.filenames
+				println ("\t\t%", name);
 		}
-		*/
+		println ("treat_underscores_as_alpha_numeric_boundary=%", config.treat_underscores_as_alpha_numeric_boundary);
 	}
 
 	platform_init_window_and_gl ();
@@ -192,6 +219,7 @@ main :: ()
 			println ("Could not load extension '%'.", it);
 	}
 	init_extensions ();
+	fill_extensions_config (*parser.root);
 	font_load_from_file (FONT_NAME);
 	split_create_first ();
 	buffer_load_file (get_active_buffer (), "get_next_line.c");
