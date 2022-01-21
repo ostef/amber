@@ -3,6 +3,8 @@
 Amber_Hooks :: struct #type_info_none
 {
 	using callbacks : Extension_Callbacks;
+	amber_config : *Amber_Config;
+	extension_config : Any;
 	HEAP : Allocator;
 
 	amber_get_executable_path : (Allocator) -> string;
@@ -20,6 +22,7 @@ Amber_Hooks :: struct #type_info_none
 	buffer_cursor_exists : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_cursor_is_at_bol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
 	buffer_cursor_is_at_eol : (Buffer_ID, Buffer_Cursor_ID) -> bool;
+	buffer_cursors_has_been_modified : (Buffer_ID) -> bool;
 	buffer_delete_selection : (Buffer_ID, Buffer_Cursor_ID, History_Buffering) -> bool;
 	buffer_end_batch_edit : (Buffer_ID);
 	buffer_exists : (Buffer_ID) -> bool;
@@ -37,6 +40,7 @@ Amber_Hooks :: struct #type_info_none
 	buffer_get_name : (Buffer_ID, Allocator) -> string;
 	buffer_get_split : (Buffer_ID) -> Split_ID;
 	buffer_get_text_layout : (Buffer_ID) -> Text_Layout_ID;
+	buffer_has_been_modified : (Buffer_ID) -> bool;
 	buffer_history_get_edit_count : (Buffer_ID) -> s64;
 	buffer_history_get_undo_cursor : (Buffer_ID) -> s64;
 	buffer_history_push_char : (Buffer_ID, u32);
@@ -81,6 +85,7 @@ Amber_Hooks :: struct #type_info_none
 	command_buffer_get_cursor : () -> s64;
 	command_buffer_get_rect : () -> Rect (T = f32);
 	command_buffer_insert : (u32);
+	command_buffer_insert_string : (string);
 	command_buffer_move_cursor_backward : ();
 	command_buffer_move_cursor_forward : ();
 	command_buffer_set_cursor : (s64);
@@ -143,6 +148,8 @@ Amber_Hooks :: struct #type_info_none
 	language_get_associated_filenames : (Language_ID, Allocator) -> []string;
 	language_get_extension : (Language_ID) -> Extension_ID;
 	language_get_name : (Language_ID, Allocator) -> string;
+	language_match_extension : (Language_ID, string) -> bool;
+	language_match_filename : (Language_ID, string) -> bool;
 	language_register : (Language) -> (bool, Language_ID);
 	language_unregister : (Language_ID);
 	language_unregister_for_extension : (Extension_ID);
