@@ -646,6 +646,8 @@ alloc_string :: inline (count : s64, allocator : Allocator, $initialize := false
 	return result;
 }
 
+// Array
+
 clone_array :: inline (array : []$T, allocator : Allocator) -> []T #must
 {
 	result : []T = ---;
@@ -655,8 +657,6 @@ clone_array :: inline (array : []$T, allocator : Allocator) -> []T #must
 	
 	return result;
 }
-
-// Array
 
 init_array :: inline (array : *[..]$T, capacity : s64, allocator : Allocator)
 {
