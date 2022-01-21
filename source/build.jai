@@ -16,7 +16,7 @@ EXTENSIONS       :: string.[ "amber_default", "amber_jai" ];
 ICON_FILENAME    :: "misc/icon.ico";
 
 partial_build := false;
-use_llvm := true;
+use_llvm := false;
 profile := false;
 release := false;
 target  := OS;
@@ -140,6 +140,7 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 					nl (*builder);
 					ln (*builder, "Amber_Hooks :: struct #type_info_none\n{");
 					ln (*builder, "\tusing callbacks : Extension_Callbacks;");
+					ln (*builder, "\tamber_config : *Amber_Config;");
 					ln (*builder, "\textension_config : Any;");
 					ln (*builder, "\tHEAP : Allocator;");
 					nl (*builder);
@@ -246,6 +247,17 @@ build :: ()
 	
 	case;
 		report_error ("Unsupported target OS %.", target);
+	}
+
+	if use_llvm
+	{
+		build_dir = join (TEMP, build_dir, "_llvm");
+		int_dir = join (TEMP, int_dir, "_llvm");
+	}
+	else
+	{
+		build_dir = join (TEMP, build_dir, "_x64");
+		int_dir = join (TEMP, int_dir, "_x64");
 	}
 	
 	if release
