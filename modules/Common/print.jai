@@ -260,12 +260,15 @@ print_f32_to_builder :: (builder : *String_Builder, value : f32, precision : int
 
 print_f64_to_builder :: (builder : *String_Builder, value : f64, precision : int)
 {
-	ryu :: #import "Ryu";
+	ryu :: #import "Ryu" (IMPORT_FLOAT_TO_SHORTEST = false, IMPORT_STRING_TO_FLOAT = false);
 
-	buffer : [2000]u8;
+	ryu_fmt : ryu.Format;
+	ryu_fmt.flags |= .REMOVE_TRAILING_ZEROES;
+	ryu_fmt.precision = cast (u32) precision;
+	buffer : [500]u8;
 	str : string = ---;
 	str.data = buffer.data;
-	str.count = ryu.f64_to_fixed_buffered (value, xx precision, str.data);
+	str.count = ryu.f64_to_fixed_buffered (value, ryu_fmt, str.data);
 	print_string_to_builder (builder, str);
 }
 
