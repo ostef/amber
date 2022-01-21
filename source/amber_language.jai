@@ -41,7 +41,20 @@ language_get_associated_filenames :: inline (language_id : Language_ID, allocato
 	if language_id == PLAIN_TEXT
 		return string.[];
 	language := get_language (language_id);
-	result := clone_array (language.associated_filenames, allocator);
+	filenames := language.default_associated_filenames;
+	for config.language_associations
+	{
+		if it.language == language.name
+		{
+			if it.filenames.count != 0
+			{
+				filenames = it.filenames;
+
+				break;
+			}
+		}
+	}
+	result := clone_array (filenames, allocator);
 	for * result
 	{
 		<<it = clone_string (<<it, allocator);
@@ -56,7 +69,20 @@ language_get_associated_file_extensions :: inline (language_id : Language_ID, al
 	if language_id == PLAIN_TEXT
 		return string.[];
 	language := get_language (language_id);
-	result := clone_array (language.associated_file_extensions, allocator);
+	file_extensions := language.default_associated_file_extensions;
+	for config.language_associations
+	{
+		if it.language == language.name
+		{
+			if it.extensions.count != 0
+			{
+				file_extensions = it.extensions;
+
+				break;
+			}
+		}
+	}
+	result := clone_array (file_extensions, allocator);
 	for * result
 	{
 		<<it = clone_string (<<it, allocator);
@@ -66,16 +92,64 @@ language_get_associated_file_extensions :: inline (language_id : Language_ID, al
 }
 @Amber_API
 
+language_match_filename :: inline (language_id : Language_ID, filename : string) -> bool
+{
+	language := get_language (language_id);
+	filenames := language.default_associated_filenames;
+	for config.language_associations
+	{
+		if it.language == language.name
+		{
+			if it.filenames.count != 0
+			{
+				filenames = it.filenames;
+
+				break;
+			}
+		}
+	}
+	for filenames
+		if it == filename
+			return true;
+
+	return false;
+}
+@Amber_API
+
+language_match_extension :: inline (language_id : Language_ID, extension : string) -> bool
+{
+	language := get_language (language_id);
+	file_extensions := language.default_associated_file_extensions;
+	for config.language_associations
+	{
+		if it.language == language.name
+		{
+			if it.extensions.count != 0
+			{
+				file_extensions = it.extensions;
+
+				break;
+			}
+		}
+	}
+	for file_extensions
+		if it == extension
+			return true;
+
+	return false;
+}
+@Amber_API
+
 language_detect :: inline (filename : string) -> Language_ID
 {
 	basename  := filename_get_basename (filename);
 	extension := filename_get_extension (filename);
 	for lang : languages
 	{
-		for lang.associated_filenames
-			if basename == it then return lang.id;
-		for lang.associated_file_extensions
-			if extension == it then return lang.id;
+		if language_match_extension (lang.id, extension)
+			return lang.id;
+		if language_match_filename (lang.id, basename)
+			return lang.id;
 	}
 	
 	return PLAIN_TEXT;
@@ -97,13 +171,13 @@ language_register :: inline (language : Language) -> bool, Language_ID
 	// @Note (stefan): We don't make assumptions about where the memory for the
 	// following members comes from, so we allocate new memory for them.
 	inserted.name = clone_string (language.name, HEAP);
-	inserted.associated_filenames  = clone_array (language.associated_filenames, HEAP);
-	for * inserted.associated_filenames
+	inserted.default_associated_filenames  = clone_array (language.default_associated_filenames, HEAP);
+	for * inserted.default_associated_filenames
 	{
 		<<it = clone_string (<<it, HEAP);
 	}
-	inserted.associated_file_extensions = clone_array (language.associated_file_extensions, HEAP);
-	for * inserted.associated_file_extensions
+	inserted.default_associated_file_extensions = clone_array (language.default_associated_file_extensions, HEAP);
+	for * inserted.default_associated_file_extensions
 	{
 		<<it = clone_string (<<it, HEAP);
 	}
@@ -118,12 +192,12 @@ language_unregister :: inline (language_id : Language_ID)
 	
 	using language := get_language (language_id);
 	free (name, HEAP);
-	for associated_filenames
+	for default_associated_filenames
 		free (it, HEAP);
-	free (associated_filenames, HEAP);
-	for associated_file_extensions
+	free (default_associated_filenames, HEAP);
+	for default_associated_file_extensions
 		free (it, HEAP);
-	free (associated_file_extensions, HEAP);
+	free (default_associated_file_extensions, HEAP);
 	remove_from_slot_array (*languages, cast (s64) language_id - 1);
 }
 @Amber_API
