@@ -14,9 +14,10 @@ Command_Args :: struct
 	args : []string;
 }
 
+commands : [..]Command;
+
 #scope_file
 
-commands : [..]Command;
 command_prompt : string;
 command_buffer : struct
 {
@@ -226,6 +227,13 @@ command_buffer_insert :: inline (codepoint : u32)
 		return;
 	sorted_insert_into_array (*data, cursor, codepoint);
 	cursor += 1;
+}
+@Amber_API
+
+command_buffer_insert_string :: inline (str : string)
+{
+	for i : 0..str.count - 1
+		command_buffer_insert (str[i]);
 }
 @Amber_API
 
