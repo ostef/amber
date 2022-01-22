@@ -1,11 +1,8 @@
-extensions = {
-	"amber_default",
-	"amber_jai"
-};
 default_font_name = "JetBrains-Mono";
 default_font_height = 16;
-command_prompt = ">";
+treat_underscores_as_alpha_numeric_boundary = true;
 toggle_command_input_binding = "CTRL+US_BACKTICK";
+command_prompt = ">";
 command_shortcuts = {
 	{
 		.command = "open",
@@ -196,30 +193,3 @@ command_shortcuts = {
 		.binding = "SHIFT+END"
 	}
 };
-language_associations = {
-	{
-		.language = "Amber",
-		.extensions = { "amber" }
-	},
-	{
-		.language = "Amber Documentation",
-		.extensions = { "amber_doc" }
-	},
-	{
-		.language = "C",
-		.extensions = { "c", "h" }
-	},
-	{
-		.language = "Makefile",
-		.filenames = { "Makefile" }
-	},
-	{
-		.language = "Markdown",
-		.extensions = { "md" }
-	},
-	{
-		.language = "Jai",
-		.extensions = { "jai" }
-	}
-};
-treat_underscores_as_alpha_numeric_boundary = true;

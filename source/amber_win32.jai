@@ -188,7 +188,7 @@ platform_set_file_attributes :: inline (filename : string, attributes : File_Att
 
 #scope_file
 
-list_files_helper :: (dirname : string, parent_index : s64, all_files : *[..]File_Info) -> bool
+list_files_helper :: (dirname : string, recursive : bool, parent_index : s64, all_files : *[..]File_Info) -> bool
 {
 	wildcard := utf8_to_wide (join (TEMP, dirname, "/*"), TEMP);
 	find_data : WIN32_FIND_DATAW = ---;
@@ -228,8 +228,8 @@ list_files_helper :: (dirname : string, parent_index : s64, all_files : *[..]Fil
 			if is_root then parent_index = all_files.count - 1;
 			else prev_sibling_index = all_files.count - 1;
 			
-			if flagged (file_info.attributes, .DIRECTORY) && file_info.name != "."
-				file_info.has_errors = !list_files_helper (file_info.full_name, all_files.count - 1, all_files);
+			if recursive && flagged (file_info.attributes, .DIRECTORY) && file_info.name != "."
+				file_info.has_errors = !list_files_helper (file_info.full_name, recursive, all_files.count - 1, all_files);
 		}
 		
 		if !FindNextFileW (find_handle, *find_data) then break;
@@ -243,11 +243,11 @@ list_files_helper :: (dirname : string, parent_index : s64, all_files : *[..]Fil
 // @Note (stefan): The File_Infos are allocated contiguously, and the first File_Info is also the root.
 // This means you can ignore the all_files array, and only care about the root when you have to free the
 // allocated File_Infos.
-platform_list_files_in_directory :: inline (dirname : string, allocator : Allocator) -> root : *File_Info #must, all_files : []File_Info
+platform_list_files_in_directory :: inline (dirname : string, recursive : bool, allocator : Allocator) -> root : *File_Info #must, all_files : []File_Info
 {
 	all_files : [..]File_Info;
 	all_files.allocator = allocator;;
-	ok := list_files_helper (dirname, -1, *all_files);
+	ok := list_files_helper (dirname, recursive, -1, *all_files);
 	if !ok
 	{
 		// @Note (stefan): If list_files_helper returned false then all_files

@@ -32,16 +32,21 @@ amber_api_procedures : [..]*Compiler.Code_Procedure_Header;
 amber_api_decls      : [..]*Compiler.Code_Declaration;
 run_after_typechecking : [..]*Compiler.Code_Procedure_Header;
 
-report_error :: (fmt : string, args : ..Any, location := #caller_location)
+report_error :: inline (fmt : string, args : ..Any, location := #caller_location)
 {
 	str := fstring (TEMP, fmt, ..args);
 	Compiler.compiler_report (str, location);
 }
 
-set_default_build_options :: (options : *Compiler.Build_Options, output_type : type_of (Compiler.Build_Options.output_type), output_name : string)
+set_default_build_options :: inline (options : *Compiler.Build_Options, output_type : type_of (Compiler.Build_Options.output_type), output_name : string, directory := "")
 {
-	options.output_path       = build_dir;
+	if directory
+		options.output_path = join (TEMP, build_dir, directory);
+	else
+		options.output_path = build_dir;
 	options.intermediate_path = int_dir;
+	create_directory_tree (options.output_path);
+	create_directory_tree (options.intermediate_path);
 	if release then Compiler.set_optimization_level (options, 2, 0);
 	if release
 		options.dead_code_elimination = .ALL;
@@ -287,6 +292,8 @@ build :: ()
 
 	// #filepath is 'something/source/', we want 'something/'
 	set_working_directory (strip_filename_from_path (#filepath));
+	delete_directory (build_dir);
+	delete_directory (int_dir);
 
 	init_array (*amber_api_procedures, 100, HEAP);
 	init_array (*amber_api_decls, 500, HEAP);
@@ -304,16 +311,11 @@ build :: ()
 		{
 			amber_add_workspace (extension_workspaces[i]);
 			options := Compiler.get_build_options (extension_workspaces[i]);
-			set_default_build_options (*options, .DYNAMIC_LIBRARY, name);
+			set_default_build_options (*options, .DYNAMIC_LIBRARY, name, "extensions/");
 			Compiler.set_build_options (options, extension_workspaces[i]);
 		}
 	}
 
-	delete_directory (build_dir);
-	delete_directory (int_dir);
-	create_directory_tree (build_dir);
-	create_directory_tree (int_dir);
-	
 	app_build_success  := compile_workspace (app,  "source/amber_main.jai");
 	if doc && app_build_success then generate_documentation ();
 	generate_amber_hooks = false;

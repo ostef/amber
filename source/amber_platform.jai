@@ -34,7 +34,7 @@ platform_write_to_file :: (filename : string, buffer : string) -> written : s64,
 
 platform_purge_directory :: (dirname : string) -> bool
 {
-	root := platform_list_files_in_directory (dirname, TEMP);
+	root := platform_list_files_in_directory (dirname, true, TEMP);
 	if !root then return false;
 	
 	current : *File_Info = root.first_child;

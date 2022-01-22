@@ -173,6 +173,19 @@ main :: ()
 
 	executable_path = platform_get_module_filename (HEAP);
 	executable_dir  = filename_remove_basename (executable_path);
+	{
+		_, files := platform_list_files_in_directory ("extensions", false, TEMP);
+		for files
+		{
+			if filename_get_extension (it.name) != "dll"
+				continue;
+			extension := filename_remove_extension (filename_get_basename (it.name));
+			if load_extension (extension)
+				println ("Loaded extension '%'.", extension);
+			else
+				println ("Could not load extension '%'.", extension);
+		}
+	}
 
 	init_config (*config);
 	parser : Config_Parser;
@@ -181,9 +194,9 @@ main :: ()
 		config_parser_init (*parser, "config.amber", file_contents);
 		config_parse (*parser);
 		config_fill_variables (*config, *parser.root);
-		println ("extensions=%", config.extensions);
 		println ("default_font_name=%", config.default_font_name);
 		println ("default_font_height=%", config.default_font_height);
+		println ("treat_underscores_as_alpha_numeric_boundary=%", config.treat_underscores_as_alpha_numeric_boundary);
 		println ("command_prompt=%", config.command_prompt);
 		println ("command_shortcuts=");
 		for config.command_shortcuts
@@ -199,7 +212,6 @@ main :: ()
 			for name : it.filenames
 				println ("\t\t%", name);
 		}
-		println ("treat_underscores_as_alpha_numeric_boundary=%", config.treat_underscores_as_alpha_numeric_boundary);
 	}
 
 	platform_init_window_and_gl ();
@@ -210,14 +222,7 @@ main :: ()
 	init_slot_array (*buffers, 20, HEAP);
 	init_slot_array (*text_layouts, 20, HEAP);
 	init_slot_array (*splits, 10, HEAP);
-	command_buffer_set_prompt (">");
-	for config.extensions
-	{
-		if load_extension (it)
-			println ("Loaded extension '%'.", it);
-		else
-			println ("Could not load extension '%'.", it);
-	}
+	command_buffer_set_prompt (config.command_prompt);
 	init_extensions ();
 	fill_extensions_config (*parser.root);
 	font_load_from_file (FONT_NAME);

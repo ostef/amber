@@ -30,10 +30,11 @@ get_hooks :: inline (extension_id : Extension_ID) -> *Amber_Hooks #must
 	return *get_extension (extension_id).hooks;
 }
 
-load_extension :: (filename : string) -> bool, Extension_ID
+load_extension :: (name : string) -> bool, Extension_ID
 {
-	if !filename then return false, 0;
+	if !name then return false, 0;
 	if !extensions.allocator.proc then extensions.allocator = HEAP;
+	filename := join (HEAP, "extensions/", name, ".dll");
 	extension : *Extension;
 	extension_id : Extension_ID;
 	

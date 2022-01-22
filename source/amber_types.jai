@@ -120,7 +120,6 @@ Language_Association :: struct
 
 Amber_Config :: struct
 {
-	extensions : [..]string;
 	default_font_name : string;
 	default_font_height : u32;
 	command_prompt : string;
