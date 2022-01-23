@@ -7,7 +7,6 @@ Windows_Resources :: #import "Windows_Resources";
 #load "amber_meta.jai";
 #load "amber_doc.jai";
 
-IS_IN_METAPROGRAM :: true;
 DATA_DIR          :: "data/";
 DEFAULT_BUILD_DIR :: "bin/";
 DEFAULT_INT_DIR   :: "int/";
@@ -75,7 +74,6 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 	Compiler.add_build_string (fstring (TEMP, "ENABLE_PROFILING :: %;", profile), workspace);
 	Compiler.add_build_string (fstring (TEMP, "RELEASE :: %;", release), workspace);
 	Compiler.add_build_string (fstring (TEMP, "DEBUG   :: %;", !release), workspace);
-	Compiler.add_build_string ("IS_IN_METAPROGRAM :: false;", workspace);
 	
 	while true
 	{
@@ -145,8 +143,6 @@ compile_workspace :: (workspace : Workspace, files : ..string) -> bool
 					nl (*builder);
 					ln (*builder, "Amber_Hooks :: struct #type_info_none\n{");
 					ln (*builder, "\tusing callbacks : Extension_Callbacks;");
-					ln (*builder, "\tamber_config : *Amber_Config;");
-					ln (*builder, "\textension_config : Any;");
 					ln (*builder, "\tHEAP : Allocator;");
 					nl (*builder);
 					

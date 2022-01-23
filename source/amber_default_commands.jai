@@ -252,7 +252,7 @@ command_backspace_word :: (using hooks : *Amber_Hooks) -> bool
 	if buffer_id == NULL_BUFFER
 		return false;
 
-	buffer_skip_word_backward (buffer_id, amber_config.treat_underscores_as_alpha_numeric_boundary, ALL_CURSORS, true);
+	buffer_skip_word_backward (buffer_id, config_get_bool ("treat_underscores_as_alpha_numeric_boundary", true), ALL_CURSORS, true);
 	result := buffer_backspace_selection (buffer_id, ALL_CURSORS, .PUSH_EDIT);
 	buffer_merge_duplicate_cursors (buffer_id);
 
@@ -279,7 +279,7 @@ command_delete_word :: (using hooks : *Amber_Hooks) -> bool
 	if buffer_id == NULL_BUFFER
 		return false;
 
-	buffer_skip_word_forward (buffer_id, amber_config.treat_underscores_as_alpha_numeric_boundary, ALL_CURSORS, true);
+	buffer_skip_word_forward (buffer_id, config_get_bool ("treat_underscores_as_alpha_numeric_boundary", true), ALL_CURSORS, true);
 	result := buffer_delete_selection (buffer_id, ALL_CURSORS, .PUSH_EDIT);
 	buffer_merge_duplicate_cursors (buffer_id);
 
@@ -319,7 +319,7 @@ command_prev_word :: (using hooks : *Amber_Hooks) -> bool
 	if buffer_id == NULL_BUFFER
 		return false;
 
-	result := buffer_skip_word_backward (buffer_id, amber_config.treat_underscores_as_alpha_numeric_boundary, ALL_CURSORS, flagged (platform_get_mod_state (), .SHIFT));
+	result := buffer_skip_word_backward (buffer_id, config_get_bool ("treat_underscores_as_alpha_numeric_boundary", true), ALL_CURSORS, flagged (platform_get_mod_state (), .SHIFT));
 	buffer_merge_duplicate_cursors (buffer_id);
 
 	return result;
@@ -332,7 +332,7 @@ command_select_prev_word :: (using hooks : *Amber_Hooks) -> bool
 	if buffer_id == NULL_BUFFER
 		return false;
 
-	result := buffer_skip_word_backward (buffer_id, amber_config.treat_underscores_as_alpha_numeric_boundary, ALL_CURSORS, true);
+	result := buffer_skip_word_backward (buffer_id, config_get_bool ("treat_underscores_as_alpha_numeric_boundary", true), ALL_CURSORS, true);
 	buffer_merge_duplicate_cursors (buffer_id);
 
 	return result;
@@ -371,7 +371,7 @@ command_next_word :: (using hooks : *Amber_Hooks) -> bool
 	if buffer_id == NULL_BUFFER
 		return false;
 
-	result := buffer_skip_word_forward (buffer_id, amber_config.treat_underscores_as_alpha_numeric_boundary, ALL_CURSORS, false);
+	result := buffer_skip_word_forward (buffer_id, config_get_bool ("treat_underscores_as_alpha_numeric_boundary", true), ALL_CURSORS, false);
 	buffer_merge_duplicate_cursors (buffer_id);
 
 	return result;
@@ -384,7 +384,7 @@ command_select_next_word :: (using hooks : *Amber_Hooks) -> bool
 	if buffer_id == NULL_BUFFER
 		return false;
 
-	result := buffer_skip_word_forward (buffer_id, amber_config.treat_underscores_as_alpha_numeric_boundary, ALL_CURSORS, true);
+	result := buffer_skip_word_forward (buffer_id, config_get_bool ("treat_underscores_as_alpha_numeric_boundary", true), ALL_CURSORS, true);
 	buffer_merge_duplicate_cursors (buffer_id);
 
 	return result;

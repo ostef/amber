@@ -103,32 +103,6 @@ Language :: struct
 Language_ID :: #type, distinct u32;
 PLAIN_TEXT : Language_ID : 0;
 
-// Config
-
-Command_Shortcut :: struct
-{
-	command : string;
-	binding : string;
-}
-
-Language_Association :: struct
-{
-	language   : string;
-	extensions : [..]string;
-	filenames  : [..]string;
-}
-
-Amber_Config :: struct
-{
-	default_font_name : string;
-	default_font_height : u32;
-	command_prompt : string;
-	toggle_command_input_binding : string;
-	command_shortcuts : [..]Command_Shortcut;
-	language_associations : [..]Language_Association;
-	treat_underscores_as_alpha_numeric_boundary : bool;
-}
-
 // Extension
 
 Extension_ID :: #type, distinct u32;

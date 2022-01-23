@@ -23,6 +23,10 @@
 * multiple text layouts per buffer, so we can peek at code declarations and stuff
 * create text layouts anywhere on screen, see above
 * multiple edit views of the same buffer ("Edit View" sounds nice btw)
+* find a way to protect memory, mostly for strings, so we can return them directly to the extensions
+instead of allocating new memory
+* string pool or something, see above
+* allow selecting characters the cursor is on when selecting towards the left
 
 # Amber default:
 * bracket highlighting

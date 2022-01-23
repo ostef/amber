@@ -1,22 +1,201 @@
-/*
- * Ideas about the config system:
- *
- * The config system uses the type information features of Jai.
- * We have an Amber_Config struct, which contains all the config
- * variables of the main program, and extensions can set the
- * Amber_Hooks.extension_config variable in extension_init to add
- * configuration variables. We use the type information of the struct
- * to fill all the data from the config file we parsed prior
- * (Amber_Hooks.extension_config is an Any).
- * 
- * Config loading for the main program and the extensions is done
- * separately, because the extension list is in the main config
- * file. After we've loaded the main program's configuration, we load
- * extensions and fill all the variables inside each extensions' config
- * pointer using the Type_Info (see config_fill_variables procedure).
- */
-
 // @Todo (stefan): Better error reporting and handling.
+
+Config_Key_Value :: struct
+{
+	key : string;
+	val : Config_Var;
+}
+
+Config_Var :: struct
+{
+	Kind :: enum
+	{
+		BOOL   :: 0;
+		INT    :: 1;
+		UINT   :: 2;
+		FLOAT  :: 3;
+		STRING :: 4;
+		ARRAY  :: 5;
+		MAP    :: 6;
+	}
+
+	kind : Kind;
+	union
+	{
+		as_bool : bool;
+		as_s64  : s64;
+		as_u64  : u64;
+		as_f32  : f32;
+		as_string : string;
+		as_array : []Config_Var;
+		as_map   : []Config_Key_Value;
+	};
+}
+
+config_variables : Hash_Map (string, Config_Var);
+
+config_get :: (name : string, base : *Config_Var = null) -> *Config_Var #must
+{
+	if name.count == 0
+		return base;
+
+	if base
+	{
+		if base.kind != .ARRAY && base.kind != .MAP
+			return null;
+		subscript := name;
+		if subscript[0] != #char "["
+			return null;
+		subscript = advance (subscript);
+		for i : 0..subscript.count - 1
+		{
+			if subscript[i] == #char "]"
+			{
+				subscript.count = i;
+
+				break;
+			}
+		}
+		if subscript.count == 0
+			return null;
+		remaining := advance (name, cast (s64) (subscript.data - name.data) + subscript.count);
+		if subscript[0] == #char "\""
+		{
+			if base.kind != .MAP || subscript.count < 2 || subscript[subscript.count - 1] != #char "\""
+				return null;
+			subscript = advance (subscript);
+			subscript.count -= 1;
+			for * base.as_map
+			{
+				if it.key == subscript
+					return config_get (remaining, *it.val);
+			}
+
+			return null;
+		}
+		else
+		{
+			if base.kind != .ARRAY
+				return null;
+			index, ok := string_to_u64 (subscript);
+			if !ok
+				return null;
+			for * base.as_array
+				return config_get (remaining, it);
+
+			return null;
+		}
+	}
+	else
+	{
+		basename := name;
+		for i : 0..basename.count - 1
+		{
+			if basename[i] == #char "["
+			{
+				basename.count = i;
+
+				break;
+			}
+		}
+		var := get_pointer (*config_variables, basename);
+		if !var
+			return null;
+
+		return config_get (advance (name, basename.count), var);
+	}
+}
+
+config_get_bool :: inline (name : string, fallback : bool = false) -> val : bool, ok : bool
+{
+	var := config_get (name);
+	if !var || var.kind != .BOOL
+		return fallback, false;
+
+	return var.as_bool, true;
+}
+@Amber_API
+
+config_get_int :: inline (name : string, fallback : s64 = 0) -> val : s64, ok : bool
+{
+	var := config_get (name);
+	if !var || var.kind != .INT
+		return fallback, false;
+
+	return var.as_s64, true;
+}
+@Amber_API
+
+config_get_uint :: inline (name : string, fallback : u64 = 0) -> val : u64, ok : bool
+{
+	var := config_get (name);
+	if !var || var.kind != .UINT
+		return fallback, false;
+
+	return var.as_u64, true;
+}
+@Amber_API
+
+config_get_float :: inline (name : string, fallback := 0.0) -> val : f32, ok : bool
+{
+	var := config_get (name);
+	if !var || var.kind != .FLOAT
+		return fallback, false;
+
+	return var.as_f32, true;
+}
+@Amber_API
+
+config_get_string :: inline (name : string, fallback := "") -> val : string, ok : bool
+{
+	var := config_get (name);
+	if !var || var.kind != .STRING
+		return fallback, false;
+
+	return var.as_string, true;
+}
+@Amber_API
+
+config_get_string_array :: inline (name : string, allocator : Allocator) -> val : []string, ok : bool
+{
+	var := config_get (name);
+	if !var || var.kind != .ARRAY
+		return .[], false;
+
+	result : []string;
+	result.data = alloc (size_of (string) * var.as_array.count, allocator);
+	for var.as_array
+	{
+		if it.kind == .STRING
+		{
+			result.data[result.count] = it.as_string;
+			result.count += 1;
+		}
+	}
+
+	return result, true;
+}
+@Amber_API
+
+config_get_string_map :: inline (name : string, allocator : Allocator) -> val : Hash_Map (string, string), ok : bool
+{
+	result : Hash_Map (string, string);
+	result.allocator = allocator;
+
+	var := config_get (name);
+	if !var || var.kind != .MAP
+		return result, false;
+
+	init_map (*result, var.as_map.count, allocator);
+	for var.as_map
+	{
+		if it.val.kind == .STRING
+			insert_into_map (*result, it.key, it.val.as_string);
+	}
+
+	return result, true;
+}
+@Amber_API
 
 parse_binding :: (binding : string) -> Mods, Key_Code, bool
 {
@@ -54,15 +233,6 @@ parse_binding :: (binding : string) -> Mods, Key_Code, bool
 	return .NONE, .UNKNOWN, false;
 }
 
-config : Amber_Config;
-
-init_config :: inline (config : *Amber_Config)
-{
-	config.extensions.allocator = HEAP;
-	config.command_shortcuts.allocator = HEAP;
-	config.language_associations.allocator = HEAP;
-}
-
 Config_Parser :: struct
 {
 	filename : string;
@@ -71,10 +241,10 @@ Config_Parser :: struct
 	errors : [..]Config_Error;
 	root : Config_Root;
 	assignments : Bucket_Array (Config_Assignment, 20);
-	rvalues     : Bucket_Array (Config_RValue, 20);
 	lvalues     : Bucket_Array (Config_LValue, 20);
-	compounds   : Bucket_Array (Config_Compound, 20);
-	compound_elems : Bucket_Array (Config_Compound_Elem, 20);
+	rvalues     : Bucket_Array (Config_RValue, 20);
+	array_literals : Bucket_Array (Config_Array_Literal, 20);
+	map_literals   : Bucket_Array (Config_Map_Literal, 20);
 }
 
 Config_Error :: struct
@@ -97,61 +267,38 @@ Config_Assignment :: struct
 
 Config_RValue :: struct
 {
-	Kind :: enum
-	{
-		LVALUE   :: 0;
-		INT      :: 1;
-		BOOL     :: 2;
-		STRING   :: 3;
-		FLOAT    :: 4;
-		COMPOUND :: 5;
-	}
-
-	kind : Kind;
+	kind : Config_Var.Kind;
 	union
 	{
-		lvalue : *Config_LValue;
-		int_value : int;
 		bool_value : bool;
+		int_value  : s64;
+		uint_value : u64;
+		float_value : f32;
 		string_value : string;
-		float_value : float;
-		compound : *Config_Compound;
+		array_literal : *Config_Array_Literal;
+		map_literal   : *Config_Map_Literal;
 	};
 }
 
 Config_LValue :: struct
 {
 	identifier : string;
-	subscript_index : int;
-	member_lvalue : *Config_LValue;
 }
 
-Config_Compound :: struct
+Config_Array_Literal :: struct
 {
-	elems : []*Config_Compound_Elem;
+	elems : []*Config_RValue;
 }
 
-Config_Compound_Elem :: struct
+Config_Map_Literal :: struct
 {
-	Specifier :: struct
+	Key_Value :: struct
 	{
-		Kind :: enum
-		{
-			NONE       :: 0;
-			IDENTIFIER :: 1;
-			INDEX      :: 2;
-		}
-		
-		kind : Kind;
-		union
-		{
-			identifier : string;
-			index : int;
-		};
+		key : string;
+		val : *Config_RValue;
 	}
 
-	specifier : Specifier;
-	rvalue : *Config_RValue;
+	elems : []Key_Value;
 }
 
 config_parser_init :: inline (parser : *Config_Parser, filename : string, file_contents : string)
@@ -165,10 +312,42 @@ config_parser_init :: inline (parser : *Config_Parser, filename : string, file_c
 	init_array (*parser.root.assignments, 50, HEAP);
 	init_array (*parser.errors, 50, HEAP);
 	init_bucket_array (*parser.assignments, 50, HEAP);
-	init_bucket_array (*parser.rvalues, 200, HEAP);
 	init_bucket_array (*parser.lvalues, 200, HEAP);
-	init_bucket_array (*parser.compounds, 50, HEAP);
-	init_bucket_array (*parser.compound_elems, 200, HEAP);
+	init_bucket_array (*parser.rvalues, 200, HEAP);
+	init_bucket_array (*parser.array_literals, 50, HEAP);
+	init_bucket_array (*parser.map_literals, 50, HEAP);
+}
+
+config_parser_destroy :: inline (parser : *Config_Parser)
+{
+	reset_array (*parser.root.assignments);
+	reset_array (*parser.errors);
+	reset_bucket_array (*parser.assignments);
+	reset_bucket_array (*parser.lvalues);
+	/*
+	for * parser.rvalues
+	{
+		if it.kind == .STRING
+			free (it.string_value.data, HEAP);
+	}
+	*/
+	reset_bucket_array (*parser.rvalues);
+	for * parser.array_literals
+		free (it.elems, HEAP);
+	reset_bucket_array (*parser.array_literals);
+	for * parser.map_literals
+	{
+		for * elem : it.elems
+			free (elem.key, HEAP);
+		free (it.elems, HEAP);
+	}
+	reset_bucket_array (*parser.map_literals);
+	parser.column = 1;
+	parser.line = 1;
+	parser.end = null;
+	parser.curr = null;
+	parser.start = null;
+	parser.filename = "";
 }
 
 config_parser_error :: inline (using parser : *Config_Parser, error_str : string)
@@ -316,6 +495,21 @@ config_parse_assignment :: (using parser : *Config_Parser) -> *Config_Assignment
 	return assignment;
 }
 
+config_parse_lvalue :: (using parser : *Config_Parser) -> *Config_LValue
+{
+	profile ();
+
+	config_parser_skip_spaces (parser);
+	identifier, ok := config_parse_identifier (parser);
+	if !ok
+		return null;
+
+	lvalue := add_to_bucket_array (*lvalues);
+	lvalue.identifier = identifier;
+
+	return lvalue;
+}
+
 config_parse_rvalue :: (using parser : *Config_Parser) -> *Config_RValue
 {
 	profile ();
@@ -332,17 +526,16 @@ config_parse_rvalue :: (using parser : *Config_Parser) -> *Config_RValue
 		return rvalue;
 	}
 
-	if is_alpha (config_parser_get (parser)) || config_parser_get (parser) == #char "_"
+	uint_value, uint_ok := config_parse_uint (parser);
+	if uint_ok
 	{
-		lvalue := config_parse_lvalue (parser);
-		if !lvalue then return null;
 		rvalue := add_to_bucket_array (*rvalues);
-		rvalue.kind = .LVALUE;
-		rvalue.lvalue = lvalue;
+		rvalue.kind = .UINT;
+		rvalue.uint_value = uint_value;
 
 		return rvalue;
 	}
-	
+
 	int_value, int_ok := config_parse_int (parser);
 	if int_ok
 	{
@@ -373,13 +566,26 @@ config_parse_rvalue :: (using parser : *Config_Parser) -> *Config_RValue
 		return rvalue;
 	}
 	
+	if config_parser_is_string (parser, "[")
+	{
+		array_literal := config_parse_array_literal (parser);
+		if !array_literal
+			return null;
+		rvalue := add_to_bucket_array (*rvalues);
+		rvalue.kind = .ARRAY;
+		rvalue.array_literal = array_literal;
+
+		return rvalue;
+	}
+
 	if config_parser_is_string (parser, "{")
 	{
-		compound := config_parse_compound (parser);
-		if !compound then return null;
+		map_literal := config_parse_map_literal (parser);
+		if !map_literal
+			return null;
 		rvalue := add_to_bucket_array (*rvalues);
-		rvalue.kind = .COMPOUND;
-		rvalue.compound = compound;
+		rvalue.kind = .MAP;
+		rvalue.map_literal = map_literal;
 
 		return rvalue;
 	}
@@ -387,41 +593,24 @@ config_parse_rvalue :: (using parser : *Config_Parser) -> *Config_RValue
 	return null;
 }
 
-config_parse_lvalue :: (using parser : *Config_Parser) -> *Config_LValue
-{
-	profile ();
-
-	config_parser_skip_spaces (parser);
-	identifier, ok := config_parse_identifier (parser);
-	if !ok then return null;
-	subscript_index := 0;
-	if config_parser_match_string (parser, "[")
-	{
-		subscript_index = config_parse_int (parser);
-		if subscript_index < 0 then return null;
-		if !config_parser_match_string (parser, "]") then return null;
-	}
-	member_lvalue : *Config_LValue;
-	if config_parser_match_string (parser, ".")
-	{
-		member_lvalue = config_parse_lvalue (parser);
-		if !member_lvalue then return null;
-	}
-
-	lvalue := add_to_bucket_array (*lvalues);
-	lvalue.identifier = identifier;
-	lvalue.subscript_index = subscript_index;
-	lvalue.member_lvalue = member_lvalue;
-
-	return lvalue;
-}
-
-config_parse_int :: inline (using parser : *Config_Parser) -> int, ok : bool
+config_parse_int :: inline (using parser : *Config_Parser) -> s64, ok : bool
 {
 	str : string = ---;
 	str.data = curr;
 	str.count = end - curr;
 	value, ok, remainder := string_to_s64 (str);
+	if !ok then return 0, false;
+	config_parser_advance (parser, remainder.data - curr);
+
+	return value, ok;
+}
+
+config_parse_uint :: inline (using parser : *Config_Parser) -> u64, ok : bool
+{
+	str : string = ---;
+	str.data = curr;
+	str.count = end - curr;
+	value, ok, remainder := string_to_u64 (str);
 	if !ok then return 0, false;
 	config_parser_advance (parser, remainder.data - curr);
 
@@ -496,20 +685,20 @@ config_parse_identifier :: inline (using parser : *Config_Parser) -> string, ok 
 	return identifier, true;
 }
 
-config_parse_compound :: (using parser : *Config_Parser) -> *Config_Compound
+config_parse_array_literal :: (using parser : *Config_Parser) -> *Config_Array_Literal
 {
 	profile ();
 
 	config_parser_skip_spaces (parser);
-	if !config_parser_match_string (parser, "{") then return null;
-	elems : [..]*Config_Compound_Elem;
+	if !config_parser_match_string (parser, "[") then return null;
+	elems : [..]*Config_RValue;
 	elems.allocator = TEMP;
 	found_comma := true;
 	config_parser_skip_spaces (parser);
-	while !config_parser_match_string (parser, "}")
+	while !config_parser_match_string (parser, "]")
 	{
 		if !found_comma then return null;
-		elem := config_parse_compound_elem (parser);
+		elem := config_parse_rvalue (parser);
 		if !elem then return null;
 		push_into_array (*elems, elem);
 		config_parser_skip_spaces (parser);
@@ -517,49 +706,93 @@ config_parse_compound :: (using parser : *Config_Parser) -> *Config_Compound
 		config_parser_skip_spaces (parser);
 	}
 
-	compound := add_to_bucket_array (*compounds);
-	compound.elems = clone_array (elems, HEAP);
+	array_literal := add_to_bucket_array (*array_literals);
+	array_literal.elems = clone_array (elems, HEAP);
 
-	return compound;
+	return array_literal;
 }
 
-config_parse_compound_elem :: (using parser : *Config_Parser) -> *Config_Compound_Elem
+config_parse_map_literal :: (using parser : *Config_Parser) -> *Config_Map_Literal
 {
 	profile ();
 
-	specifier : Config_Compound_Elem.Specifier;
 	config_parser_skip_spaces (parser);
-	if config_parser_match_string (parser, ".")
+	if !config_parser_match_string (parser, "{") then return null;
+	elems : [..]Config_Map_Literal.Key_Value;
+	elems.allocator = TEMP;
+	found_comma := true;
+	config_parser_skip_spaces (parser);
+	while !config_parser_match_string (parser, "}")
 	{
-		ok := false;
-		int_value, int_ok := config_parse_int (parser);
-		if int_ok
-		{
-			specifier.kind = .INDEX;
-			specifier.index = int_value;
-			if specifier.index < 0 then return null;
-			ok = true;
-		}
-		else if is_alpha (config_parser_get (parser)) || config_parser_get (parser) == #char "_"
-		{
-			specifier.kind = .IDENTIFIER;
-			specifier.identifier = config_parse_identifier (parser);
-			ok = true;
-		}
+		if !found_comma then return null;
+		ok : bool;
+		elem : Config_Map_Literal.Key_Value = ---;
+		elem.key, ok = config_parse_string (parser);
 		if !ok then return null;
 		config_parser_skip_spaces (parser);
-		if !config_parser_match_string (parser, "=") return null;
+		if !config_parser_match_string (parser, ":")
+			return null;
+		config_parser_skip_spaces (parser);
+		elem.val = config_parse_rvalue (parser);
+		if !elem.val then return null;
+		push_into_array (*elems, elem);
+		config_parser_skip_spaces (parser);
+		found_comma = config_parser_match_string (parser, ",");
+		config_parser_skip_spaces (parser);
 	}
-	rvalue := config_parse_rvalue (parser);
-	if !rvalue then return null;
 
-	compound_elem := add_to_bucket_array (*compound_elems);
-	compound_elem.specifier = specifier;
-	compound_elem.rvalue = rvalue;
+	map_literal := add_to_bucket_array (*map_literals);
+	map_literal.elems = clone_array (elems, HEAP);
 
-	return compound_elem;
+	return map_literal;
 }
 
+config_assign :: (var : *Config_Var, rvalue : *Config_RValue)
+{
+	var.kind = rvalue.kind;
+	if #complete rvalue.kind ==
+	{
+	case .BOOL;
+		var.as_bool = rvalue.bool_value;
+	case .INT;
+		var.as_s64 = rvalue.int_value;
+	case .UINT;
+		var.as_u64 = rvalue.uint_value;
+	case .FLOAT;
+		var.as_f32 = rvalue.float_value;
+	case .STRING;
+		var.as_string = clone_string (rvalue.string_value, HEAP);
+	case .ARRAY;
+		var.as_array.count = rvalue.array_literal.elems.count;
+		var.as_array.data = alloc (size_of (Config_Var) * var.as_array.count, HEAP);
+		for rvalue.array_literal.elems
+			config_assign (*var.as_array[it_index], it);
+	case .MAP;
+		var.as_map.count = rvalue.map_literal.elems.count;
+		var.as_map.data = alloc (size_of (Config_Key_Value) * var.as_map.count, HEAP);
+		for rvalue.map_literal.elems
+		{
+			var.as_map[it_index].key = clone_string (it.key, HEAP);
+			config_assign (*var.as_map[it_index].val, it.val);
+		}
+	}
+}
+
+config_fill_variables :: inline (using root : *Config_Root)
+{
+	// @Leak (stefan): Make sure we free all the variables.
+	if !config_variables.allocator.proc
+		init_map (*config_variables, 100, HEAP);
+	clear_map (*config_variables);
+	for assignments
+	{
+		var, was_present := insert_into_map (*config_variables, clone_string (it.lvalue.identifier, HEAP));
+		// @Leak (stefan): If was_present is true, we overwrite the variable without freeing it.
+		config_assign (var, it.rvalue);
+	}
+}
+
+/*
 config_print_lvalue :: (using lvalue : *Config_LValue)
 {
 	print (identifier);
@@ -847,3 +1080,4 @@ config_assign_compound_array :: (config_ptr : *void, config_info : *Type_Info_St
 
 	return true;
 }
+*/

@@ -58,7 +58,7 @@ handle_event :: inline (event : Event) -> Event_Result #must, propagate : bool
 
 	case .KEY_PRESS; #through;
 	case .KEY_REPEAT;
-		toggle_mods, toggle_key_code, toggle_ok := parse_binding (config.toggle_command_input_binding);
+		toggle_mods, toggle_key_code, toggle_ok := parse_binding (config_get_string ("toggle_command_input_binding"));
 		if event.key_code == toggle_key_code && event.mods == toggle_mods
 		{
 			toggle_command_input ();
@@ -67,13 +67,14 @@ handle_event :: inline (event : Event) -> Event_Result #must, propagate : bool
 		
 		if !is_inputting_command
 		{
-			for shortcut : config.command_shortcuts
+			command_shortcuts, ok := config_get_string_map ("command_shortcuts", TEMP);
+			for shortcut, command_name : command_shortcuts
 			{
-				mods, key_code, ok := parse_binding (shortcut.binding);
+				mods, key_code, ok := parse_binding (shortcut);
 				if !ok then continue;
 				for cmd : commands
 				{
-					if cmd.name == shortcut.command && event.mods == mods && event.key_code == key_code
+					if cmd.name == command_name && event.mods == mods && event.key_code == key_code
 					{
 						if cmd.arg_count == 0 || cmd.first_optional_argument == 0
 						{
@@ -187,13 +188,14 @@ main :: ()
 		}
 	}
 
-	init_config (*config);
-	parser : Config_Parser;
 	{
+		parser : Config_Parser;
+		defer config_parser_destroy (*parser);
 		file_contents, ok := platform_read_entire_file ("config.amber", TEMP);
 		config_parser_init (*parser, "config.amber", file_contents);
 		config_parse (*parser);
-		config_fill_variables (*config, *parser.root);
+		config_fill_variables (*parser.root);
+		/*
 		println ("default_font_name=%", config.default_font_name);
 		println ("default_font_height=%", config.default_font_height);
 		println ("treat_underscores_as_alpha_numeric_boundary=%", config.treat_underscores_as_alpha_numeric_boundary);
@@ -212,6 +214,7 @@ main :: ()
 			for name : it.filenames
 				println ("\t\t%", name);
 		}
+		*/
 	}
 
 	platform_init_window_and_gl ();
@@ -222,9 +225,8 @@ main :: ()
 	init_slot_array (*buffers, 20, HEAP);
 	init_slot_array (*text_layouts, 20, HEAP);
 	init_slot_array (*splits, 10, HEAP);
-	command_buffer_set_prompt (config.command_prompt);
+	command_buffer_set_prompt (config_get_string ("command_prompt"));
 	init_extensions ();
-	fill_extensions_config (*parser.root);
 	font_load_from_file (FONT_NAME);
 	split_create_first ();
 	buffer_load_file (get_active_buffer (), "get_next_line.c");
@@ -247,7 +249,7 @@ main :: ()
 		frame_start = platform_get_time ();
 		delta_time := cast (f32) (frame_start - previous_frame_start);
 		reset_temporary_storage ();
-		
+
 		// Handle file changes
 		file_changes := platform_pull_file_changes ();
 		for change : file_changes

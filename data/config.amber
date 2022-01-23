@@ -1,195 +1,62 @@
 default_font_name = "JetBrains-Mono";
 default_font_height = 16;
 treat_underscores_as_alpha_numeric_boundary = true;
-toggle_command_input_binding = "CTRL+US_BACKTICK";
 command_prompt = ">";
+toggle_command_input_binding = "CTRL+US_BACKTICK";
 command_shortcuts = {
-	{
-		.command = "open",
-		.binding = "CTRL+O"
-	},
-	{
-		.command = "new",
-		.binding = "CTRL+N"
-	},
-	{
-		.command = "save",
-		.binding = "CTRL+S"
-	},
-	{
-		.command = "save_as",
-		.binding = "CTRL+ALT+S"
-	},
-	{
-		.command = "save_all",
-		.binding = "CTRL+SHIFT+S"
-	},
-	{
-		.command = "close",
-		.binding = "CTRL+Q"
-	},
-	{
-		.command = "line",
-		.binding = "CTRL+L"
-	},
-	{
-		.command = "undo",
-		.binding = "CTRL+Z"
-	},
-	{
-		.command = "redo",
-		.binding = "CTRL+SHIFT+Z"
-	},
-	{
-		.command = "clear_cursors_and_selection",
-		.binding = "ESCAPE"
-	},
-	{
-		.command = "copy",
-		.binding = "CTRL+C"
-	},
-	{
-		.command = "cut",
-		.binding = "CTRL+X"
-	},
-	{
-		.command = "paste",
-		.binding = "CTRL+V"
-	},
-	{
-		.command = "newline",
-		.binding = "RETURN"
-	},
-	{
-		.command = "newline_above",
-		.binding = "CTRL+SHIFT+RETURN"
-	},
-	{
-		.command = "backspace",
-		.binding = "BACKSPACE"
-	},
-	{
-		.command = "backspace_word",
-		.binding = "CTRL+BACKSPACE"
-	},
-	{
-		.command = "delete",
-		.binding = "DELETE"
-	},
-	{
-		.command = "delete_word",
-		.binding = "CTRL+DELETE"
-	},
-	{
-		.command = "left",
-		.binding = "LEFT"
-	},
-	{
-		.command = "select_left",
-		.binding = "SHIFT+LEFT"
-	},
-	{
-		.command = "prev_word",
-		.binding = "CTRL+LEFT"
-	},
-	{
-		.command = "select_prev_word",
-		.binding = "CTRL+SHIFT+LEFT"
-	},
-	{
-		.command = "right",
-		.binding = "RIGHT"
-	},
-	{
-		.command = "select_right",
-		.binding = "SHIFT+RIGHT"
-	},
-	{
-		.command = "next_word",
-		.binding = "CTRL+RIGHT"
-	},
-	{
-		.command = "select_next_word",
-		.binding = "CTRL+SHIFT+RIGHT"
-	},
-	{
-		.command = "up",
-		.binding = "UP"
-	},
-	{
-		.command = "select_up",
-		.binding = "SHIFT+UP"
-	},
-	{
-		.command = "down",
-		.binding = "DOWN"
-	},
-	{
-		.command = "select_down",
-		.binding = "SHIFT+DOWN"
-	},
-	{
-		.command = "page_up",
-		.binding = "PAGE_UP"
-	},
-	{
-		.command = "select_page_up",
-		.binding = "SHIFT+PAGE_UP"
-	},
-	{
-		.command = "page_down",
-		.binding = "PAGE_DOWN"
-	},
-	{
-		.command = "select_page_down",
-		.binding = "SHIFT+PAGE_DOWN"
-	},
-	{
-		.command = "move_line_up",
-		.binding = "ALT+UP"
-	},
-	{
-		.command = "move_line_down",
-		.binding = "ALT+DOWN"
-	},
-	{
-		.command = "add_cursor_above",
-		.binding = "SHIFT+ALT+UP"
-	},
-	{
-		.command = "add_cursor_below",
-		.binding = "SHIFT+ALT+DOWN"
-	},
-	{
-		.command = "scroll_up",
-		.binding = "CTRL+UP"
-	},
-	{
-		.command = "scroll_down",
-		.binding = "CTRL+DOWN"
-	},
-	{
-		.command = "scroll_page_up",
-		.binding = "CTRL+PAGE_UP"
-	},
-	{
-		.command = "scroll_page_down",
-		.binding = "CTRL+PAGE_DOWN"
-	},
-	{
-		.command = "beginning",
-		.binding = "HOME"
-	},
-	{
-		.command = "select_to_beginning",
-		.binding = "SHIFT+HOME"
-	},
-	{
-		.command = "end",
-		.binding = "END"
-	},
-	{
-		.command = "select_to_end",
-		.binding = "SHIFT+END"
-	}
+	"open" : "CTRL+O",
+	"new" : "CTRL+N",
+	"save" : "CTRL+S",
+	"save_as" : "CTRL+ALT+S",
+	"save_all" : "CTRL+SHIFT+S",
+	"close" : "CTRL+Q",
+	"line" : "CTRL+L",
+	"undo" : "CTRL+Z",
+	"redo" : "CTRL+SHIFT+Z",
+	"clear_cursors_and_selection" : "ESCAPE",
+	"copy" : "CTRL+C",
+	"cut" : "CTRL+X",
+	"paste" : "CTRL+V",
+	"newline" : "RETURN",
+	"newline_above" : "CTRL+SHIFT+RETURN",
+	"backspace" : "BACKSPACE",
+	"backspace_word" : "CTRL+BACKSPACE",
+	"delete" : "DELETE",
+	"delete_word" : "CTRL+DELETE",
+	"left" : "LEFT",
+	"select_left" : "SHIFT+LEFT",
+	"prev_word" : "CTRL+LEFT",
+	"select_prev_word" : "CTRL+SHIFT+LEFT",
+	"right" : "RIGHT",
+	"select_right" : "SHIFT+RIGHT",
+	"next_word" : "CTRL+RIGHT",
+	"select_next_word" : "CTRL+SHIFT+RIGHT",
+	"up" : "UP",
+	"select_up" : "SHIFT+UP",
+	"down" : "DOWN",
+	"select_down" : "SHIFT+DOWN",
+	"page_up" : "PAGE_UP",
+	"select_page_up" : "SHIFT+PAGE_UP",
+	"page_down" : "PAGE_DOWN",
+	"select_page_down" : "SHIFT+PAGE_DOWN",
+	"move_line_up" : "ALT+UP",
+	"move_line_down" : "ALT+DOWN",
+	"add_cursor_above" : "SHIFT+ALT+UP",
+	"add_cursor_below" : "SHIFT+ALT+DOWN",
+	"scroll_up" : "CTRL+UP",
+	"scroll_down" : "CTRL+DOWN",
+	"scroll_page_up" : "CTRL+PAGE_UP",
+	"scroll_page_down" : "CTRL+PAGE_DOWN",
+	"beginning" : "HOME",
+	"select_to_beginning" : "SHIFT+HOME",
+	"end" : "END",
+	"select_to_end" : "SHIFT+END"
+};
+language_associations = {
+	"Amber" : [ "*.amber" ],
+	"Amber Documentation" : [ "*.amber_doc" ],
+	"C" : [ "*.c", "*.h" ],
+	"Makefile" : [ "Makefile" ],
+	"Markdown" : [ "*.md" ],
+	"Jai" : [ "*.jai" ]
 };

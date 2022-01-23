@@ -3,8 +3,6 @@
 Amber_Hooks :: struct #type_info_none
 {
 	using callbacks : Extension_Callbacks;
-	amber_config : *Amber_Config;
-	extension_config : Any;
 	HEAP : Allocator;
 
 	amber_get_executable_path : (Allocator) -> string;
@@ -97,6 +95,13 @@ Amber_Hooks :: struct #type_info_none
 	command_history_clear : ();
 	command_register : (Extension_ID, Command_Info) -> bool;
 	command_unregister_for_extension : (Extension_ID);
+	config_get_bool : (string, bool) -> (bool, bool);
+	config_get_float : (string, f32) -> (f32, bool);
+	config_get_int : (string, s64) -> (s64, bool);
+	config_get_string : (string, string) -> (string, bool);
+	config_get_string_array : (string, Allocator) -> ([]string, bool);
+	config_get_string_map : (string, Allocator) -> (Hash_Map (TKey = string, TVal = string, hash_func = null, comp_func = null, EXPAND_LIMIT = 70), bool);
+	config_get_uint : (string, u64) -> (u64, bool);
 	create_framebuffer_and_texture : (u32, u32, s64) -> (u32, u32);
 	create_shader : (string, string) -> u32;
 	create_texture : (u32, u32, s64, *void, bool) -> u32;
@@ -183,7 +188,7 @@ Amber_Hooks :: struct #type_info_none
 	platform_is_key_down : (Key_Code) -> bool;
 	platform_is_mouse_button_down : (Mouse_Button) -> bool;
 	platform_is_window_focused : () -> bool;
-	platform_list_files_in_directory : (string, Allocator) -> (*File_Info, []File_Info);
+	platform_list_files_in_directory : (string, bool, Allocator) -> (*File_Info, []File_Info);
 	platform_load_library : (string) -> *void;
 	platform_move_file : (string, string) -> bool;
 	platform_open_error_box : (string, []Any);

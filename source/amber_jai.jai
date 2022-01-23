@@ -159,6 +159,7 @@ init_extension :: (using hooks : *Amber_Hooks, extension_id : Extension_ID) -> b
 #if ENABLE_PROFILING
 	init_profiler ();
 
+	on_update = jai_on_update;
 	jai : Language;
 	jai.extension_id = extension_id;
 	jai.name = "Jai";
@@ -179,6 +180,11 @@ terminate_extension :: (using hooks : *Amber_Hooks)
 	write_profiling_data_to_builder (*builder);
 	platform_write_to_file ("jai_profiling.txt", to_string (builder));
 }
+}
+
+jai_on_update :: (using hooks : *Amber_Hooks)
+{
+	reset_temporary_storage ();
 }
 
 jai_process_buffer :: (using hooks : *Amber_Hooks, buffer_id : Buffer_ID)

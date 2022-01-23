@@ -7,6 +7,7 @@
 #program_export
 init_extension :: (using hooks : *Amber_Hooks, extension_id : Extension_ID) -> bool
 {
+	on_update = default_on_update;
 	register_all_commands (hooks, extension_id);
 	clang : Language;
 	clang.extension_id = extension_id;
@@ -21,4 +22,9 @@ init_extension :: (using hooks : *Amber_Hooks, extension_id : Extension_ID) -> b
 #program_export
 terminate_extension :: (using hooks : *Amber_Hooks)
 {
+}
+
+default_on_update :: (using hooks : *Amber_Hooks)
+{
+	reset_temporary_storage ();
 }

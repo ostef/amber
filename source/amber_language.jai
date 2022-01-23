@@ -42,6 +42,7 @@ language_get_associated_filenames :: inline (language_id : Language_ID, allocato
 		return string.[];
 	language := get_language (language_id);
 	filenames := language.default_associated_filenames;
+/*
 	for config.language_associations
 	{
 		if it.language == language.name
@@ -54,6 +55,7 @@ language_get_associated_filenames :: inline (language_id : Language_ID, allocato
 			}
 		}
 	}
+*/
 	result := clone_array (filenames, allocator);
 	for * result
 	{
@@ -70,6 +72,7 @@ language_get_associated_file_extensions :: inline (language_id : Language_ID, al
 		return string.[];
 	language := get_language (language_id);
 	file_extensions := language.default_associated_file_extensions;
+/*
 	for config.language_associations
 	{
 		if it.language == language.name
@@ -82,6 +85,7 @@ language_get_associated_file_extensions :: inline (language_id : Language_ID, al
 			}
 		}
 	}
+*/
 	result := clone_array (file_extensions, allocator);
 	for * result
 	{
@@ -96,6 +100,7 @@ language_match_filename :: inline (language_id : Language_ID, filename : string)
 {
 	language := get_language (language_id);
 	filenames := language.default_associated_filenames;
+/*
 	for config.language_associations
 	{
 		if it.language == language.name
@@ -108,6 +113,7 @@ language_match_filename :: inline (language_id : Language_ID, filename : string)
 			}
 		}
 	}
+*/
 	for filenames
 		if it == filename
 			return true;
@@ -120,6 +126,7 @@ language_match_extension :: inline (language_id : Language_ID, extension : strin
 {
 	language := get_language (language_id);
 	file_extensions := language.default_associated_file_extensions;
+/*
 	for config.language_associations
 	{
 		if it.language == language.name
@@ -132,6 +139,7 @@ language_match_extension :: inline (language_id : Language_ID, extension : strin
 			}
 		}
 	}
+*/
 	for file_extensions
 		if it == extension
 			return true;
