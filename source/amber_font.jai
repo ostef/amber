@@ -196,10 +196,10 @@ load_glyph :: (using page : *Font_Page, codepoint : u32) -> *Font_Glyph
 		atlas.framebuffer, atlas.texture = create_framebuffer_and_texture (atlas.width, atlas.height);
 		assert (atlas.framebuffer != 0 && atlas.texture != 0, "Could not create rendering objects for font atlas.");
 	}
-	
+
 	glyph_texture := create_texture (glyph.bitmap_width, glyph.bitmap_height, 1, slot.bitmap.buffer);
 	defer destroy_texture (glyph_texture);
-	
+
 	if atlas.width - atlas.pen_x < glyph.bitmap_width || atlas.height - atlas.pen_y < glyph.bitmap_height
 	{
 		atlas.pen_x = 0;
@@ -225,7 +225,7 @@ load_glyph :: (using page : *Font_Page, codepoint : u32) -> *Font_Glyph
 	defer draw_set_clipping (prev_clip);
 	prev_shader := draw_set_shader (glyph_shader);
 	defer draw_set_shader (prev_shader);
-	
+
 	draw_rect (xywhf (
 		xx atlas.pen_x,
 		xx atlas.pen_y,
@@ -233,10 +233,10 @@ load_glyph :: (using page : *Font_Page, codepoint : u32) -> *Font_Glyph
 		xx glyph.bitmap_height),
 		RGBA_WHITE
 	);
-	
+
 	atlas.pen_x += glyph.bitmap_width;
 	atlas.row_end = max (atlas.row_end, atlas.pen_y + glyph.bitmap_height);
-	
+
 	return glyph;
 }
 

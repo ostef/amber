@@ -246,7 +246,7 @@ list_files_helper :: (dirname : string, recursive : bool, parent_index : s64, al
 platform_list_files_in_directory :: inline (dirname : string, recursive : bool, allocator : Allocator) -> root : *File_Info #must, all_files : []File_Info
 {
 	all_files : [..]File_Info;
-	all_files.allocator = allocator;;
+	all_files.allocator = allocator;
 	ok := list_files_helper (dirname, recursive, -1, *all_files);
 	if !ok
 	{
