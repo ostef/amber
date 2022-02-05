@@ -297,7 +297,7 @@ print_type_to_builder :: (builder : *String_Builder, info : *Type_Info, $compila
 		}
 		else
 		{
-			if info_struct.struct_flags & .UNION
+			if info_struct.textual_flags & .UNION
 			{
 				// @Todo (stefan): Print union { member : type; member : type; ... } when $compilable = true
 				assert (!compilable, "Printing an anonymous union type with $compilable = true. This is not yet handled.");

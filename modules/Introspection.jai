@@ -45,6 +45,7 @@ any_sized_int_to_s64 :: (size : s64, ptr : *void) -> s64
 	}
 
 	assert (false, "Invalid integer size.");
+	return 0;
 }
 
 any_sized_uint_to_u64 :: (size : s64, ptr : *void) -> u64
@@ -58,6 +59,7 @@ any_sized_uint_to_u64 :: (size : s64, ptr : *void) -> u64
 	}
 
 	assert (false, "Invalid unsigned integer size.");
+	return 0;
 }
 
 string_to_enum :: ($T : Type, str : string) -> T, bool

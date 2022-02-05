@@ -1345,7 +1345,7 @@ print_type_to_builder :: (builder : *String_Builder, info : *Type_Info)
 		}
 		else
 		{
-			if flagged (info_struct.struct_flags, .UNION)
+			if flagged (info_struct.textual_flags, .UNION)
 				print_string_to_builder (builder, "(anonymous union)");
 			else
 				print_string_to_builder (builder, "(anonymous struct)");

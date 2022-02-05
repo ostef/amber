@@ -132,7 +132,7 @@ print_type_to_builder :: (builder : *Code_Builder, info : *Type_Info)
 		}
 		else
 		{
-			if info_struct.struct_flags & .UNION
+			if info_struct.textual_flags & .UNION
 				print_to_builder (builder, "(anonymous union)");
 			else
 				print_to_builder (builder, "(anonymous struct)");
@@ -645,7 +645,7 @@ code_print_note :: inline (builder : *Code_Builder, using note : *Code_Note)
 
 code_print_struct :: (builder : *Code_Builder, using code : *Code_Struct)
 {
-	if struct_flags & .UNION
+	if textual_flags & .UNION
 		print_to_builder (builder, "union");
 	else
 		print_to_builder (builder, "struct");
