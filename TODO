@@ -35,6 +35,7 @@ instead of allocating new memory
 # Bugs:
 * buffers do not get reloaded correctly
 * buffers get reloaded by the file change watcher when they are saved
+* resizing error when putting a window on the side/maximizing, then moving it
 
 # Compiler bugs:
 * #through in if-case statement
