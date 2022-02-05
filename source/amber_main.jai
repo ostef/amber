@@ -175,7 +175,7 @@ main :: ()
 	executable_path = platform_get_module_filename (HEAP);
 	executable_dir  = filename_remove_basename (executable_path);
 	{
-		_, files := platform_list_files_in_directory ("extensions", false, TEMP);
+		_, files := platform_list_files_in_directory (join (TEMP, executable_dir, "extensions"), false, TEMP);
 		for files
 		{
 			if filename_get_extension (it.name) != "dll"
@@ -191,30 +191,10 @@ main :: ()
 	{
 		parser : Config_Parser;
 		defer config_parser_destroy (*parser);
-		file_contents, ok := platform_read_entire_file ("config.amber", TEMP);
+		file_contents, ok := platform_read_entire_file (join (TEMP, executable_dir, "config.amber"), TEMP);
 		config_parser_init (*parser, "config.amber", file_contents);
 		config_parse (*parser);
 		config_fill_variables (*parser.root);
-		/*
-		println ("default_font_name=%", config.default_font_name);
-		println ("default_font_height=%", config.default_font_height);
-		println ("treat_underscores_as_alpha_numeric_boundary=%", config.treat_underscores_as_alpha_numeric_boundary);
-		println ("command_prompt=%", config.command_prompt);
-		println ("command_shortcuts=");
-		for config.command_shortcuts
-			println ("\t% : %", it.command, it.binding);
-		println ("language_associations=");
-		for config.language_associations
-		{
-			println ("\t%", it.language);
-			println ("\textensions:");
-			for ext : it.extensions
-				println ("\t\t%", ext);
-			println ("\tfilenames:");
-			for name : it.filenames
-				println ("\t\t%", name);
-		}
-		*/
 	}
 
 	platform_init_window_and_gl ();
