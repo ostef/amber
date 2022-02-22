@@ -3019,20 +3019,7 @@ get_pointer :: (map : Hash_Map, key : map.TKey) -> *map.TVal #must
 	return null;
 }
 
-get_pointer :: (map : *Hash_Map, key : map.TKey) -> *map.TVal #must
-{
-	return inline get_pointer (<<map, key);
-}
-
 get_value :: (map : Hash_Map, key : map.TKey, fallback : map.TVal) -> map.TVal #must, found : bool
-{
-	ptr := inline get_pointer (map, key);
-	if ptr then return <<ptr, true;
-
-	return fallback, false;
-}
-
-get_value :: (map : *Hash_Map, key : map.TKey, fallback : map.TVal) -> map.TVal #must, found : bool
 {
 	ptr := inline get_pointer (map, key);
 	if ptr then return <<ptr, true;

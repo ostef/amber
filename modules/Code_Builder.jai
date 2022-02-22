@@ -386,10 +386,8 @@ code_print_literal :: (builder : *Code_Builder, using lit : *Code_Literal)
 			base = 2;
 		else if value_flags & .HEX
 			base = 16;
-		if value_flags & .FLOAT64
+		if value_flags & .FLOAT
 			print_f64_to_builder (builder, _float64, 6);
-		else if value_flags & .FLOAT
-			print_f32_to_builder (builder, _float32, 6);
 		else if value_flags & .MINUS_SIGN
 			print_s64_to_builder (builder, _s64, base);
 		else
@@ -1097,6 +1095,28 @@ code_print_compiler_query :: (builder : *Code_Builder, using expr : *Code_Size_O
 	}
 }
 
+code_print_directive_static_if :: (builder : *Code_Builder, using directive : *Code_Directive_Static_If)
+{
+	if is_ifx
+		print_to_builder (builder, "#ifx ");
+	else
+		print_to_builder (builder, "#if ");
+	code_print_expression (builder, condition);
+	if then_block
+	{
+		if is_ifx
+			print_to_builder (builder, " then ");
+		else
+			print_to_builder (builder, " ");
+		code_print_block (builder, then_block);
+	}
+	if else_block
+	{
+		print_to_builder (builder, " else ");
+		code_print_block (builder, else_block);
+	}
+}
+
 code_print_directive_import :: (builder : *Code_Builder, using directive : *Code_Directive_Import)
 {
 	print_to_builder (builder, "#import");
@@ -1168,9 +1188,15 @@ code_print_directive_modify :: (builder : *Code_Builder, using directive : *Code
 	print_to_builder (builder, "#modify ");
 	code_print_block (builder, block);
 }
+
 code_print_directive_foreign_library :: (builder : *Code_Builder, using directive : *Code_Directive_Foreign_Library)
 {
 	print_line_to_builder (builder, "#foreign_library \"", name, "\";");
+}
+
+code_print_directive_poke_name :: (builder : *Code_Builder, using directive : *Code_Directive_Poke_Name)
+{
+	print_line_to_builder (builder, "#poke_name ", module_struct.name, " \"", name, "\";");
 }
 
 code_print_push_context :: (builder : *Code_Builder, using push : *Code_Push_Context)
@@ -1191,22 +1217,6 @@ code_print_directive_scope :: (builder : *Code_Builder, using directive : *Code_
 		print_to_builder (builder, "#scope_file");
 	case .INTERNAL;
 		print_to_builder (builder, "#scope_module");
-	}
-}
-
-code_print_directive_static_if :: (builder : *Code_Builder, using directive : *Code_Directive_Static_If)
-{
-	if is_ifx
-		print_to_builder (builder, "#ifx ");
-	else
-		print_to_builder (builder, "#if ");
-	code_print_expression (builder, condition);
-	if then_block
-		code_print_block (builder, then_block);
-	if else_block
-	{
-		print_to_builder (builder, " else ");
-		code_print_block (builder, else_block);
 	}
 }
 
