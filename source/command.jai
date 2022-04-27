@@ -2,8 +2,13 @@ Command :: struct
 {
 	Proc :: #type ([]string) -> s32;
 
+	Arg :: struct
+	{
+		using variable : Variable;
+		has_default_value : bool;
+	}
+
 	name : string;
 	proc : Proc;
-	arg_count : s64;
-	first_optional_argument : s64;
+	args : [..]Arg;
 }
