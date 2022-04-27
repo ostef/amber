@@ -3,6 +3,8 @@ mem  :: #import "Memory";
 fmt  :: #import "Fmt";
 log  :: #import "Log";
 str  :: #import "String";
+builder :: #import "String/Builder";
+strconv :: #import "String/Convert";
 path :: #import "Path";
 #import "Linalg";
 math :: #import "Math";
@@ -127,6 +129,14 @@ main :: ()
 	defer render.destroy_texture (*g_logo_textures.x32);
 	defer render.destroy_texture (*g_logo_textures.x48);
 	defer render.destroy_texture (*g_logo_textures.x256);
+
+	config : Config;
+	map.init (*config.variables, 100, mem.HEAP_ALLOC);
+	parser : Config_Parser;
+	if !init_from_file (*parser, "config.amber", mem.HEAP_ALLOC)
+		error ("Could not read file 'config.amber'.");
+	parse (*parser);
+	fill_variables (*config, parser);
 
 	g_is_running = true;
 	while g_is_running
