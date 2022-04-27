@@ -134,7 +134,7 @@ build :: ()
 		{
 			cmd := path.join (mem.HEAP_ALLOC, g_build_dir, OUTPUT_NAME);
 			log.message ("Running %\n", cmd);
-			ps.run_command (cmd, working_directory = g_build_dir);
+			ps.run_command (cmd, working_directory = g_build_dir, output = .PRINT);
 		}
 	}
 	jaic.set_build_options_dc (.{ do_output = false, write_added_strings = false });
