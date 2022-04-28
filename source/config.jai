@@ -167,7 +167,7 @@ set :: inline (config : *Config, name : string, value : string)
 	set (config, name, val);
 }
 
-get :: inline (config : *Config, name : string) -> Variable.Value, ok : bool
+get :: inline (config : Config, name : string) -> Variable.Value, ok : bool
 {
 	ptr := map.get_ptr (config.variables, name);
 	if !ptr
@@ -175,7 +175,7 @@ get :: inline (config : *Config, name : string) -> Variable.Value, ok : bool
 	return <<ptr, true;
 }
 
-get_int :: inline (config : *Config, name : string, fallback := 0) -> int, ok : bool
+get_int :: inline (config : Config, name : string, fallback := 0) -> int, ok : bool
 {
 	val, ok := get (config, name);
 	if !ok || val.kind == .INT
@@ -183,7 +183,7 @@ get_int :: inline (config : *Config, name : string, fallback := 0) -> int, ok : 
 	return val.as_int, true;
 }
 
-get_float :: inline (config : *Config, name : string, fallback := 0.0) -> float, ok : bool
+get_float :: inline (config : Config, name : string, fallback := 0.0) -> float, ok : bool
 {
 	val, ok := get (config, name);
 	if !ok || val.kind != .FLOAT
@@ -191,7 +191,7 @@ get_float :: inline (config : *Config, name : string, fallback := 0.0) -> float,
 	return val.as_float, true;
 }
 
-get_string :: inline (config : *Config, name : string, fallback := "") -> string, ok : bool
+get_string :: inline (config : Config, name : string, fallback := "") -> string, ok : bool
 {
 	val, ok := get (config, name);
 	if !ok || val.kind != .STRING
@@ -199,12 +199,20 @@ get_string :: inline (config : *Config, name : string, fallback := "") -> string
 	return val.as_string, true;
 }
 
-get_bool :: inline (config : *Config, name : string, fallback := false) -> bool, ok : bool
+get_bool :: inline (config : Config, name : string, fallback := false) -> bool, ok : bool
 {
 	val, ok := get (config, name);
 	if !ok || val.kind != .BOOL
 		return fallback, false;
 	return val.as_bool, true;
+}
+
+get_rgba :: inline (config : Config, name : string, fallback := math.RGBA.{ 0, 0, 0, 0 }) -> math.RGBA, ok : bool
+{
+	val, ok := get (config, name);
+	if !ok || val.kind != .RGBA
+		return fallback, false;
+	return val.as_rgba, true;
 }
 
 Config_Parser :: struct
