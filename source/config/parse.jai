@@ -2,6 +2,7 @@ Config_Parser :: struct
 {
 	Error :: struct
 	{
+		filename : string;
 		line, column : s64;
 		error_string : string;
 		line_string : string;
@@ -97,6 +98,7 @@ recover :: inline (using parser : *Config_Parser, until := ";")
 error :: (using parser : *Config_Parser, fmt_str : string, args : ..Any)
 {
 	err : Error;
+	err.filename = filename;
 	err.line = line;
 	err.column = column;
 	err.error_string = str.format (allocator, fmt_str, ..args);
@@ -107,12 +109,30 @@ error :: (using parser : *Config_Parser, fmt_str : string, args : ..Any)
 	while start + line_end < end && line_end > 0 && start[line_end] != #char "\n"
 		line_end += 1;
 	err.line_string = str.make (start + line_start, line_end - line_start);
+	print_error (err);
+}
 
-	fmt.println ("%:%:%, %", filename, err.line, err.column, err.error_string);
-	line_number_len := fmt.print (" % | ", err.line);
-	fmt.println (err.line_string);
-	for i : 0..line_number_len + err.column - 2
+print_error :: (using err : Config_Parser.Error)
+{
+	fmt.println ("%:%:%, %", filename, line, column, error_string);
+	line_number_len := fmt.print (" % | ", line);
+	for i : 0..line_string.count - 1
+	{
+		if line_string[i] == #char "\t"
+			fmt.print ("    ");
+		else
+			fmt.print ("{:c}", line_string[i]);
+	}
+	fmt.print ("\n");
+	for i : 0..line_number_len - 1
 		fmt.print (" ");
+	for i : 0..column - 2
+	{
+		if line_string[i] == #char "\t"
+			fmt.print ("    ");
+		else
+			fmt.print (" ");
+	}
 	fmt.println ("^");
 }
 
@@ -135,7 +155,17 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 		case .MAP;
 			set (config, str.join (mem.TEMP_ALLOC, name, ".count"), rvalue.map_literal.elems.count);
 			for elem, i : rvalue.map_literal.elems
+			{
 				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%]", name, elem.key), elem.value);
+				// @Note (stefan): I can see these being useful for iteration, for example:
+				// for i : 0..get_int (config, "map.count") - 1
+				// {
+				//     key   := get_string (config, "map[%].key");
+				//     value := get (config, "map[%].value");
+				// }
+				set (config, str.format (mem.TEMP_ALLOC, "%[%].key", name, i), elem.key);
+				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%].value", name, i), elem.value);
+			}
 		}
 	}
 
@@ -240,6 +270,7 @@ parse_assignment :: (parser : *Config_Parser) -> *Config_Assignment #must
 
 parse_lvalue :: (parser : *Config_Parser) -> *Config_LValue #must
 {
+	// @Todo (stefan): Parse more complicated expressions, like map and array subscript for l-values.
 	skip_spaces (parser);
 	identifier, ok := parse_identifier (parser);
 	if !ok
