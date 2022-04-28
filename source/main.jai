@@ -137,6 +137,8 @@ main :: ()
 		error ("Could not read file 'config.amber'.");
 	parse (*parser);
 	fill_variables (*config, parser);
+	for val, key : config.variables
+		fmt.println ("% : %", key, val);
 
 	g_is_running = true;
 	while g_is_running

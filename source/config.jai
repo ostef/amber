@@ -10,6 +10,7 @@ Variable :: struct
 			FLOAT;
 			STRING;
 			BOOL;
+			RGBA;
 		}
 
 		kind : Kind;
@@ -19,6 +20,7 @@ Variable :: struct
 			as_float  : float;
 			as_string : string;
 			as_bool   : bool;
+			as_rgba   : math.RGBA;
 		};
 	}
 
@@ -48,8 +50,13 @@ set :: inline (value : *Variable.Value, val : $T)
 		value.kind = .STRING;
 		value.as_string = val;
 	}
+	else #if T == math.RGBA
+	{
+		value.kind = .RGBA;
+		value.as_rgba = val;
+	}
 	else
-		#assert false, "Invalid type, must be int, float, bool or string.";
+		#assert false, "Invalid type, must be int, float, bool, string or RGBA.";
 }
 
 value_cast :: inline ($Target : Type, value : Variable.Value, $check_panic := true) -> Target #must, bool
@@ -94,8 +101,18 @@ value_cast :: inline ($Target : Type, value : Variable.Value, $check_panic := tr
 		}
 		return value.as_string, true;
 	}
+	else #if Target == math.RGBA
+	{
+		if value.kind != .RGBA
+		{
+			#if check_panic
+				panic ("Value is not a RGBA.");
+			return mem.default (Target), false;
+		}
+		return value.as_rgba, true;
+	}
 	else
-		#assert false, "Invalid type, must be int, float, bool or string.";
+		#assert false, "Invalid type, must be int, float, bool, string or RGBA.";
 }
 
 Config :: struct
@@ -327,10 +344,7 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 		case .MAP;
 			set (config, str.join (mem.TEMP_ALLOC, name, ".count"), rvalue.map_literal.elems.count);
 			for elem, i : rvalue.map_literal.elems
-			{
-				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%]", name, elem.key), elem.value);
-				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%]", name, i), elem.value);
-			}
+				fill_value (config, str.format (mem.TEMP_ALLOC, "%[{:'}]", name, elem.key), elem.value);
 		}
 	}
 
@@ -482,6 +496,17 @@ parse_rvalue :: (parser : *Config_Parser) -> *Config_RValue #must
 		}
 	}
 	{
+		val, ok, invalid := parse_rgba (parser);
+		if ok
+			return add_value_rvalue (val);
+		else if invalid
+		{
+			error (parser, "Invalid RGBA literal.");
+			recover (parser);
+			return null;
+		}
+	}
+	{
 		val := parse_lvalue (parser);
 		if val
 		{
@@ -538,6 +563,7 @@ parse_int :: inline (using parser : *Config_Parser) -> val : int, ok : bool
 
 parse_float :: inline (using parser : *Config_Parser) -> val : float, ok : bool
 {
+	// @Todo (stefan): differentiate between floats and integers
 	skip_spaces (parser);
 	s := str.make (curr, end - curr);
 	val, read := strconv.parse_f64 (s);
@@ -582,6 +608,36 @@ parse_string :: inline (using parser : *Config_Parser) -> val : string, ok : boo
 	}
 	advance (parser);
 	return builder.build (result, allocator), true, false;
+}
+
+parse_rgba :: inline (using parser : *Config_Parser) -> val : math.RGBA, ok : bool, invalid : bool
+{
+	skip_spaces (parser);
+	if !match (parser, "#")
+		return .{}, false, false;
+	if end - curr < 6
+		return .{}, false, true;
+	rs := str.make (curr, 2);
+	r, rok := strconv.parse_u8 (rs, strconv.HEXADECIMAL_BASE);
+	if rok != 2
+		return .{}, false, true;
+	advance (parser, rok);
+	gs := str.make (curr, 2);
+	g, gok := strconv.parse_u8 (gs, strconv.HEXADECIMAL_BASE);
+	if gok != 2
+		return .{}, false, true;
+	advance (parser, gok);
+	bs := str.make (curr, 2);
+	b, bok := strconv.parse_u8 (bs, strconv.HEXADECIMAL_BASE);
+	if bok != 2
+		return .{}, false, true;
+	advance (parser, bok);
+	as := str.make (curr, end - curr);
+	a, aok := strconv.parse_u8 (as, strconv.HEXADECIMAL_BASE);
+	if aok != 0 && aok != 2
+		return .{}, false, true;
+	advance (parser, aok);
+	return math.rgba (r, g, b, ifx aok then a else 255), true, false;
 }
 
 parse_identifier :: inline (using parser : *Config_Parser) -> val : string, ok : bool
