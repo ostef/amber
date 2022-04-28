@@ -63,12 +63,24 @@ get :: inline (config : Config, name : string) -> Variable.Value, ok : bool
 	return <<ptr, true;
 }
 
+get :: inline (config : Config, name_fmt : string, args : ..Any) -> Variable.Value, ok : bool
+{
+	val, ok := get (config, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args));
+	return val, ok;
+}
+
 get_int :: inline (config : Config, name : string, fallback := 0) -> int, ok : bool
 {
 	val, ok := get (config, name);
 	if !ok || val.kind == .INT
 		return fallback, false;
 	return val.as_int, true;
+}
+
+get_int :: inline (config : Config, name_fmt : string, args : ..Any, fallback := 0) -> int, ok : bool
+{
+	val, ok := get_int (config, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback);
+	return val, ok;
 }
 
 get_float :: inline (config : Config, name : string, fallback := 0.0) -> float, ok : bool
@@ -79,12 +91,24 @@ get_float :: inline (config : Config, name : string, fallback := 0.0) -> float, 
 	return val.as_float, true;
 }
 
+get_float :: inline (config : Config, name_fmt : string, args : ..Any, fallback := 0.0) -> float, ok : bool
+{
+	val, ok := get_float (config, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback);
+	return val, ok;
+}
+
 get_string :: inline (config : Config, name : string, fallback := "") -> string, ok : bool
 {
 	val, ok := get (config, name);
 	if !ok || val.kind != .STRING
 		return fallback, false;
 	return val.as_string, true;
+}
+
+get_string :: inline (config : Config, name_fmt : string, args : ..Any, fallback := "") -> string, ok : bool
+{
+	val, ok := get_string (config, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback);
+	return val, ok;
 }
 
 get_bool :: inline (config : Config, name : string, fallback := false) -> bool, ok : bool
@@ -95,10 +119,22 @@ get_bool :: inline (config : Config, name : string, fallback := false) -> bool, 
 	return val.as_bool, true;
 }
 
+get_bool :: inline (config : Config, name_fmt : string, args : ..Any, fallback := false) -> bool, ok : bool
+{
+	val, ok := get_bool (config, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback);
+	return val, ok;
+}
+
 get_rgba :: inline (config : Config, name : string, fallback := math.RGBA.{ 0, 0, 0, 0 }) -> math.RGBA, ok : bool
 {
 	val, ok := get (config, name);
 	if !ok || val.kind != .RGBA
 		return fallback, false;
 	return val.as_rgba, true;
+}
+
+get_rgba :: inline (config : Config, name_fmt : string, args : ..Any, fallback := math.RGBA.{ 0, 0, 0, 0 }) -> math.RGBA, ok : bool
+{
+	val, ok := get_rgba (config, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback);
+	return val, ok;
 }
