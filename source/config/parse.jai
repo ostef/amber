@@ -156,7 +156,7 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 			set (config, str.join (mem.TEMP_ALLOC, name, ".count"), rvalue.map_literal.elems.count);
 			for elem, i : rvalue.map_literal.elems
 			{
-				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%]", name, elem.key), elem.value);
+				fill_value (config, str.format (mem.TEMP_ALLOC, "%['%']", name, elem.key), elem.value);
 				// @Note (stefan): I can see these being useful for iteration, for example:
 				// for i : 0..get_int (config, "map.count") - 1
 				// {
