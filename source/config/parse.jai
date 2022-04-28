@@ -1,220 +1,3 @@
-Color_Id :: u16;
-
-Variable :: struct
-{
-	Value :: struct
-	{
-		Kind :: enum
-		{
-			INT;
-			FLOAT;
-			STRING;
-			BOOL;
-			RGBA;
-		}
-
-		kind : Kind;
-		union
-		{
-			as_int    : int;
-			as_float  : float;
-			as_string : string;
-			as_bool   : bool;
-			as_rgba   : math.RGBA;
-		};
-	}
-
-	name : string;
-	value : Value;
-}
-
-set :: inline (value : *Variable.Value, val : $T)
-{
-	#if T == int
-	{
-		value.kind = .INT;
-		value.as_int = val;
-	}
-	else #if T == float
-	{
-		value.kind = .FLOAT;
-		value.as_float = val;
-	}
-	else #if T == bool
-	{
-		value.kind = .BOOL;
-		value.as_bool = val;
-	}
-	else #if T == string
-	{
-		value.kind = .STRING;
-		value.as_string = val;
-	}
-	else #if T == math.RGBA
-	{
-		value.kind = .RGBA;
-		value.as_rgba = val;
-	}
-	else
-		#assert false, "Invalid type, must be int, float, bool, string or RGBA.";
-}
-
-value_cast :: inline ($Target : Type, value : Variable.Value, $check_panic := true) -> Target #must, bool
-{
-	#if Target == int
-	{
-		if value.kind != .INT
-		{
-			#if check_panic
-				panic ("Value is not an int.");
-			return mem.default (Target), false;
-		}
-		return value.as_int, true;
-	}
-	else #if Target == float
-	{
-		if value.kind != .FLOAT
-		{
-			#if check_panic
-				panic ("Value is not a float.");
-			return mem.default (Target), false;
-		}
-		return value.as_float, true;
-	}
-	else #if Target == bool
-	{
-		if value.kind != .BOOL
-		{
-			#if check_panic
-				panic ("Value is not a bool.");
-			return mem.default (Target), false;
-		}
-		return value.as_bool, true;
-	}
-	else #if Target == string
-	{
-		if value.kind != .STRING
-		{
-			#if check_panic
-				panic ("Value is not a string.");
-			return mem.default (Target), false;
-		}
-		return value.as_string, true;
-	}
-	else #if Target == math.RGBA
-	{
-		if value.kind != .RGBA
-		{
-			#if check_panic
-				panic ("Value is not a RGBA.");
-			return mem.default (Target), false;
-		}
-		return value.as_rgba, true;
-	}
-	else
-		#assert false, "Invalid type, must be int, float, bool, string or RGBA.";
-}
-
-Config :: struct
-{
-	variables : map.Hash_Map (string, Variable.Value);
-}
-
-set :: inline (config : *Config, name : string, value : Variable.Value)
-{
-	ptr := map.get_ptr (config.variables, name);
-	if !ptr
-		ptr = map.insert (*config.variables, str.clone (name, mem.HEAP_ALLOC), value);
-	else
-	{
-		if ptr.kind == .STRING
-			mem.free (ptr.as_string, mem.HEAP_ALLOC);
-		<<ptr = value;
-	}
-	if ptr.kind == .STRING
-		ptr.as_string = str.clone (ptr.as_string, mem.HEAP_ALLOC);
-}
-
-set :: inline (config : *Config, name : string, value : bool)
-{
-	val : Variable.Value;
-	val.kind = .BOOL;
-	val.as_bool = value;
-	set (config, name, val);
-}
-
-set :: inline (config : *Config, name : string, value : int)
-{
-	val : Variable.Value;
-	val.kind = .INT;
-	val.as_int = value;
-	set (config, name, val);
-}
-
-set :: inline (config : *Config, name : string, value : float)
-{
-	val : Variable.Value;
-	val.kind = .FLOAT;
-	val.as_float = value;
-	set (config, name, val);
-}
-
-set :: inline (config : *Config, name : string, value : string)
-{
-	val : Variable.Value;
-	val.kind = .STRING;
-	val.as_string = value;
-	set (config, name, val);
-}
-
-get :: inline (config : Config, name : string) -> Variable.Value, ok : bool
-{
-	ptr := map.get_ptr (config.variables, name);
-	if !ptr
-		return .{}, false;
-	return <<ptr, true;
-}
-
-get_int :: inline (config : Config, name : string, fallback := 0) -> int, ok : bool
-{
-	val, ok := get (config, name);
-	if !ok || val.kind == .INT
-		return fallback, false;
-	return val.as_int, true;
-}
-
-get_float :: inline (config : Config, name : string, fallback := 0.0) -> float, ok : bool
-{
-	val, ok := get (config, name);
-	if !ok || val.kind != .FLOAT
-		return fallback, false;
-	return val.as_float, true;
-}
-
-get_string :: inline (config : Config, name : string, fallback := "") -> string, ok : bool
-{
-	val, ok := get (config, name);
-	if !ok || val.kind != .STRING
-		return fallback, false;
-	return val.as_string, true;
-}
-
-get_bool :: inline (config : Config, name : string, fallback := false) -> bool, ok : bool
-{
-	val, ok := get (config, name);
-	if !ok || val.kind != .BOOL
-		return fallback, false;
-	return val.as_bool, true;
-}
-
-get_rgba :: inline (config : Config, name : string, fallback := math.RGBA.{ 0, 0, 0, 0 }) -> math.RGBA, ok : bool
-{
-	val, ok := get (config, name);
-	if !ok || val.kind != .RGBA
-		return fallback, false;
-	return val.as_rgba, true;
-}
-
 Config_Parser :: struct
 {
 	Error :: struct
@@ -257,14 +40,14 @@ Config_RValue :: struct
 		MAP    :: 3;
 	}
 
-	kind : Kind;
-	union
+	kind : Kind;	@Fmt_Tag
+	using val : union
 	{
 		value : Variable.Value;
 		lvalue   : *Config_LValue;
 		array_literal : *Config_Array_Literal;
 		map_literal   : *Config_Map_Literal;
-	};
+	};	@Fmt_Tagged_Union
 }
 
 Config_Array_Literal :: struct
@@ -304,9 +87,9 @@ init_from_file :: (parser : *Config_Parser, filename : string, allocator : Alloc
 	return true;
 }
 
-recover :: inline (using parser : *Config_Parser)
+recover :: inline (using parser : *Config_Parser, until := ";")
 {
-	while curr < end && <<curr != #char ";"
+	while curr < end && str.find_first (until, <<curr) < 0
 		advance (parser);
 	advance (parser);
 }
@@ -525,7 +308,7 @@ parse_rvalue :: (parser : *Config_Parser) -> *Config_RValue #must
 		}
 	}
 	{
-		val := parse_array_literal (parser);
+		val, invalid := parse_array_literal (parser);
 		if val
 		{
 			rvalue := storage.find_free_slot (*parser.rvalues);
@@ -533,9 +316,11 @@ parse_rvalue :: (parser : *Config_Parser) -> *Config_RValue #must
 			rvalue.array_literal = val;
 			return rvalue;
 		}
+		else if invalid
+			return null;
 	}
 	{
-		val := parse_map_literal (parser);
+		val, invalid := parse_map_literal (parser);
 		if val
 		{
 			rvalue := storage.find_free_slot (*parser.rvalues);
@@ -543,6 +328,8 @@ parse_rvalue :: (parser : *Config_Parser) -> *Config_RValue #must
 			rvalue.map_literal = val;
 			return rvalue;
 		}
+		else if invalid
+			return null;
 	}
 	return null;
 }
@@ -669,11 +456,11 @@ parse_identifier :: inline (using parser : *Config_Parser) -> val : string, ok :
 	return s, true;
 }
 
-parse_array_literal :: inline (using parser : *Config_Parser) -> *Config_Array_Literal #must
+parse_array_literal :: inline (using parser : *Config_Parser) -> *Config_Array_Literal #must, invalid : bool
 {
 	skip_spaces (parser);
 	if !match (parser, "[")
-		return null;
+		return null, false;
 	elems : [..]*Config_RValue;
 	elems.allocator = allocator;
 	found_comma := true;
@@ -681,10 +468,18 @@ parse_array_literal :: inline (using parser : *Config_Parser) -> *Config_Array_L
 	while !match (parser, "]")
 	{
 		if !found_comma
-			return null;
+		{
+			error (parser, "Expected ',' or ']' in array literal.");
+			recover (parser, "];");
+			return null, true;
+		}
 		elem := parse_rvalue (parser);
 		if !elem
-			return null;
+		{
+			error (parser, "Expected an r-value for an array element.");
+			recover (parser, "];");
+			return null, true;
+		}
 		array.push (*elems, elem);
 		skip_spaces (parser);
 		found_comma = match (parser, ",");
@@ -692,14 +487,14 @@ parse_array_literal :: inline (using parser : *Config_Parser) -> *Config_Array_L
 	}
 	literal := storage.find_free_slot (*parser.array_literals);
 	literal.elems = elems;
-	return literal;
+	return literal, false;
 }
 
-parse_map_literal :: inline (using parser : *Config_Parser) -> *Config_Map_Literal #must
+parse_map_literal :: inline (using parser : *Config_Parser) -> *Config_Map_Literal #must, invalid : bool
 {
 	skip_spaces (parser);
 	if !match (parser, "{")
-		return null;
+		return null, false;
 	elems : [..]Config_Map_Literal.Key_Value;
 	elems.allocator = allocator;
 	found_comma := true;
@@ -707,19 +502,35 @@ parse_map_literal :: inline (using parser : *Config_Parser) -> *Config_Map_Liter
 	while !match (parser, "}")
 	{
 		if !found_comma
-			return null;
+		{
+			error (parser, "Expected ',' or  '}' in map literal.");
+			recover (parser, "};");
+			return null, true;
+		}
 		ok : bool;
 		elem : Config_Map_Literal.Key_Value;
 		elem.key, ok = parse_string (parser);
 		if !ok
-			return null;
+		{
+			error (parser, "Expected a string literal on the left hand side of a key-value pair.");
+			recover (parser, "};");
+			return null, true;
+		}
 		skip_spaces (parser);
 		if !match (parser, ":")
-			return null;
+		{
+			error (parser, "Expected a colon (':') after the key for a key-value pair.");
+			recover (parser, "};");
+			return null, true;
+		}
 		skip_spaces (parser);
 		elem.value = parse_rvalue (parser);
 		if !elem.value
-			return null;
+		{
+			error (parser, "Expected an r-value on the right hande side of a key-value pair.");
+			recover (parser, "};");
+			return null, true;
+		}
 		array.push (*elems, elem);
 		skip_spaces (parser);
 		found_comma = match (parser, ",");
@@ -727,7 +538,7 @@ parse_map_literal :: inline (using parser : *Config_Parser) -> *Config_Map_Liter
 	}
 	literal := storage.find_free_slot (*parser.map_literals);
 	literal.elems = elems;
-	return literal;
+	return literal, false;
 }
 
 /*
@@ -787,8 +598,6 @@ print :: (using map_literal : *Config_Map_Literal)
 		if it_index != 0
 			fmt.println (",");
 		fmt.print ("{:'} : ", it.key);
-		if it.value.kind == .MAP && it.value.map_literal == map_literal
-			panic ("WOOOOOOW!!!! That's an infinite loop right there!");
 		print (it.value);
 	}
 	fmt.print ("}");
