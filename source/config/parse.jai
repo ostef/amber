@@ -135,7 +135,7 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 		case .MAP;
 			set (config, str.join (mem.TEMP_ALLOC, name, ".count"), rvalue.map_literal.elems.count);
 			for elem, i : rvalue.map_literal.elems
-				fill_value (config, str.format (mem.TEMP_ALLOC, "%[{:'}]", name, elem.key), elem.value);
+				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%]", name, elem.key), elem.value);
 		}
 	}
 
