@@ -1,6 +1,7 @@
-buffer_font = "JetBrains-Mono";
+buffer_font = "JetBrainsMono";
 buffer_font_height = 16;
-treat_underscore_as_alphanumeric_boundary = true;
+treat_underscore_as_alpha_numeric_boundary = true;
+color_theme = "dark";
 command_shortcuts = {
 	"open" : "CTRL+O",
 	"new" : "CTRL+N",
