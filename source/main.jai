@@ -10,6 +10,7 @@ path :: #import "Path";
 math :: #import "Math";
 utf8 :: #import "Unicode/UTF8";
 for_expansion :: utf8.for_expansion;
+algo :: #import "Algorithm";
 
 array   :: #import "Containers/Array";
 map     :: #import "Containers/Hash_Map";
@@ -31,7 +32,8 @@ font   :: #import "Font";
 
 #load "buffer.jai";
 #load "view.jai";
-#load "config.jai";
+#load "screen_view.jai";
+#load "config/config.jai";
 
 DEFAULT_FONT_DIR :: "fonts/roboto/";
 DEFAULT_FONT_NAME :: "Roboto";
@@ -50,23 +52,62 @@ g_logo_textures : struct
 	x16, x32, x48, x256  : render.Texture;
 };
 
-buffers : storage.Storage (Buffer, 20);
-screen_views : storage.Storage (Screen_View, 20);
-text_infos   : storage.Storage (Text_Info, 20);
+g_buffers : storage.Storage (Buffer, 20);
+g_views : storage.Storage (*View, 20);
+g_screen_views : storage.Storage (Screen_View, 20);
+g_text_infos   : storage.Storage (Text_Info, 20);
 
-get_buffer :: inline (id : Buffer.Id) -> *Buffer #must
+get :: inline (id : Buffer.Id) -> *Buffer #must
 {
-	return storage.get_item (buffers, id);
+	return storage.get_item (g_buffers, id);
 }
 
-get_screen_view :: inline (id : Screen_View.Id) -> *Screen_View #must
+operator == :: inline (a : Buffer.Id, b : Buffer.Id) -> bool #must
 {
-	return storage.get_item (screen_views, id);
+	return storage.equals (g_buffers, a, b);
 }
 
-get_text_info :: inline (id : Text_Info.Id) -> *Text_Info #must
+get :: inline (id : View.Global_Id) -> *View #must
 {
-	return storage.get_item (text_infos, id);
+	return <<storage.get_item (g_views, id);
+}
+
+operator == :: inline (a : View.Global_Id, b : View.Global_Id) -> bool #must
+{
+	return storage.equals (g_views, a, b);
+}
+
+get :: inline (id : Screen_View.Id) -> *Screen_View #must
+{
+	return storage.get_item (g_screen_views, id);
+}
+
+operator == :: inline (a : Screen_View.Id, b : Screen_View.Id) -> bool #must
+{
+	return storage.equals (g_screen_views, a, b);
+}
+
+get :: inline (id : Text_Info.Id) -> *Text_Info #must
+{
+	return storage.get_item (g_text_infos, id);
+}
+
+operator == :: inline (a : Text_Info.Id, b : Text_Info.Id) -> bool #must
+{
+	return storage.equals (g_text_infos, a, b);
+}
+
+get_views_attached_to_buffer :: (id : Buffer.Id, allocator : Allocator) -> [..]*View #must
+{
+	result : [..]*View;
+	result.allocator = allocator;
+	for g_views
+	{
+		if storage.equals (g_buffers, it.buffer_id, id)
+			array.push (*result, it);
+	}
+
+	return result;
 }
 
 handle_window_message :: (msg : window.Message)
@@ -137,8 +178,6 @@ main :: ()
 		error ("Could not read file 'config.amber'.");
 	parse (*parser);
 	fill_variables (*config, parser);
-	for val, key : config.variables
-		fmt.println ("% : %", key, val);
 
 	g_is_running = true;
 	while g_is_running
@@ -153,7 +192,6 @@ main :: ()
 		gl.ClearColor (0.1, 0.1, 0.1, 1);
 		gl.Clear (gl.COLOR_BUFFER_BIT);
 		imdraw.begin (imdraw_ctx);
-			
 			imdraw.draw_text (g_default_font, 22, vec2f (vw * 0.5, WINDOW_CAPTION_HEIGHT + (vh - WINDOW_CAPTION_HEIGHT) * 0.5),
 				"Nothing to see here for the moment", math.rgba (170, 170, 170), anchor = .CENTER);
 			draw_window_caption ();
