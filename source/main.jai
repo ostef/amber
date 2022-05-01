@@ -35,14 +35,15 @@ font   :: #import "Font";
 #load "screen_view.jai";
 #load "config/config.jai";
 
-DEFAULT_FONT_DIR :: "fonts/roboto/";
+FONT_DIR :: "fonts/";
 DEFAULT_FONT_NAME :: "Roboto";
 WINDOW_CAPTION_HEIGHT :: 32;
 WINDOW_CAPTION_BUTTON_SIZE :: 24;
 WINDOW_CAPTION_BUTTON_MARGIN :: (WINDOW_CAPTION_HEIGHT - WINDOW_CAPTION_BUTTON_SIZE) / 2;
 
 g_window : window.Window;
-g_default_font : *font.Font;
+g_main_font : *font.Font;
+g_buffer_font : *font.Font;
 g_is_running : bool;
 g_logo_textures : struct
 {
@@ -51,11 +52,27 @@ g_logo_textures : struct
 	#place all;
 	x16, x32, x48, x256  : render.Texture;
 };
+g_viewport_size : Vec2i;
 
 g_buffers : storage.Storage (Buffer, 20);
 g_views : storage.Storage (*View, 20);
 g_screen_views : storage.Storage (Screen_View, 20);
 g_text_infos   : storage.Storage (Text_Info, 20);
+
+create_buffer :: () -> *Buffer #must
+{
+	result, id := storage.find_free_slot (*g_buffers);
+	init (result, 1000);
+	result.id = id;
+	return result;
+}
+
+destroy_buffer :: (id : Buffer.Id)
+{
+	buffer := get (id);
+	reset (buffer);
+	storage.release_slot (*g_buffers, id);
+}
 
 get :: inline (id : Buffer.Id) -> *Buffer #must
 {
@@ -77,6 +94,41 @@ operator == :: inline (a : View.Global_Id, b : View.Global_Id) -> bool #must
 	return storage.equals (g_views, a, b);
 }
 
+create_screen_view :: (
+	buffer_id : Buffer.Id,
+	text_info_id : Text_Info.Id,
+	read_only : bool,
+	area : math.Rectf
+) -> *Screen_View #must
+{
+	assert (storage.is_valid (g_buffers, buffer_id), "Invalid buffer id.");
+	assert (storage.is_valid (g_text_infos, text_info_id), "Invalid text info id.");
+	//assert (get (text_info_id).buffer_id == buffer_id, "Text info does not reference the same buffer.");
+	result, id := storage.find_free_slot (*g_screen_views);
+	view_id := storage.insert (*g_views, result);
+	result.id = id;
+	result.global_id = view_id;
+	result.type = Screen_View;
+	result.buffer_id = buffer_id;
+	result.read_only = read_only;
+	result.text_info_id = text_info_id;
+	result.area = area;
+	array.init (*result.cursors, 20, mem.HEAP_ALLOC);
+	array.init (*result.glyph_rects, get_count (get (buffer_id)) + 1000, mem.HEAP_ALLOC);
+	array.init (*result.wrapped_lines, get (buffer_id).line_count + 100, mem.HEAP_ALLOC);
+	return result;
+}
+
+destroy_screen_view :: (id : Screen_View.Id)
+{
+	view := get (id);
+	array.reset (*view.cursors);
+	array.reset (*view.glyph_rects);
+	array.reset (*view.wrapped_lines);
+	storage.release_slot (*g_views, view.global_id);
+	storage.release_slot (*g_screen_views, id);
+}
+
 get :: inline (id : Screen_View.Id) -> *Screen_View #must
 {
 	return storage.get_item (g_screen_views, id);
@@ -85,6 +137,23 @@ get :: inline (id : Screen_View.Id) -> *Screen_View #must
 operator == :: inline (a : Screen_View.Id, b : Screen_View.Id) -> bool #must
 {
 	return storage.equals (g_screen_views, a, b);
+}
+
+create_text_info :: (buffer_id : Buffer.Id) -> *Text_Info #must
+{
+	assert (storage.is_valid (g_buffers, buffer_id), "Invalid buffer id.");
+	result, id := storage.find_free_slot (*g_text_infos);
+	result.id = id;
+	result.buffer_id = buffer_id;
+	array.init (*result.infos, get_count (get (buffer_id)) / 10, mem.HEAP_ALLOC);
+	return result;
+}
+
+destroy_text_info :: (id : Text_Info.Id)
+{
+	text_info := get (id);
+	array.reset (*text_info.infos);
+	storage.release_slot (*g_text_infos, id);
 }
 
 get :: inline (id : Text_Info.Id) -> *Text_Info #must
@@ -97,21 +166,10 @@ operator == :: inline (a : Text_Info.Id, b : Text_Info.Id) -> bool #must
 	return storage.equals (g_text_infos, a, b);
 }
 
-get_views_attached_to_buffer :: (id : Buffer.Id, allocator : Allocator) -> [..]*View #must
-{
-	result : [..]*View;
-	result.allocator = allocator;
-	for g_views
-	{
-		if storage.equals (g_buffers, it.buffer_id, id)
-			array.push (*result, it);
-	}
-
-	return result;
-}
-
 handle_window_message :: (msg : window.Message)
 {
+	for * g_screen_views
+		handle_window_message (it, msg);
 	if msg.kind ==
 	{
 	case .WINDOW_CLOSED;
@@ -131,6 +189,10 @@ handle_window_message :: (msg : window.Message)
 			if is_caption_button_hovered (.MINIMIZE)
 				window.minimize (g_window);
 		}
+	case .WINDOW_MAXIMIZED; #through;
+	case .WINDOW_RESIZED;
+		g_viewport_size.x = msg.viewport_width;
+		g_viewport_size.y = msg.viewport_height;
 	}
 }
 
@@ -149,6 +211,7 @@ main :: ()
 		error ("Could not create main window.");
 	defer window.destroy (g_window);
 	window.set_caption_hit_test (g_window, window_caption_hit_test);
+	g_viewport_size.x, g_viewport_size.y = window.get_viewport_size (g_window);
 	gl_ctx := gl.create_context (g_window);
 	if !gl_ctx
 		error ("Could not create GL context.");
@@ -157,10 +220,10 @@ main :: ()
 	if !imdraw_ctx
 		error ("Could not create ImDraw context.");
 	defer imdraw.destroy_context (imdraw_ctx);
-	g_default_font = font.load_family (DEFAULT_FONT_DIR, DEFAULT_FONT_NAME, mem.HEAP_ALLOC);
-	if !g_default_font
+	g_main_font = font.load_family (FONT_DIR, DEFAULT_FONT_NAME, mem.HEAP_ALLOC);
+	if !g_main_font
 		error ("Could not load font %.", DEFAULT_FONT_NAME);
-	defer font.destroy_family (*g_default_font, mem.HEAP_ALLOC);
+	defer font.destroy_family (*g_main_font, mem.HEAP_ALLOC);
 	for * g_logo_textures.all
 	{
 		if !render.load_texture_from_file (it, g_logo_textures.FILES[it_index])
@@ -171,6 +234,11 @@ main :: ()
 	defer render.destroy_texture (*g_logo_textures.x48);
 	defer render.destroy_texture (*g_logo_textures.x256);
 
+	storage.init (*g_buffers, mem.HEAP_ALLOC);
+	storage.init (*g_views, mem.HEAP_ALLOC);
+	storage.init (*g_screen_views, mem.HEAP_ALLOC);
+	storage.init (*g_text_infos, mem.HEAP_ALLOC);
+
 	config : Config;
 	map.init (*config.variables, 100, mem.HEAP_ALLOC);
 	parser : Config_Parser;
@@ -178,6 +246,16 @@ main :: ()
 		error ("Could not read file 'config.amber'.");
 	parse (*parser);
 	fill_variables (*config, parser);
+	g_buffer_font = font.load_family (FONT_DIR, get_string (config, "buffer_font"), mem.HEAP_ALLOC);
+	if !g_buffer_font
+		error ("Could not load font %.", get_string (config, "buffer_font"));
+	defer font.destroy_family (*g_buffer_font, mem.HEAP_ALLOC);
+
+	buffer := create_buffer ();
+	if !load_file (buffer, "config.amber")
+		log.error ("Could not load file 'config.amber' into buffer.");
+	text_info := create_text_info (buffer.id);
+	view := create_screen_view (buffer.id, text_info.id, false, math.xywhf (0, xx WINDOW_CAPTION_HEIGHT, xx g_viewport_size.x, xx (g_viewport_size.y - WINDOW_CAPTION_HEIGHT)));
 
 	g_is_running = true;
 	while g_is_running
@@ -188,12 +266,11 @@ main :: ()
 		while window.get_next_message (g_window, *msg)
 			handle_window_message (msg);
 
-		vw, vh := window.get_viewport_size (g_window);
 		gl.ClearColor (0.1, 0.1, 0.1, 1);
 		gl.Clear (gl.COLOR_BUFFER_BIT);
 		imdraw.begin (imdraw_ctx);
-			imdraw.draw_text (g_default_font, 22, vec2f (vw * 0.5, WINDOW_CAPTION_HEIGHT + (vh - WINDOW_CAPTION_HEIGHT) * 0.5),
-				"Nothing to see here for the moment", math.rgba (170, 170, 170), anchor = .CENTER);
+			for * g_screen_views
+				draw (it);
 			draw_window_caption ();
 		imdraw.end ();
 		window.swap_buffers (g_window);
@@ -239,7 +316,7 @@ draw_window_caption :: ()
 	imdraw.draw_rect (math.xywhf (0, 0, xx vw, xx WINDOW_CAPTION_HEIGHT), math.rgba (40, 40, 40));
 	// Draw title
 	text_rect := imdraw.draw_text (
-		g_default_font,
+		g_main_font,
 		14,
 		vec2f (vw * 0.5, WINDOW_CAPTION_HEIGHT * 0.5),
 		"Amber",
