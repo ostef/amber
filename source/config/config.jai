@@ -72,7 +72,7 @@ get :: inline (config : Config, name_fmt : string, args : ..Any) -> Variable.Val
 get_int :: inline (config : Config, name : string, fallback := 0) -> int, ok : bool
 {
 	val, ok := get (config, name);
-	if !ok || val.kind == .INT
+	if !ok || val.kind != .INT
 		return fallback, false;
 	return val.as_int, true;
 }
