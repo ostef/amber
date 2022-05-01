@@ -7,83 +7,355 @@
 // else, or more simply a view that is not currently visible.
 View :: struct
 {
+	Global_Id :: type_of (g_views).Slot_Info;	// Global view Id, across all view types
+
 	Cursor :: struct
 	{
 		char_index : s64;
 		selection  : s64;
 	}
 
-	Access_Rights :: enum_flags
-	{
-		READ  :: 0x01;
-		WRITE :: 0x02;
-		READ_WRITE :: READ | WRITE;
-	}
+	ALL_CURSORS :: -1;
 
-	buffer : Buffer.Id;
-	access : Access_Rights;
+	global_id : Global_Id;
+	type : Type;	// Actual Jai type
+	buffer_id : Buffer.Id;
+	has_write_access : bool;
 	cursors : [..]Cursor;
 }
 
-// Metadata about the text in a buffer, for rendering.
-// This is the thing that a syntax colorizer would modify.
-// It might make it so that all 'if's are in bold, and
-// of color-id 'keyword' for example.
-Text_Info :: struct
+get_cursor_line_and_column :: (using view : View, cursor_index : s64) -> line_index : s64, column_index : s64
 {
-	Id :: type_of (text_infos).Slot_Info;
-
-	Info :: struct
-	{
-		weight   : font.Weight;		// 1-byte
-		effects  : font.Effects;	// 1-byte
-		color_id : Color_Id;		// 2-bytes
-	}	// 4-bytes
-
-	// We don't want to have an Info for each character,
-	// because that wouldn't be very efficient, so we have
-	// an info for a range of characters.
-	Info_Range :: struct
-	{
-		range : Vec2i;		// 8-bytes
-		using info : Info;	// 4-bytes
-	}	// 12-bytes, 16-bytes with padding
-
-	// If we have a buffer with 5000 lines, let's say
-	// on average it has 80 character long lines,
-	// with 15 tokens per lines, and we don't merge
-	// similar tokens together, we have 15 * 5000
-	// Info_Ranges, so 15 * 5000 * 16 bytes = 1,2 MB
-
-	buffer : Buffer.Id;
-	infos  : [..]Info_Range;
+	cursor := cursors[cursor_index];
+	buffer := get (buffer_id);
+	line_index, column_index := get_line_and_column (buffer, cursor.char_index);
+	return line_index, column_index;
 }
 
-Screen_View :: struct
+get_column_index :: (using view : View, cursor_index : s64) -> s64 #must
 {
-	Id :: type_of (screen_views).Slot_Info;
+	cursor := cursors[cursor_index];
+	buffer := get (buffer_id);
+	i := cursor.char_index;
+	while i > 0 && char_at (buffer, i - 1)
+		i -= 1;
+	return cursor.char_index - i;
+}
 
-	Line :: struct
+insert :: (using view : *View, codepoint : u32, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if !has_write_access
+		return false;
+	if cursor_index == ALL_CURSORS
 	{
-		unwrapped_line_index  : s64;
-		first_char_index      : s64;
+		for i : 0..cursors.count - 1
+			insert (view, codepoint, i);
+		return true;
 	}
 
-	#as using base : View;
-	text_info : Text_Info.Id;
-	area    : math.Rectf;
-	extents : Vec2f;
-	scroll  : Vec2f;
-	glyph_rects   : [..]math.Rectf;
-	wrapped_lines : [..]Line;
+	buffer := get (buffer_id);
+	cursor := *cursors[cursor_index];
+	move_cursor (buffer, cursor.char_index);
+	if cursor.selection != 0
+		delete (buffer, cursor.selection);
+	insert (buffer, codepoint);
+	for other_view, view_id : g_views
+	{
+		if other_view.buffer_id == buffer_id
+			continue;
+		for * other, other_index : cursors
+		{
+			if view_id == global_id && cursor_index == other_index
+				continue;
+			if other.char_index >= cursor.char_index
+				other.char_index += 1;
+		}
+	}
+	cursor.char_index += 1;
+
+	return true;
 }
 
-handle_window_message :: (using view : *Screen_View, msg : window.Message)
+delete :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 {
-	
+	if !has_write_access
+		return false;
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok ||= delete (view, i);
+		return ok;
+	}
+
+	buffer := get (buffer_id);
+	cursor := *cursors[cursor_index];
+	move_cursor (buffer, cursor.char_index);
+	ok := delete (buffer, cursor.selection);
+	for other_view, view_id : g_views
+	{
+		if other_view.buffer_id == buffer_id
+			continue;
+		for * other, other_index : cursors
+		{
+			if view_id == global_id && cursor_index == other_index
+				continue;
+			if other.char_index > cursor.char_index
+				other.char_index -= 1;
+		}
+	}
+
+	return ok;
 }
 
-draw :: (using view : Screen_View)
+backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 {
+	if !has_write_access
+		return false;
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok ||= backspace (view, i);
+		return ok;
+	}
 
+	cursor := *cursors[cursor_index];
+	if cursor.selection != 0
+		return delete (view, cursor_index);
+	buffer := get (buffer_id);
+	move_cursor (buffer, cursor.char_index);
+	ok := backspace (buffer);
+	for other_view, view_id : g_views
+	{
+		if other_view.buffer_id == buffer_id
+			continue;
+		for * other, other_index : cursors
+		{
+			if view_id == global_id && cursor_index == other_index
+				continue;
+			if other.char_index >= cursor.char_index
+				other.char_index -= 1;
+		}
+	}
+	cursor.char_index -= 1;
+
+	return ok;
+}
+
+move_cursor_forward :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok ||= move_cursor_forward (view, i);
+		return ok;
+	}
+
+	cursor := cursors[cursor_index];
+	buffer := get (buffer_id);
+	if cursor.char_index == get_count (buffer)
+		return false;
+	cursor.char_index += 1;
+
+	return true;
+}
+
+move_cursor_backward :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok ||= move_cursor_backward (view, i);
+		return ok;
+	}
+
+	cursor := cursors[cursor_index];
+	buffer := get (buffer_id);
+	if cursor.char_index == 0
+		return false;
+	cursor.char_index -= 1;
+
+	return true;
+}
+
+move_cursor_to_previous_line :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok ||= move_cursor_to_previous_line (view, i);
+		return ok;
+	}
+
+	buffer := get (buffer_id);
+	ci := get_column_index (view, cursor_index);
+	ok := move_cursor_to_bol (view, cursor_index);
+	ok ||= move_cursor_backward (view, cursor_index);
+	ok ||= move_cursor_to_column (view, ci, cursor_index);
+
+	return ok;
+}
+
+move_cursor_to_next_line :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok ||= move_cursor_to_next_line (view, i);
+		return ok;
+	}
+
+	buffer := get (buffer_id);
+	ci := get_column_index (view, cursor_index);
+	ok := move_cursor_to_eol (view, cursor_index);
+	ok ||= move_cursor_forward (view, cursor_index);
+	ok ||= move_cursor_to_column (view, ci, cursor_index);
+
+	return ok;
+}
+
+move_cursor_to_bol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok ||= move_cursor_to_bol (view, i);
+		return ok;
+	}
+
+	cursor := *cursors[cursor_index];
+	if cursor.char_index == 0
+		return false;
+	buffer := get (buffer_id);
+	li, ci := get_line_and_column (buffer, cursor.char_index);
+	while cursor.char_index > 0 && char_at (buffer, cursor.char_index - 1) != #char "\n"
+		cursor.char_index -= 1;
+	return true;
+}
+
+move_cursor_to_eol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok ||= move_cursor_to_eol (view, i);
+		return ok;
+	}
+
+	cursor := *cursors[cursor_index];
+	buffer := get (buffer_id);
+	if cursor.char_index == get_count (buffer)
+		return false;
+	li, ci := get_line_and_column (buffer, cursor.char_index);
+	while cursor.char_index < get_count (buffer) && char_at (buffer, cursor.char_index) != #char "\n"
+		cursor.char_index += 1;
+	return true;
+}
+
+move_cursor_to_column :: (using view : *View, target : s64, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok ||= move_cursor_to_column (view, i);
+		return ok;
+	}
+
+	cursor := *cursors[cursor_index];
+	buffer := get (buffer_id);
+	moved := move_cursor_to_bol (view, cursor_index);
+	i := 0;
+	while i < target && cursor.char_index < get_count (buffer) && char_at (buffer, cursor.char_index) != #char "\n"
+		cursor.char_index += 1;
+
+	return moved && i != 0;
+}
+
+cursors_overlap :: inline (a : View.Cursor, b : View.Cursor) -> bool #must
+{
+	return b.selection > 0 && a.char_index >= b.char_index && a.char_index < b.char_index + b.selection
+		|| b.selection < 0 && a.char_index >= b.char_index + b.selection && a.char_index < b.char_index
+		|| a.char_index == b.char_index;
+}
+
+merge_overlapping_cursors :: (using view : *View)
+{
+	buffer := get (buffer_id);
+	i := 0;
+	while i < cursors.count
+	{
+		cursor := *cursors[i];
+		merged := false;
+		for * cursors
+		{
+			if it_index == i
+				continue;
+			if cursors_overlap (cursor, it)
+			{
+				cursor.char_index = it.char_index;
+				array.ordered_remove_at (*cursors, it_index);
+				merged = true;
+				break;
+			}
+		}
+		if merged
+			i = 0;
+		else
+			i += 1;
+	}
+}
+
+sort_cursors :: inline (using view : *View)
+{
+	algo.qsort (cursors, (a, b) => (a.char_index - b.char_index));
+}
+
+handle_window_message :: (using view : *View, msg : window.Message)
+{
+	buffer := get (buffer_id);
+	if has_write_access
+	{
+		if msg.kind ==
+		{
+		case .TEXT_INPUT;
+			insert (buffer, msg.codepoint);
+		case .KEY_PRESSED; #through;
+		case .KEY_REPEATED;
+			if msg.key_code ==
+			{
+			case .TAB;
+				insert (buffer, #char "\t");
+			case .RETURN;
+				insert (buffer, #char "\n");
+			case .BACKSPACE;
+				backspace (buffer);
+			case .DELETE;
+				delete (buffer);
+			}
+		}
+	}
+	if msg.kind ==
+	{
+	case .KEY_PRESSED; #through;
+	case .KEY_REPEATED;
+		if msg.key_code ==
+		{
+		case .UP;
+			move_cursor_to_previous_line (view);
+		case .DOWN;
+			move_cursor_to_next_line (view);
+		case .LEFT;
+			move_cursor_backward (view);
+		case .RIGHT;
+			move_cursor_forward (view);
+		}
+	}
 }
