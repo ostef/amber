@@ -54,6 +54,7 @@ g_logo_textures : struct
 };
 g_viewport_size : Vec2i;
 
+g_config : Config;
 g_buffers : storage.Storage (Buffer, 20);
 g_views : storage.Storage (*View, 20);
 g_screen_views : storage.Storage (Screen_View, 20);
@@ -239,16 +240,15 @@ main :: ()
 	storage.init (*g_screen_views, mem.HEAP_ALLOC);
 	storage.init (*g_text_infos, mem.HEAP_ALLOC);
 
-	config : Config;
-	map.init (*config.variables, 100, mem.HEAP_ALLOC);
+	map.init (*g_config.variables, 100, mem.HEAP_ALLOC);
 	parser : Config_Parser;
 	if !init_from_file (*parser, "config.amber", mem.HEAP_ALLOC)
 		error ("Could not read file 'config.amber'.");
 	parse (*parser);
-	fill_variables (*config, parser);
-	g_buffer_font = font.load_family (FONT_DIR, get_string (config, "buffer_font"), mem.HEAP_ALLOC);
+	fill_variables (*g_config, parser);
+	g_buffer_font = font.load_family (FONT_DIR, get_string (g_config, "buffer_font"), mem.HEAP_ALLOC);
 	if !g_buffer_font
-		error ("Could not load font %.", get_string (config, "buffer_font"));
+		error ("Could not load font %.", get_string (g_config, "buffer_font"));
 	defer font.destroy_family (*g_buffer_font, mem.HEAP_ALLOC);
 
 	buffer := create_buffer ();
