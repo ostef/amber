@@ -20,7 +20,7 @@ View :: struct
 	global_id : Global_Id;
 	type : Type;	// Actual Jai type
 	buffer_id : Buffer.Id;
-	has_write_access : bool;
+	read_only : bool;
 	cursors : [..]Cursor;
 }
 
@@ -44,7 +44,7 @@ get_column_index :: (using view : View, cursor_index : s64) -> s64 #must
 
 insert :: (using view : *View, codepoint : u32, cursor_index := view.ALL_CURSORS) -> bool
 {
-	if !has_write_access
+	if read_only
 		return false;
 	if cursor_index == ALL_CURSORS
 	{
@@ -78,7 +78,7 @@ insert :: (using view : *View, codepoint : u32, cursor_index := view.ALL_CURSORS
 
 delete :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 {
-	if !has_write_access
+	if read_only
 		return false;
 	if cursor_index == ALL_CURSORS
 	{
@@ -110,7 +110,7 @@ delete :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 
 backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 {
-	if !has_write_access
+	if read_only
 		return false;
 	if cursor_index == ALL_CURSORS
 	{
@@ -321,7 +321,7 @@ sort_cursors :: inline (using view : *View)
 handle_window_message :: (using view : *View, msg : window.Message)
 {
 	buffer := get (buffer_id);
-	if has_write_access
+	if !read_only
 	{
 		if msg.kind ==
 		{
