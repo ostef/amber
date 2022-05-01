@@ -326,19 +326,19 @@ handle_window_message :: (using view : *View, msg : window.Message)
 		if msg.kind ==
 		{
 		case .TEXT_INPUT;
-			insert (buffer, msg.codepoint);
+			insert (view, msg.codepoint);
 		case .KEY_PRESSED; #through;
 		case .KEY_REPEATED;
 			if msg.key_code ==
 			{
 			case .TAB;
-				insert (buffer, #char "\t");
+				insert (view, #char "\t");
 			case .RETURN;
-				insert (buffer, #char "\n");
+				insert (view, #char "\n");
 			case .BACKSPACE;
-				backspace (buffer);
+				backspace (view);
 			case .DELETE;
-				delete (buffer);
+				delete (view);
 			}
 		}
 	}
