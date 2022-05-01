@@ -42,6 +42,7 @@ Buffer :: struct
 		offset_in_edit_buffer : s64;
 	}
 
+	id : Id;
 	filename : string;
 	data : *u32;
 	cursor : s64;
@@ -82,8 +83,8 @@ reset :: (using buffer : *Buffer)
 load_file :: (buffer : *Buffer, filename : string) -> bool
 {
 	full_filename := fs.get_full_filename (filename, mem.HEAP_ALLOC);
-	contents, ok := fs.read_entire_file (full_filename, mem.HEAP_ALLOC);
-	if !ok
+	contents, err := fs.read_entire_file (full_filename, mem.HEAP_ALLOC);
+	if err != .OK
 	{
 		mem.free (full_filename, mem.HEAP_ALLOC);
 		return false;
