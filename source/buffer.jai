@@ -12,7 +12,7 @@ EOL_Sequence :: enum
 // @Todo (stefan): Page buffer
 Buffer :: struct
 {
-	Id :: type_of (buffers).Slot_Info;
+	Id :: type_of (g_buffers).Slot_Info;
 
 	History :: struct
 	{
@@ -54,7 +54,6 @@ Buffer :: struct
 	line_lengths : [..]s64;
 	history : History;
 	eol_sequence := EOL_Sequence.PLATFORM;
-
 }
 
 init :: (using buffer : *Buffer, capacity : s64)
@@ -166,10 +165,31 @@ get_count :: inline (using buffer : Buffer) -> s64 #must
 	return allocated - gap;
 }
 
+bounds_check :: (buffer : Buffer, char_index : s64) #expand
+{
+	assert (char_index >= 0 && char_index < get_count (buffer), "Bounds check failure (got %, expected [0;%) ).", char_index, get_count (buffer));
+}
+
 char_at :: inline (using buffer : Buffer, index : s64) -> u32 #must
 {
-	assert (index >= 0 && index < get_count (buffer), "Bounds check failure (got %, expected [0;%) ).", index, get_count (buffer));
+	bounds_check (buffer, index);
 	return data[cast (s64) (index >= cursor) * gap + index];
+}
+
+get_line_and_column :: (using buffer : Buffer, char_index : s64) -> line_index : s64, column_index : s64
+{
+	bounds_check (buffer, char_index);
+	li := 0;
+	while li < line_lengths.count
+	{
+		line_len := line_lengths[li];
+		if char_index < line_len
+			return li, char_index;
+		char_index -= line_len;
+		li += 1;
+	}
+	panic ("Line index is out of bounds.");
+	return -1, -1;
 }
 
 move_cursor_forward :: (using buffer : *Buffer) -> bool
@@ -206,6 +226,18 @@ move_cursor_backward :: (using buffer : *Buffer) -> bool
 	return false;
 }
 
+move_cursor :: inline (using buffer : *Buffer, to : s64) -> bool
+{
+	to = math.clamp (to, 0, get_count (buffer));
+	if cursor == to
+		return false;
+	while cursor < to
+		move_cursor_forward (buffer);
+	while cursor > to
+		move_cursor_backward (buffer);
+	return true;
+}
+
 #scope_file
 
 split_current_line :: inline (using buffer : *Buffer)
@@ -221,6 +253,8 @@ split_current_line :: inline (using buffer : *Buffer)
 
 insert :: (using buffer : *Buffer, codepoint : u32)
 {
+	if codepoint == #char "\r"
+		return;
 	if gap == 0
 		grow (buffer, allocated + 8);
 	data[cursor] = codepoint;
@@ -296,11 +330,9 @@ backspace :: (using buffer : *Buffer) -> bool
 	return true;
 }
 
-backspace :: (using buffer : *Buffer, selection : s64) -> bool
+operator [] :: (buffer : Buffer, index : s64) -> u32 #must
 {
-	if selection == 0
-		return backspace (buffer);
-	return delete (buffer, selection);
+	return char_at (buffer, index);
 }
 
 for_expansion :: (buffer : *Buffer, body : Code, flags : For_Flags) #expand
