@@ -91,7 +91,8 @@ delete :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 	buffer := get (buffer_id);
 	cursor := *cursors[cursor_index];
 	move_cursor (buffer, cursor.char_index);
-	ok := delete (buffer, cursor.selection);
+	if !delete (buffer, cursor.selection)
+		return false;
 	for other_view, view_id : g_views
 	{
 		if other_view.buffer_id == buffer_id
@@ -105,7 +106,7 @@ delete :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 		}
 	}
 
-	return ok;
+	return true;
 }
 
 backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
@@ -125,7 +126,8 @@ backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 		return delete (view, cursor_index);
 	buffer := get (buffer_id);
 	move_cursor (buffer, cursor.char_index);
-	ok := backspace (buffer);
+	if !backspace (buffer)
+		return false;
 	for other_view, view_id : g_views
 	{
 		if other_view.buffer_id == buffer_id
@@ -140,7 +142,7 @@ backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 	}
 	cursor.char_index -= 1;
 
-	return ok;
+	return true;
 }
 
 move_cursor_forward :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
@@ -153,7 +155,7 @@ move_cursor_forward :: (using view : *View, cursor_index := view.ALL_CURSORS) ->
 		return ok;
 	}
 
-	cursor := cursors[cursor_index];
+	cursor := *cursors[cursor_index];
 	buffer := get (buffer_id);
 	if cursor.char_index == get_count (buffer)
 		return false;
@@ -172,7 +174,7 @@ move_cursor_backward :: (using view : *View, cursor_index := view.ALL_CURSORS) -
 		return ok;
 	}
 
-	cursor := cursors[cursor_index];
+	cursor := *cursors[cursor_index];
 	buffer := get (buffer_id);
 	if cursor.char_index == 0
 		return false;
@@ -233,7 +235,6 @@ move_cursor_to_bol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> 
 	if cursor.char_index == 0
 		return false;
 	buffer := get (buffer_id);
-	li, ci := get_line_and_column (buffer, cursor.char_index);
 	while cursor.char_index > 0 && char_at (buffer, cursor.char_index - 1) != #char "\n"
 		cursor.char_index -= 1;
 	return true;
@@ -253,7 +254,6 @@ move_cursor_to_eol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> 
 	buffer := get (buffer_id);
 	if cursor.char_index == get_count (buffer)
 		return false;
-	li, ci := get_line_and_column (buffer, cursor.char_index);
 	while cursor.char_index < get_count (buffer) && char_at (buffer, cursor.char_index) != #char "\n"
 		cursor.char_index += 1;
 	return true;
@@ -350,12 +350,16 @@ handle_window_message :: (using view : *View, msg : window.Message)
 		{
 		case .UP;
 			move_cursor_to_previous_line (view);
+			merge_overlapping_cursors (view);
 		case .DOWN;
 			move_cursor_to_next_line (view);
+			merge_overlapping_cursors (view);
 		case .LEFT;
 			move_cursor_backward (view);
+			merge_overlapping_cursors (view);
 		case .RIGHT;
 			move_cursor_forward (view);
+			merge_overlapping_cursors (view);
 		}
 	}
 }
