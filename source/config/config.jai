@@ -138,3 +138,26 @@ get_rgba :: inline (config : Config, name_fmt : string, args : ..Any, fallback :
 	val, ok := get_rgba (config, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback);
 	return val, ok;
 }
+
+get_enum :: inline (config : Config, name : string, fallback : $T) -> T, ok : bool
+#modify { return types.is_enum (T); }
+{
+	val, ok := get_string (config, name);
+	if !ok
+		return fallback, false;
+	info_enum := type_info (T);
+	for info_enum.names
+	{
+		if it == val
+			return cast (T) info_enum.values[it_index], true;
+	}
+
+	return fallback, false;
+}
+
+get_enum :: inline (config : Config, name_fmt : string, args : ..Any, fallback : $T) -> math.RGBA, ok : bool
+#modify { return types.is_enum (T); }
+{
+	val, ok := get_enum (config, T, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback);
+	return val, ok;
+}
