@@ -35,7 +35,7 @@ types :: #import "Types";
 
 #load "buffer.jai";
 #load "view.jai";
-#load "screen_view.jai";
+#load "screen_view/screen_view.jai";
 #load "config/config.jai";
 #load "jai_lang.jai";
 
