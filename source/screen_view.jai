@@ -9,7 +9,7 @@ Text_Info :: struct
 	Info :: struct
 	{
 		weight   : font.Weight;		// 1-byte
-		effects  : font.Effects;	// 1-byte
+		effects  : imdraw.Text_Effects;	// 1-byte
 		color_id : Color_Id;		// 2-bytes
 	}	// 4-bytes
 
@@ -86,11 +86,30 @@ draw :: (using view : Screen_View)
 	buffer := get (buffer_id);
 	position := math.rect_position (area);
 	font_height := get_int (g_config, "buffer_font_height", fallback = 16);
-	font_height = math.max (font_height, 5);
+	font_height = math.max (font_height, MIN_FONT_HEIGHT);
 	page := font.load_page (g_buffer_font, cast (u32) font_height);
 	pen := vec2f (0, cast (f32) page.ascent);
 	for codepoint, i : buffer
 	{
+		drew_cursor := false;
+		for cursors
+		{
+			if it.char_index == i
+			{
+				advance := cast (f32) page.space_advance;
+				if codepoint == #char "\t"
+					advance = math.snap_up (pen.x + page.space_advance, page.space_advance * 4.0) - pen.x;
+				rect := math.xywhf (
+					math.round (position.x) + pen.x,
+					math.round (position.y) + pen.y - page.ascent,
+					advance,
+					cast (f32) (page.ascent - page.descent)
+				);
+				imdraw.set_texture (null);
+				imdraw.draw_rect (rect, math.RGBA_WHITE);
+				drew_cursor = true;
+			}
+		}
 		if codepoint ==
 		{
 		case #char "\n";
@@ -109,7 +128,10 @@ draw :: (using view : Screen_View)
 			);
 			pen.x += glyph.advance;
 			imdraw.set_texture (glyph.atlas_texture);
-			imdraw.draw_rect (glyph_rect, math.RGBA_WHITE, glyph.uv_rect);
+			if drew_cursor
+				imdraw.draw_rect (glyph_rect, math.RGBA_BLACK, glyph.uv_rect);
+			else
+				imdraw.draw_rect (glyph_rect, math.RGBA_WHITE, glyph.uv_rect);
 		}
 	}
 }
