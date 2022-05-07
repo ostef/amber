@@ -30,6 +30,8 @@ render :: #import "Render_Core";
 imdraw :: #import "ImDraw";
 font   :: #import "Font";
 
+types :: #import "Types";
+
 #load "buffer.jai";
 #load "view.jai";
 #load "screen_view.jai";
