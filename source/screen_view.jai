@@ -117,8 +117,22 @@ layout_text :: (using view : *Screen_View)
 		`pen.y += xx (`page.ascent - `page.descent);
 	}
 
-	buffer := get (buffer_id);
-	info   := get (text_info_id);
+	buffer    := get (buffer_id);
+	text_info := get (text_info_id);
+	info_index := 0;
+	info := text_info.infos[info_index];
+	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
+	page : *font.Page;
+	if flagged (info.effects, .ITALIC)
+	{
+		fnt := font.find_font (g_buffer_font, info.weight, .ITALIC, fallback = g_buffer_font);
+		page = font.load_page (fnt, font_height);
+	}
+	else
+	{
+		fnt := font.find_font (g_buffer_font, info.weight, .NONE, fallback = g_buffer_font);
+		page = font.load_page (fnt, font_height);
+	}
 	// Reset data
 	array.clear (*wrapped_lines);
 	array.clear (*glyph_rects);
@@ -126,8 +140,6 @@ layout_text :: (using view : *Screen_View)
 	// @Todo (stefan):
 	// fnt = get_font (get_string (g_config, "buffer_font"))
 	show_whitespace := get_enum (g_config, "buffer_show_whitespace", fallback = Show_Whitespace.NEVER);
-	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
-	page := font.load_page (g_buffer_font, font_height);
 	tab_width := math.max (get_int (g_config, "tab_width", fallback = 4), 1);
 	line : Line;
 	pen : Vec2f;
@@ -135,6 +147,22 @@ layout_text :: (using view : *Screen_View)
 	indentation_level := 0;
 	for codepoint, i : buffer
 	{
+		if text_info.infos[info_index].range.x > i || i > text_info.infos[info_index].range.y
+		{
+			while info_index < text_info.infos.count - 1
+			{
+				info = text_info.infos[info_index];
+				if info.range.x <= i && i <= info.range.y
+					break;
+				info_index += 1;
+			}
+			fnt : *font.Font;
+			if flagged (info.effects, .ITALIC)
+				fnt = font.find_font (g_buffer_font, info.weight, .ITALIC, fallback = g_buffer_font);
+			else
+				fnt = font.find_font (g_buffer_font, info.weight, .NONE, fallback = g_buffer_font);
+			page = font.load_page (fnt, font_height);
+		}
 		rect : math.Rectf;
 		if codepoint ==
 		{
@@ -195,6 +223,7 @@ update :: (using view : *Screen_View)
 {
 	if is_dirty
 	{
+		process_jai_buffer (get (text_info_id));
 		layout_text (view);
 		is_dirty = false;
 	}
@@ -209,13 +238,41 @@ draw :: (using view : Screen_View)
 	prev_shader := imdraw.set_shader (*font.g_glyph_shader);
 	defer imdraw.set_shader (prev_shader);
 
-	buffer := get (buffer_id);
-	info   := get (text_info_id);
-	font_height := math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
+	buffer    := get (buffer_id);
+	text_info := get (text_info_id);
+	info_index := 0;
+	info := text_info.infos[info_index];
+	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
+	page : *font.Page;
+	if flagged (info.effects, .ITALIC)
+	{
+		fnt := font.find_font (g_buffer_font, info.weight, .ITALIC, fallback = g_buffer_font);
+		page = font.load_page (fnt, font_height);
+	}
+	else
+	{
+		fnt := font.find_font (g_buffer_font, info.weight, .NONE, fallback = g_buffer_font);
+		page = font.load_page (fnt, font_height);
+	}
 	show_whitespace := get_enum (g_config, "buffer_show_whitespace", fallback = Show_Whitespace.NEVER);
-	page := font.load_page (g_buffer_font, cast (u32) font_height);
 	for codepoint, i : buffer
 	{
+		if text_info.infos[info_index].range.x > i || i > text_info.infos[info_index].range.y
+		{
+			while info_index < text_info.infos.count - 1
+			{
+				info = text_info.infos[info_index];
+				if info.range.x <= i && i <= info.range.y
+					break;
+				info_index += 1;
+			}
+			fnt : *font.Font;
+			if flagged (info.effects, .ITALIC)
+				fnt = font.find_font (g_buffer_font, info.weight, .ITALIC, fallback = g_buffer_font);
+			else
+				fnt = font.find_font (g_buffer_font, info.weight, .NONE, fallback = g_buffer_font);
+			page = font.load_page (fnt, font_height);
+		}
 		draw_cursor := false;
 		is_selected := false;
 		for cursors
@@ -230,14 +287,14 @@ draw :: (using view : Screen_View)
 			math.round (area.x1),
 			math.round (area.y1)
 		);
-		color := math.RGBA_WHITE;
+		color := info.color;
 		if draw_cursor
 		{
 			imdraw.set_texture (null);
 			imdraw.draw_rect (rect, color);
 			color = math.invert (color);
 		}
-		
+
 		if codepoint ==
 		{
 		case #char "\n";

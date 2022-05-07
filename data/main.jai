@@ -246,8 +246,8 @@ main :: ()
 	defer font.destroy_family (*g_buffer_font, mem.HEAP_ALLOC);
 
 	buffer := create_buffer ();
-	if !load_file (buffer, "main.jai")
-		log.error ("Could not load file 'main.jai' into buffer.");
+	if !load_file (buffer, "config.amber")
+		log.error ("Could not load file 'config.amber' into buffer.");
 	text_info := create_text_info (buffer.id);
 	view := create_screen_view (buffer.id, text_info.id, false, math.xywhf (0, xx WINDOW_CAPTION_HEIGHT, xx g_viewport_size.x, xx (g_viewport_size.y - WINDOW_CAPTION_HEIGHT)));
 	array.push (*view.cursors, .{ char_index = 0, selection = 0 });
