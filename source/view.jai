@@ -37,7 +37,7 @@ get_column_index :: (using view : View, cursor_index : s64) -> s64 #must
 	cursor := cursors[cursor_index];
 	buffer := get (buffer_id);
 	i := cursor.char_index;
-	while i > 0 && char_at (buffer, i - 1)
+	while i > 0 && char_at (buffer, i - 1) != #char "\n"
 		i -= 1;
 	return cursor.char_index - i;
 }
@@ -84,7 +84,7 @@ delete :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok ||= delete (view, i);
+			ok |= delete (view, i);
 		return ok;
 	}
 
@@ -117,7 +117,7 @@ backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok ||= backspace (view, i);
+			ok |= backspace (view, i);
 		return ok;
 	}
 
@@ -151,7 +151,7 @@ move_cursor_forward :: (using view : *View, cursor_index := view.ALL_CURSORS) ->
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok ||= move_cursor_forward (view, i);
+			ok |= move_cursor_forward (view, i);
 		return ok;
 	}
 
@@ -170,7 +170,7 @@ move_cursor_backward :: (using view : *View, cursor_index := view.ALL_CURSORS) -
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok ||= move_cursor_backward (view, i);
+			ok |= move_cursor_backward (view, i);
 		return ok;
 	}
 
@@ -189,17 +189,18 @@ move_cursor_to_previous_line :: (using view : *View, cursor_index := view.ALL_CU
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok ||= move_cursor_to_previous_line (view, i);
+			ok |= move_cursor_to_previous_line (view, i);
 		return ok;
 	}
 
 	buffer := get (buffer_id);
 	ci := get_column_index (view, cursor_index);
-	ok := move_cursor_to_bol (view, cursor_index);
-	ok ||= move_cursor_backward (view, cursor_index);
-	ok ||= move_cursor_to_column (view, ci, cursor_index);
+	moved := move_cursor_to_bol (view, cursor_index);
+	// @Note (stefan): ||= short-circuits! We use |= instead
+	moved |= move_cursor_backward (view, cursor_index);
+	moved |= move_cursor_to_column (view, ci, cursor_index);
 
-	return ok;
+	return moved;
 }
 
 move_cursor_to_next_line :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
@@ -208,17 +209,17 @@ move_cursor_to_next_line :: (using view : *View, cursor_index := view.ALL_CURSOR
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok ||= move_cursor_to_next_line (view, i);
+			ok |= move_cursor_to_next_line (view, i);
 		return ok;
 	}
 
 	buffer := get (buffer_id);
 	ci := get_column_index (view, cursor_index);
-	ok := move_cursor_to_eol (view, cursor_index);
-	ok ||= move_cursor_forward (view, cursor_index);
-	ok ||= move_cursor_to_column (view, ci, cursor_index);
+	moved := move_cursor_to_eol (view, cursor_index);
+	moved |= move_cursor_forward (view, cursor_index);
+	moved |= move_cursor_to_column (view, ci, cursor_index);
 
-	return ok;
+	return moved;
 }
 
 move_cursor_to_bol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
@@ -227,7 +228,7 @@ move_cursor_to_bol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> 
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok ||= move_cursor_to_bol (view, i);
+			ok |= move_cursor_to_bol (view, i);
 		return ok;
 	}
 
@@ -246,7 +247,7 @@ move_cursor_to_eol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> 
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok ||= move_cursor_to_eol (view, i);
+			ok |= move_cursor_to_eol (view, i);
 		return ok;
 	}
 
@@ -265,18 +266,22 @@ move_cursor_to_column :: (using view : *View, target : s64, cursor_index := view
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok ||= move_cursor_to_column (view, i);
+			ok |= move_cursor_to_column (view, i);
 		return ok;
 	}
 
 	cursor := *cursors[cursor_index];
 	buffer := get (buffer_id);
-	moved := move_cursor_to_bol (view, cursor_index);
+	move_cursor_to_bol (view, cursor_index);
+	prev_char_index := cursor.char_index;
 	i := 0;
 	while i < target && cursor.char_index < get_count (buffer) && char_at (buffer, cursor.char_index) != #char "\n"
+	{
 		cursor.char_index += 1;
+		i += 1;
+	}
 
-	return moved && i != 0;
+	return cursor.char_index != prev_char_index;
 }
 
 cursors_overlap :: inline (a : View.Cursor, b : View.Cursor) -> bool #must
