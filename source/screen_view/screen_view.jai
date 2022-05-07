@@ -36,6 +36,30 @@ Text_Info :: struct
 	infos : [..]Info_Range;
 }
 
+get_info_for_character :: (using info : *Text_Info, index : s64) -> info.Info_Range #must, info_index : s64
+{
+	for infos
+	{
+		if it.range.x <= index && index <= it.range.y
+			return it, it_index;
+	}
+	return .{}, -1;
+}
+
+get_next_info :: (using info : *Text_Info, info_index : s64, char_index : s64) -> info.Info_Range #must, new_info_index : s64
+{
+	if info_index < 0 || info_index >= infos.count
+		return .{}, -1;
+	i := info_index;
+	for i : info_index..infos.count - 1
+	{
+		it := infos[i];
+		if it.range.x <= char_index && char_index <= it.range.y
+			return it, i;
+	}
+	return .{}, -1;
+}
+
 Show_Whitespace :: enum
 {
 	NEVER :: 0;
@@ -152,20 +176,9 @@ layout_text :: (using view : *Screen_View)
 
 	buffer    := get (buffer_id);
 	text_info := get (text_info_id);
-	info_index := 0;
-	info := text_info.infos[info_index];
 	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
 	page : *font.Page;
-	if flagged (info.effects, .ITALIC)
-	{
-		fnt := font.find_font (g_buffer_font, info.weight, .ITALIC, fallback = g_buffer_font);
-		page = font.load_page (fnt, font_height);
-	}
-	else
-	{
-		fnt := font.find_font (g_buffer_font, info.weight, .NONE, fallback = g_buffer_font);
-		page = font.load_page (fnt, font_height);
-	}
+	info_index := 0;
 	// Reset data
 	array.clear (*wrapped_lines);
 	array.clear (*glyph_rects);
@@ -180,21 +193,12 @@ layout_text :: (using view : *Screen_View)
 	indentation_level := 0;
 	for codepoint, i : buffer
 	{
-		if text_info.infos[info_index].range.x > i || i > text_info.infos[info_index].range.y
+		info, new_info_index := get_next_info (text_info, info_index, i);
+		if !page || info_index != new_info_index
 		{
-			while info_index < text_info.infos.count - 1
-			{
-				info = text_info.infos[info_index];
-				if info.range.x <= i && i <= info.range.y
-					break;
-				info_index += 1;
-			}
-			fnt : *font.Font;
-			if flagged (info.effects, .ITALIC)
-				fnt = font.find_font (g_buffer_font, info.weight, .ITALIC, fallback = g_buffer_font);
-			else
-				fnt = font.find_font (g_buffer_font, info.weight, .NONE, fallback = g_buffer_font);
+			fnt := font.find_font (g_buffer_font, info.weight, xx info.effects, fallback = g_buffer_font);
 			page = font.load_page (fnt, font_height);
+			info_index = new_info_index;
 		}
 		rect : math.Rectf;
 		if codepoint ==

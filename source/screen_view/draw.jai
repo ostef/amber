@@ -1,7 +1,7 @@
-draw :: (using view : Screen_View)
+draw_character_range :: (using view : Screen_View, first : s64, last : s64, $draw_cursors := true)
 {
 	imdraw.scope_clip_rect (math.recti (area));
-	imdraw.draw_rect_outline (area, math.RGBA_WHITE, 2);
+	imdraw.draw_rect_outline (area, math.rgba (255, 255, 255, 100), 2);
 	prev_texture := imdraw.get_texture ();
 	defer imdraw.set_texture (prev_texture);
 	prev_shader := imdraw.set_shader (*font.g_glyph_shader);
@@ -9,46 +9,31 @@ draw :: (using view : Screen_View)
 
 	buffer    := get (buffer_id);
 	text_info := get (text_info_id);
-	info_index := 0;
-	info := text_info.infos[info_index];
-	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
-	page : *font.Page;
-	if flagged (info.effects, .ITALIC)
-	{
-		fnt := font.find_font (g_buffer_font, info.weight, .ITALIC, fallback = g_buffer_font);
-		page = font.load_page (fnt, font_height);
-	}
-	else
-	{
-		fnt := font.find_font (g_buffer_font, info.weight, .NONE, fallback = g_buffer_font);
-		page = font.load_page (fnt, font_height);
-	}
-	show_whitespace := get_enum (g_config, "buffer_show_whitespace", fallback = Show_Whitespace.NEVER);
 	visible := get_visible_range (view);
-	for i : visible.x..visible.y
+	first = math.clamp (first, visible.x, visible.y);
+	last  = math.clamp (last,  visible.x, visible.y);
+	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
+	show_whitespace := get_enum (g_config, "buffer_show_whitespace", fallback = Show_Whitespace.NEVER);
+	page : *font.Page;
+	info_index := 0;
+	for i : first..last
 	{
-		if text_info.infos[info_index].range.x > i || i > text_info.infos[info_index].range.y
+		info, new_info_index := get_next_info (text_info, info_index, i);
+		if !page || info_index != new_info_index
 		{
-			while info_index < text_info.infos.count - 1
-			{
-				info = text_info.infos[info_index];
-				if info.range.x <= i && i <= info.range.y
-					break;
-				info_index += 1;
-			}
-			fnt : *font.Font;
-			if flagged (info.effects, .ITALIC)
-				fnt = font.find_font (g_buffer_font, info.weight, .ITALIC, fallback = g_buffer_font);
-			else
-				fnt = font.find_font (g_buffer_font, info.weight, .NONE, fallback = g_buffer_font);
+			fnt := font.find_font (g_buffer_font, info.weight, xx info.effects, fallback = g_buffer_font);
 			page = font.load_page (fnt, font_height);
+			info_index = new_info_index;
 		}
 		draw_cursor := false;
 		is_selected := false;
 		for cursors
 		{
-			if it.char_index == i
-				draw_cursor = true;
+			#if draw_cursors
+			{
+				if it.char_index == i
+					draw_cursor = true;
+			}
 			if cursor_overlaps (it, i)
 				is_selected = true;
 		}
@@ -62,11 +47,12 @@ draw :: (using view : Screen_View)
 		{
 			imdraw.set_texture (null);
 			imdraw.draw_rect (rect, color);
-			color = math.invert (color);
+			// @Incomplete (stefan): We want this to be the same color as
+			// the background, to have a transparency effect.
+			color = math.rgba (0.1, 0.1, 0.1, 1);
 		}
 		if i >= get_count (buffer)
 			break;
-
 		codepoint := char_at (buffer, i);
 		if codepoint ==
 		{
@@ -99,4 +85,10 @@ draw :: (using view : Screen_View)
 		imdraw.set_texture (glyph.atlas_texture);
 		imdraw.draw_rect (glyph_rect, color, glyph.uv_rect);
 	}
+}
+
+draw :: (using view : Screen_View)
+{
+	range := get_visible_range (view);
+	draw_character_range (view, range.x, range.y);
 }
