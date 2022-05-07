@@ -22,6 +22,7 @@ View :: struct
 	buffer_id : Buffer.Id;
 	read_only : bool;
 	cursors : [..]Cursor;
+	is_dirty : bool;
 }
 
 init :: (
@@ -36,6 +37,7 @@ init :: (
 	view.buffer_id = buffer_id;
 	view.read_only = read_only;
 	array.init (*view.cursors, 20, mem.HEAP_ALLOC);
+	view.is_dirty = true;
 }
 
 reset :: (using view : *View)
@@ -357,19 +359,24 @@ handle_window_message :: (using view : *View, msg : window.Message)
 		if msg.kind ==
 		{
 		case .TEXT_INPUT;
-			insert (view, msg.codepoint);
+			if insert (view, msg.codepoint)
+				is_dirty = true;
 		case .KEY_PRESSED; #through;
 		case .KEY_REPEATED;
 			if msg.key_code ==
 			{
 			case .TAB;
-				insert (view, #char "\t");
+				if insert (view, #char "\t")
+					is_dirty = true;
 			case .RETURN;
-				insert (view, #char "\n");
+				if insert (view, #char "\n")
+					is_dirty = true;
 			case .BACKSPACE;
-				backspace (view);
+				if backspace (view)
+					is_dirty = true;
 			case .DELETE;
-				delete (view);
+				if delete (view)
+					is_dirty = true;
 			}
 		}
 	}

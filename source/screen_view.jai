@@ -10,7 +10,8 @@ Text_Info :: struct
 	{
 		weight   : font.Weight;		// 1-byte
 		effects  : imdraw.Text_Effects;	// 1-byte
-		color_id : Color_Id;		// 2-bytes
+		color    : math.RGBA;	// @Temporary @Memory
+		//color_id : Color_Id;		// 2-bytes
 	}	// 4-bytes
 
 	// We don't want to have an Info for each character,
@@ -18,15 +19,15 @@ Text_Info :: struct
 	// an info for a range of characters.
 	Info_Range :: struct
 	{
-		range : Vec2i;		// 8-bytes
+		range : Vec2l;		// 16-bytes
 		using info : Info;	// 4-bytes
-	}	// 12-bytes, 16-bytes with padding
+	}	// 20-bytes, 24-bytes with padding
 
 	// If we have a buffer with 5000 lines, let's say
 	// on average it has 80 character long lines,
 	// with 15 tokens per lines, and we don't merge
 	// similar tokens together, we have 15 * 5000
-	// Info_Ranges, so 15 * 5000 * 16 bytes = 1,2 MB
+	// Info_Ranges, so 15 * 5000 * 24 bytes = 1,72 MB
 
 	id : Id;
 	buffer_id : Buffer.Id;
@@ -58,7 +59,6 @@ Screen_View :: struct
 	scroll  : Vec2f;
 	glyph_rects   : [..]math.Rectf;
 	wrapped_lines : [..]Line;
-	is_dirty : bool;
 }
 
 init :: (
@@ -76,7 +76,6 @@ init :: (
 	view.area = area;
 	array.init (*view.glyph_rects, get_count (get (buffer_id)) + 1000, mem.HEAP_ALLOC);
 	array.init (*view.wrapped_lines, get (buffer_id).line_count + 100, mem.HEAP_ALLOC);
-	view.is_dirty = true;
 }
 
 reset :: (using view : *Screen_View)
@@ -92,6 +91,7 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 	{
 	case .WINDOW_MAXIMIZED; #through;
 	case .WINDOW_RESIZED;
+		// @Todo (stefan): Handle resizing to (0, 0)
 		current_available := vec2i (g_viewport_size.x, g_viewport_size.y - WINDOW_CAPTION_HEIGHT);
 		new_available := vec2i (msg.viewport_width, msg.viewport_height - WINDOW_CAPTION_HEIGHT);
 		x_ratio := area.x1 / cast (f32) current_available.x;
