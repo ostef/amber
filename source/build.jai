@@ -133,7 +133,7 @@ build :: ()
 		if run_on_success
 		{
 			cmd := path.join (mem.HEAP_ALLOC, g_build_dir, OUTPUT_NAME);
-			log.message ("Running %\n", cmd);
+			log.message ("Running %", cmd);
 			ps.run_command (cmd, working_directory = g_build_dir, output = .PRINT);
 		}
 	}
