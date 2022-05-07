@@ -95,75 +95,164 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 		area.y1 = WINDOW_CAPTION_HEIGHT + math.round (y_ratio * cast (f32) new_available.y);
 		area.x2 = area.x1 + width_ratio * cast (f32) new_available.x;
 		area.y2 = area.y1 + height_ratio * cast (f32) new_available.y;
+		is_dirty = true;
 	}
 	handle_window_message (*view.base, msg);
 }
 
+layout_text :: (using view : *Screen_View)
+{
+	wrap_line :: () #expand
+	{
+		array.push (*`wrapped_lines, `line);
+		`line.first_char_index = `i;
+		`pen.x = page.space_advance * cast (f32) `tab_width * (`indentation_level + 1);
+		`pen.y += xx (`page.ascent - `page.descent);
+	}
+
+	buffer := get (buffer_id);
+	info   := get (text_info_id);
+	// Reset data
+	array.clear (*wrapped_lines);
+	array.clear (*glyph_rects);
+	extents = vec2f (0, 0);
+	// @Todo (stefan):
+	// fnt = get_font (get_string (g_config, "buffer_font"))
+	show_whitespace := get_bool (g_config, "buffer_show_whitespace");
+	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
+	page := font.load_page (g_buffer_font, font_height);
+	tab_width := math.max (get_int (g_config, "tab_width", fallback = 4), 1);
+	line : Line;
+	pen : Vec2f;
+	start_of_line := true;	// Used to count the indentation level
+	indentation_level := 0;
+	for codepoint, i : buffer
+	{
+		rect : math.Rectf;
+		if codepoint ==
+		{
+		case #char "\n";
+			if pen.x + page.space_advance > math.rect_width (area)
+				wrap_line ();
+			rect = math.xywhf (pen.x, pen.y, xx page.space_advance, xx (page.ascent - page.descent));
+			pen.x = 0;
+			pen.y += xx (page.ascent - page.descent);
+			array.push (*wrapped_lines, line);
+			line.first_char_index = i + 1;
+			line.unwrapped_line_index += 1;
+			indentation_level = 0;
+			start_of_line = true;
+
+		case #char "\t";
+			if start_of_line then indentation_level += 1;
+			glyph_advance := page.space_advance;
+			if show_whitespace
+			{
+				glyph := font.load_glyph (page, #char "→");
+				glyph_advance = glyph.advance;
+			}
+			advance := math.snap_up (pen.x + glyph_advance, page.space_advance * cast (f32) tab_width) - pen.x;
+			if pen.x + advance > math.rect_width (area)
+				wrap_line ();
+			rect = math.xywhf (pen.x, pen.y, advance, xx (page.ascent - page.descent));
+			pen.x += advance;
+
+		case #char " ";
+			if show_whitespace
+				codepoint = #char "·";
+			#through;
+
+		case;
+			start_of_line = false;
+			glyph := font.load_glyph (page, codepoint);
+			if pen.x + glyph.advance > math.rect_width (area)
+				wrap_line ();
+			rect = math.xywhf (pen.x, pen.y, xx glyph.advance, xx (page.ascent - page.descent));
+			pen.x += glyph.advance;
+		}
+		extents = linalg.max (extents, pen);
+		array.push (*glyph_rects, rect);
+	}
+	array.push (*glyph_rects,
+		math.xywhf (
+			pen.x, pen.y,
+			xx page.space_advance, xx (page.ascent - page.descent)
+		)
+	);
+	pen.x += xx page.space_advance;
+	pen.y += xx (page.ascent - page.descent);
+	extents = linalg.max (extents, pen);
+}
+
 update :: (using view : *Screen_View)
 {
-	// @Todo (stefan): Layout text if dirty
+	if is_dirty
+	{
+		layout_text (view);
+		is_dirty = false;
+	}
 }
 
 draw :: (using view : Screen_View)
 {
 	imdraw.scope_clip_rect (math.recti (area));
 	imdraw.draw_rect_outline (area, math.RGBA_WHITE, 2);
-	//imdraw.draw_text (g_main_font, 22, vec2f ((area.x1 + area.x2) * 0.5, WINDOW_CAPTION_HEIGHT + (area.y1 + area.y2) * 0.5),
-	//	"Nothing to see here for the moment", math.rgba (170, 170, 170), anchor = .CENTER);
 	prev_texture := imdraw.get_texture ();
 	defer imdraw.set_texture (prev_texture);
 	prev_shader := imdraw.set_shader (*font.g_glyph_shader);
 	defer imdraw.set_shader (prev_shader);
 
 	buffer := get (buffer_id);
-	position := math.rect_position (area);
-	font_height := get_int (g_config, "buffer_font_height", fallback = 16);
-	font_height = math.max (font_height, MIN_FONT_HEIGHT);
+	info   := get (text_info_id);
+	font_height := math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
+	show_whitespace := get_bool (g_config, "buffer_show_whitespace");
 	page := font.load_page (g_buffer_font, cast (u32) font_height);
-	pen := vec2f (0, cast (f32) page.ascent);
 	for codepoint, i : buffer
 	{
-		drew_cursor := false;
+		draw_cursor := false;
 		for cursors
 		{
 			if it.char_index == i
-			{
-				advance := cast (f32) page.space_advance;
-				if codepoint == #char "\t"
-					advance = math.snap_up (pen.x + page.space_advance, page.space_advance * 4.0) - pen.x;
-				rect := math.xywhf (
-					math.round (position.x) + pen.x,
-					math.round (position.y) + pen.y - page.ascent,
-					advance,
-					cast (f32) (page.ascent - page.descent)
-				);
-				imdraw.set_texture (null);
-				imdraw.draw_rect (rect, math.RGBA_WHITE);
-				drew_cursor = true;
-			}
+				draw_cursor = true;
+		}
+		rect := math.move (
+			glyph_rects[i],
+			math.round (area.x1),
+			math.round (area.y1)
+		);
+		if draw_cursor
+		{
+			imdraw.set_texture (null);
+			imdraw.draw_rect (rect, math.RGBA_WHITE);
 		}
 		if codepoint ==
 		{
 		case #char "\n";
-			pen.x = 0;
-			pen.y += page.ascent - page.descent;
+			continue;
 		case #char "\t";
-			glyph := font.load_glyph (page, codepoint);
-			pen.x = math.snap_up (pen.x + glyph.advance, page.space_advance * 4.0);
-		case;
-			glyph := font.render_glyph (page, codepoint);
-			glyph_rect := math.xywhf (
-				math.round (position.x) + pen.x + glyph.bitmap_bearing_x,
-				math.round (position.y) + pen.y - glyph.bitmap_bearing_y,
-				cast (f32) glyph.bitmap_width,
-				cast (f32) glyph.bitmap_height
-			);
-			pen.x += glyph.advance;
-			imdraw.set_texture (glyph.atlas_texture);
-			if drew_cursor
-				imdraw.draw_rect (glyph_rect, math.RGBA_BLACK, glyph.uv_rect);
+			if show_whitespace
+				codepoint = #char "→";
 			else
-				imdraw.draw_rect (glyph_rect, math.RGBA_WHITE, glyph.uv_rect);
+				continue;
+		case #char " ";
+			if show_whitespace
+				codepoint = #char "·";
 		}
+		glyph := font.render_glyph (page, codepoint);
+		glyph_rect := math.xywhf (
+			rect.x1 + glyph.bitmap_bearing_x,
+			rect.y1 - glyph.bitmap_bearing_y + page.ascent,
+			cast (f32) glyph.bitmap_width,
+			cast (f32) glyph.bitmap_height
+		);
+		color : math.RGBA = ---;
+		if draw_cursor
+			color = math.RGBA_BLACK;
+		else
+			color = math.RGBA_WHITE;
+		if show_whitespace
+			color.a /= 3;
+		imdraw.set_texture (glyph.atlas_texture);
+		imdraw.draw_rect (glyph_rect, color, glyph.uv_rect);
 	}
 }
