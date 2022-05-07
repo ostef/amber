@@ -24,6 +24,25 @@ View :: struct
 	cursors : [..]Cursor;
 }
 
+init :: (
+	view : *View,
+	type : Type,
+	buffer_id : Buffer.Id,
+	read_only : bool
+)
+{
+	assert (storage.is_valid (g_buffers, buffer_id), "Invalid buffer id.");
+	view.type = Screen_View;
+	view.buffer_id = buffer_id;
+	view.read_only = read_only;
+	array.init (*view.cursors, 20, mem.HEAP_ALLOC);
+}
+
+reset :: (using view : *View)
+{
+	array.reset (*cursors);
+}
+
 get_cursor_line_and_column :: (using view : View, cursor_index : s64) -> line_index : s64, column_index : s64
 {
 	cursor := cursors[cursor_index];

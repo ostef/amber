@@ -65,8 +65,8 @@ g_text_infos   : storage.Storage (Text_Info, 20);
 create_buffer :: () -> *Buffer #must
 {
 	result, id := storage.find_free_slot (*g_buffers);
-	init (result, 1000);
 	result.id = id;
+	init (result, 1000);
 	return result;
 }
 
@@ -104,30 +104,18 @@ create_screen_view :: (
 	area : math.Rectf
 ) -> *Screen_View #must
 {
-	assert (storage.is_valid (g_buffers, buffer_id), "Invalid buffer id.");
-	assert (storage.is_valid (g_text_infos, text_info_id), "Invalid text info id.");
-	//assert (get (text_info_id).buffer_id == buffer_id, "Text info does not reference the same buffer.");
 	result, id := storage.find_free_slot (*g_screen_views);
 	view_id := storage.insert (*g_views, result);
 	result.id = id;
 	result.global_id = view_id;
-	result.type = Screen_View;
-	result.buffer_id = buffer_id;
-	result.read_only = read_only;
-	result.text_info_id = text_info_id;
-	result.area = area;
-	array.init (*result.cursors, 20, mem.HEAP_ALLOC);
-	array.init (*result.glyph_rects, get_count (get (buffer_id)) + 1000, mem.HEAP_ALLOC);
-	array.init (*result.wrapped_lines, get (buffer_id).line_count + 100, mem.HEAP_ALLOC);
+	init (result, buffer_id, text_info_id, read_only, area);
 	return result;
 }
 
 destroy_screen_view :: (id : Screen_View.Id)
 {
 	view := get (id);
-	array.reset (*view.cursors);
-	array.reset (*view.glyph_rects);
-	array.reset (*view.wrapped_lines);
+	reset (view);
 	storage.release_slot (*g_views, view.global_id);
 	storage.release_slot (*g_screen_views, id);
 }
@@ -268,6 +256,9 @@ main :: ()
 		msg : window.Message;
 		while window.get_next_message (g_window, *msg)
 			handle_window_message (msg);
+		
+		for * g_screen_views
+			update (it);
 
 		gl.ClearColor (0.1, 0.1, 0.1, 1);
 		gl.Clear (gl.COLOR_BUFFER_BIT);

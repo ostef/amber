@@ -51,6 +51,32 @@ Screen_View :: struct
 	scroll  : Vec2f;
 	glyph_rects   : [..]math.Rectf;
 	wrapped_lines : [..]Line;
+	is_dirty : bool;
+}
+
+init :: (
+	view : *Screen_View,
+	buffer_id : Buffer.Id,
+	text_info_id : Text_Info.Id,
+	read_only : bool,
+	area : math.Rectf
+)
+{
+	assert (storage.is_valid (g_text_infos, text_info_id), "Invalid text info id.");
+	//assert (get (text_info_id).buffer_id == buffer_id, "Text info does not reference the same buffer.");	Cannot find operator == for some reason
+	init (*view.base, Screen_View, buffer_id, read_only);
+	view.text_info_id = text_info_id;
+	view.area = area;
+	array.init (*view.glyph_rects, get_count (get (buffer_id)) + 1000, mem.HEAP_ALLOC);
+	array.init (*view.wrapped_lines, get (buffer_id).line_count + 100, mem.HEAP_ALLOC);
+	view.is_dirty = true;
+}
+
+reset :: (using view : *Screen_View)
+{
+	reset (*view.base);
+	array.reset (*glyph_rects);
+	array.reset (*wrapped_lines);
 }
 
 handle_window_message :: (using view : *Screen_View, msg : window.Message)
@@ -71,6 +97,11 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 		area.y2 = area.y1 + height_ratio * cast (f32) new_available.y;
 	}
 	handle_window_message (*view.base, msg);
+}
+
+update :: (using view : *Screen_View)
+{
+	// @Todo (stefan): Layout text if dirty
 }
 
 draw :: (using view : Screen_View)
