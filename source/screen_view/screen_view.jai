@@ -36,7 +36,7 @@ Text_Info :: struct
 	infos : [..]Info_Range;
 }
 
-get_info_for_character :: (using info : *Text_Info, index : s64) -> info.Info_Range #must, info_index : s64
+get_info_for_character :: (using info : Text_Info, index : s64) -> info.Info_Range #must, info_index : s64
 {
 	for infos
 	{
@@ -46,7 +46,7 @@ get_info_for_character :: (using info : *Text_Info, index : s64) -> info.Info_Ra
 	return .{}, -1;
 }
 
-get_next_info :: (using info : *Text_Info, info_index : s64, char_index : s64) -> info.Info_Range #must, new_info_index : s64
+get_next_info :: (using info : Text_Info, info_index : s64, char_index : s64) -> info.Info_Range #must, new_info_index : s64
 {
 	if info_index < 0 || info_index >= infos.count
 		return .{}, -1;
@@ -157,6 +157,31 @@ get_visible_range :: (using view : Screen_View) -> Vec2l #must
 		if i * line_height >= math.rect_height (area)	// @Incomplete: scrolling
 		{
 			result.y = wrapped_lines[i].first_char_index - 1;
+			break;
+		}
+	}
+
+	return result;
+}
+
+get_visible_line_range :: (using view : Screen_View) -> Vec2l #must
+{
+	font_height := math.max (get_int (g_config, "buffer_font_height"), 5);
+	// @Incomplete (stefan): We pick the page for the buffer font
+	// with no effects and regular weight, but we might actually
+	// use different weights and effects when rendering.
+	// We probably should compute the max ascent and descent and use
+	// that for all line heights in the buffer.
+	page := font.load_page (g_buffer_font, xx font_height);
+	line_height := cast (f32) (page.ascent - page.descent);
+	result : Vec2l;
+	result.x = get_base_line (view);
+	result.y = wrapped_lines.count - 1;
+	for i : get_base_line (view)..wrapped_lines.count - 1
+	{
+		if i * line_height >= math.rect_height (area)	// @Incomplete: scrolling
+		{
+			result.y = i;
 			break;
 		}
 	}
