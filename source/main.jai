@@ -6,7 +6,7 @@ str  :: #import "String";
 builder :: #import "String/Builder";
 strconv :: #import "String/Convert";
 path :: #import "Path";
-#import "Linalg";
+using linalg :: #import "Linalg";
 math :: #import "Math";
 utf8 :: #import "Unicode/UTF8";
 for_expansion :: utf8.for_expansion;
@@ -40,6 +40,8 @@ DEFAULT_FONT_NAME :: "Roboto";
 WINDOW_CAPTION_HEIGHT :: 32;
 WINDOW_CAPTION_BUTTON_SIZE :: 24;
 WINDOW_CAPTION_BUTTON_MARGIN :: (WINDOW_CAPTION_HEIGHT - WINDOW_CAPTION_BUTTON_SIZE) / 2;
+
+MIN_FONT_HEIGHT :: 5;
 
 g_window : window.Window;
 g_main_font : *font.Font;
@@ -256,6 +258,7 @@ main :: ()
 		log.error ("Could not load file 'config.amber' into buffer.");
 	text_info := create_text_info (buffer.id);
 	view := create_screen_view (buffer.id, text_info.id, false, math.xywhf (0, xx WINDOW_CAPTION_HEIGHT, xx g_viewport_size.x, xx (g_viewport_size.y - WINDOW_CAPTION_HEIGHT)));
+	array.push (*view.cursors, .{ char_index = 0, selection = 0 });
 
 	g_is_running = true;
 	while g_is_running
