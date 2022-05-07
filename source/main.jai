@@ -38,8 +38,8 @@ font   :: #import "Font";
 FONT_DIR :: "fonts/";
 DEFAULT_FONT_NAME :: "Roboto";
 WINDOW_CAPTION_HEIGHT :: 32;
-WINDOW_CAPTION_BUTTON_SIZE :: 24;
-WINDOW_CAPTION_BUTTON_MARGIN :: (WINDOW_CAPTION_HEIGHT - WINDOW_CAPTION_BUTTON_SIZE) / 2;
+WINDOW_CAPTION_BUTTON_ICON_SIZE :: 10;
+WINDOW_CAPTION_BUTTON_MARGIN :: 4;
 
 MIN_FONT_HEIGHT :: 5;
 
@@ -290,13 +290,17 @@ Caption_Button :: enum
 
 get_caption_button_rect :: inline (button : Caption_Button) -> math.Rectf
 {
+	margin := 0.0;
+	if !window.is_maximized (g_window)
+		margin = cast (f32) WINDOW_CAPTION_BUTTON_MARGIN;
+	button_size := WINDOW_CAPTION_HEIGHT - margin * 2;
 	vw := window.get_viewport_size (g_window);
 	i := cast (int) button;
 	return math.xywhf (
-		cast (f32) (vw - (i + 1) * (WINDOW_CAPTION_BUTTON_SIZE + WINDOW_CAPTION_BUTTON_MARGIN)), xx WINDOW_CAPTION_BUTTON_MARGIN,
-		xx WINDOW_CAPTION_BUTTON_SIZE, xx WINDOW_CAPTION_BUTTON_SIZE
+		cast (f32) (vw - (i + 1) * (button_size + margin)), margin,
+		button_size, button_size
 	);
-}
+	}
 
 is_caption_button_hovered :: inline (button : Caption_Button) -> bool
 {
@@ -341,12 +345,30 @@ draw_window_caption :: ()
 		}
 	}
 	// Draw button symbols
-	r := math.truncate_all_sides (get_caption_button_rect (.CLOSE), 7);
+	r := get_caption_button_rect (.CLOSE);
+	r = math.xywhf (
+		(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+		(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+		xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
+		xx WINDOW_CAPTION_BUTTON_ICON_SIZE
+	);
 	c := math.rgba (170, 170, 170);
 	imdraw.draw_line (vec2f (r.x1, r.y1), vec2f (r.x2, r.y2), c, 1);
 	imdraw.draw_line (vec2f (r.x1, r.y2), vec2f (r.x2, r.y1), c, 1);
-	r = math.truncate_all_sides (get_caption_button_rect (.MAXIMIZE), 7.5);
+	r = get_caption_button_rect (.MAXIMIZE);
+	r = math.xywhf (
+		(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5 + 0.5,
+		(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5 + 0.5,
+		xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
+		xx WINDOW_CAPTION_BUTTON_ICON_SIZE
+	);
 	imdraw.draw_rect_outline (r, c, 1);
-	r = math.truncate_all_sides (get_caption_button_rect (.MINIMIZE), 7);
+	r = get_caption_button_rect (.MINIMIZE);
+	r = math.xywhf (
+		(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+		(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+		xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
+		xx WINDOW_CAPTION_BUTTON_ICON_SIZE
+	);
 	imdraw.draw_line (vec2f (r.x1, (r.y1 + r.y2) * 0.5 + 0.5), vec2f (r.x2, (r.y1 + r.y2) * 0.5 + 0.5), c, 1);
 }
