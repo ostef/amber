@@ -59,7 +59,6 @@ Buffer :: struct
 
 init :: (using buffer : *Buffer, capacity : s64)
 {
-	mem.init (buffer);
 	data = mem.alloc (size_of (u32) * capacity, mem.HEAP_ALLOC);
 	assert (data != null, "Could not allocate memory for buffer (requested % characters).", capacity);
 	gap = capacity;
