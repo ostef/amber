@@ -33,6 +33,13 @@ Text_Info :: struct
 	infos : [..]Info_Range;
 }
 
+Show_Whitespace :: enum
+{
+	NEVER :: 0;
+	ONLY_SELECTED :: 1;
+	ALWAYS :: 2;
+}
+
 Screen_View :: struct
 {
 	Id :: type_of (g_screen_views).Slot_Info;
@@ -118,7 +125,7 @@ layout_text :: (using view : *Screen_View)
 	extents = vec2f (0, 0);
 	// @Todo (stefan):
 	// fnt = get_font (get_string (g_config, "buffer_font"))
-	show_whitespace := get_bool (g_config, "buffer_show_whitespace");
+	show_whitespace := get_enum (g_config, "buffer_show_whitespace", fallback = Show_Whitespace.NEVER);
 	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
 	page := font.load_page (g_buffer_font, font_height);
 	tab_width := math.max (get_int (g_config, "tab_width", fallback = 4), 1);
@@ -205,38 +212,52 @@ draw :: (using view : Screen_View)
 	buffer := get (buffer_id);
 	info   := get (text_info_id);
 	font_height := math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
-	show_whitespace := get_bool (g_config, "buffer_show_whitespace");
+	show_whitespace := get_enum (g_config, "buffer_show_whitespace", fallback = Show_Whitespace.NEVER);
 	page := font.load_page (g_buffer_font, cast (u32) font_height);
 	for codepoint, i : buffer
 	{
 		draw_cursor := false;
+		is_selected := false;
 		for cursors
 		{
 			if it.char_index == i
 				draw_cursor = true;
+			if cursor_overlaps (it, i)
+				is_selected = true;
 		}
 		rect := math.move (
 			glyph_rects[i],
 			math.round (area.x1),
 			math.round (area.y1)
 		);
+		color := math.RGBA_WHITE;
 		if draw_cursor
 		{
 			imdraw.set_texture (null);
-			imdraw.draw_rect (rect, math.RGBA_WHITE);
+			imdraw.draw_rect (rect, color);
+			color = math.invert (color);
 		}
+		
 		if codepoint ==
 		{
 		case #char "\n";
 			continue;
 		case #char "\t";
-			if show_whitespace
+			if show_whitespace == .ALWAYS
+			|| show_whitespace == .ONLY_SELECTED && is_selected
+			{
 				codepoint = #char "→";
+				color.a /= 3;
+			}
 			else
 				continue;
 		case #char " ";
-			if show_whitespace
+			if show_whitespace == .ALWAYS
+			|| show_whitespace == .ONLY_SELECTED && is_selected
+			{
 				codepoint = #char "·";
+				color.a /= 3;
+			}
 		}
 		glyph := font.render_glyph (page, codepoint);
 		glyph_rect := math.xywhf (
@@ -245,13 +266,6 @@ draw :: (using view : Screen_View)
 			cast (f32) glyph.bitmap_width,
 			cast (f32) glyph.bitmap_height
 		);
-		color : math.RGBA = ---;
-		if draw_cursor
-			color = math.RGBA_BLACK;
-		else
-			color = math.RGBA_WHITE;
-		if show_whitespace
-			color.a /= 3;
 		imdraw.set_texture (glyph.atlas_texture);
 		imdraw.draw_rect (glyph_rect, color, glyph.uv_rect);
 	}

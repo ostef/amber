@@ -310,6 +310,13 @@ cursors_overlap :: inline (a : View.Cursor, b : View.Cursor) -> bool #must
 		|| a.char_index == b.char_index;
 }
 
+cursor_overlaps :: inline (cursor : View.Cursor, char_index : s64) -> bool #must
+{
+	return cursor.selection > 0 && char_index >= cursor.char_index && char_index < cursor.char_index + cursor.selection
+		|| cursor.selection < 0 && char_index >= cursor.char_index + cursor.selection && char_index < cursor.char_index
+		|| cursor.char_index == char_index;
+}
+
 merge_overlapping_cursors :: (using view : *View)
 {
 	buffer := get (buffer_id);
