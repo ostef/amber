@@ -70,6 +70,7 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 		area.x2 = area.x1 + width_ratio * cast (f32) new_available.x;
 		area.y2 = area.y1 + height_ratio * cast (f32) new_available.y;
 	}
+	handle_window_message (*view.base, msg);
 }
 
 draw :: (using view : Screen_View)
