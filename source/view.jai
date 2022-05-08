@@ -490,6 +490,9 @@ handle_window_message :: (using view : *View, msg : window.Message)
 	case .KEY_REPEATED;
 		if msg.key_code ==
 		{
+		case .ESCAPE;
+			clear_cursors (view);
+			clear_selection (view);
 		case .UP;
 			if msg.mods == (input.Mods.ALT | .SHIFT)
 				add_cursor_on_previous_line (view, ALL_CURSORS);
