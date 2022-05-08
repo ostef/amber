@@ -133,6 +133,15 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 	handle_window_message (*view.base, msg);
 }
 
+get_rect :: inline (using view : Screen_View, index : s64) -> math.Rectf #must
+{
+	return math.move (
+		glyph_rects[index],
+		math.round (area.x1),
+		math.round (area.y1)
+	);
+}
+
 get_base_line :: inline (using view : Screen_View) -> s64 #must
 {
 	// @Todo (stefan): Handle scroll
@@ -187,6 +196,18 @@ get_visible_line_range :: (using view : Screen_View) -> Vec2l #must
 	}
 
 	return result;
+}
+
+get_line_range :: inline (using view : Screen_View, line_index : s64) -> Vec2l #must
+{
+	line := wrapped_lines[line_index];
+	range : Vec2l;
+	range.x = line.first_char_index;
+	range.y = glyph_rects.count - 1;
+	if line_index < wrapped_lines.count - 1
+		range.y = wrapped_lines[line_index + 1].first_char_index - 1;
+
+	return range;
 }
 
 layout_text :: (using view : *Screen_View)
