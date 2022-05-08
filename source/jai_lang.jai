@@ -247,7 +247,7 @@ read_next_token :: (using lexer : *Jai_Lexer) -> Jai_Token
 				advance (lexer);
 			advance (lexer);
 		}
-		if peek_codepoint (lexer) != #char "\""
+		if lexer.offset == count
 			token.kind = .INVALID;
 		else
 			token.kind = .STRING_LITERAL;
@@ -404,7 +404,7 @@ read_next_token :: (using lexer : *Jai_Lexer) -> Jai_Token
 
 peek_codepoint :: inline (using lexer : *Jai_Lexer, peek_offset := 0) -> u32 #must
 {
-	assert (offset + peek_offset < count);
+	assert (offset + peek_offset < count, "Bounds check failure (got % + %, max is %).", offset, peek_offset, count);
 	
 	return char_at (buffer, offset + peek_offset);
 }
