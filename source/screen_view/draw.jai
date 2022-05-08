@@ -123,16 +123,15 @@ draw_character_range :: (using view : Screen_View, first : s64, last : s64, $dra
 	defer imdraw.set_shader (prev_shader);
 
 	text_info := get (text_info_id);
-	visible := get_visible_range (view);
-	first = math.clamp (first, visible.x, visible.y);
-	last  = math.clamp (last,  visible.x, visible.y);
 	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
 	show_whitespace := get_enum (g_config, "buffer_show_whitespace", fallback = Show_Whitespace.NEVER);
 	page : *font.Page;
 	i := first;
-	while i < last
+	while i <= last
 	{
 		info, info_index := get_info_for_character (text_info, i);
+		if info_index < 0
+			break;
 		if !page || info.weight != page.font.weight || info.effects != xx page.font.effects
 		{
 			fnt := font.find_font (g_buffer_font, info.weight, xx info.effects, fallback = g_buffer_font);
@@ -150,6 +149,17 @@ draw_character_range :: (using view : Screen_View, first : s64, last : s64, $dra
 		);
 		i = info.range.y + 1;
 	}
+	if i <= last
+		draw_character_range (
+			view,
+			i,
+			last,
+			page,
+			.NONE,
+			math.RGBA_WHITE,
+			show_whitespace,
+			draw_cursors
+		);
 }
 
 draw :: (using view : Screen_View)
