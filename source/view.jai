@@ -170,13 +170,13 @@ backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 	return true;
 }
 
-reset_selection :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+clear_selection :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 {
 	if cursor_index == ALL_CURSORS
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok |= reset_selection (view, i);
+			ok |= clear_selection (view, i);
 		return ok;
 	}
 
@@ -386,6 +386,75 @@ sort_cursors :: inline (using view : *View)
 	algo.qsort (cursors, (a, b) => (a.char_index - b.char_index));
 }
 
+clear_cursors :: inline (using view : *View)
+{
+	if cursors.count > 1
+		cursors.count = 1;
+}
+
+add_cursor :: (using view : *View, char_index : s64) -> bool
+{
+	buffer := get (buffer_id);
+	assert (char_index >= 0 && char_index <= get_count (buffer), "Bounds check failure.");
+	for cursors
+	{
+		if cursor_overlaps (it, char_index)
+			return false;
+	}
+	ptr := array.push (*cursors);
+	ptr.char_index = char_index;
+	return true;
+}
+
+add_cursor_on_previous_line :: (using view : *View, cursor_index : s64) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok := false;
+		max_cursor_index := cursors.count - 1;
+		for i : 0..max_cursor_index
+			ok |= add_cursor_on_previous_line (view, i);
+		return ok;
+	}
+
+	li := get_cursor_line_and_column (view, cursor_index);
+	if li == 0
+		return add_cursor (view, 0);
+	buffer := get (buffer_id);
+	line_len := buffer.line_lengths[li - 1];
+	char_index := cursors[cursor_index].char_index - line_len;
+
+	return add_cursor (view, char_index);
+}
+
+add_cursor_on_next_line :: (using view : *View, cursor_index : s64) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok := false;
+		max_cursor_index := cursors.count - 1;
+		for i : 0..max_cursor_index
+			ok |= add_cursor_on_next_line (view, i);
+		return ok;
+	}
+
+	li := get_cursor_line_and_column (view, cursor_index);
+	buffer := get (buffer_id);
+	if li == buffer.line_lengths.count - 1
+		return add_cursor (view, 0);
+	line_len := buffer.line_lengths[li];
+	char_index := cursors[cursor_index].char_index + line_len;
+
+	return add_cursor (view, char_index);
+}
+
+remove_cursor :: (using view : *View, cursor_index : s64)
+{
+	if cursors.count == 1
+		return;
+	array.ordered_remove_at (*cursors, cursor_index);
+}
+
 handle_window_message :: (using view : *View, msg : window.Message)
 {
 	buffer := get (buffer_id);
@@ -422,23 +491,33 @@ handle_window_message :: (using view : *View, msg : window.Message)
 		if msg.key_code ==
 		{
 		case .UP;
-			if !flagged (msg.mods, .SHIFT)
-				reset_selection (view);
-			move_cursor_to_previous_line (view, flagged (msg.mods, .SHIFT));
-			merge_overlapping_cursors (view);
+			if msg.mods == (input.Mods.ALT | .SHIFT)
+				add_cursor_on_previous_line (view, ALL_CURSORS);
+			else
+			{
+				if !flagged (msg.mods, .SHIFT)
+					clear_selection (view);
+				move_cursor_to_previous_line (view, flagged (msg.mods, .SHIFT));
+				merge_overlapping_cursors (view);
+			}
 		case .DOWN;
-			if !flagged (msg.mods, .SHIFT)
-				reset_selection (view);
-			move_cursor_to_next_line (view, flagged (msg.mods, .SHIFT));
-			merge_overlapping_cursors (view);
+			if msg.mods == (input.Mods.ALT | .SHIFT)
+				add_cursor_on_next_line (view, ALL_CURSORS);
+			else
+			{
+				if !flagged (msg.mods, .SHIFT)
+					clear_selection (view);
+				move_cursor_to_next_line (view, flagged (msg.mods, .SHIFT));
+				merge_overlapping_cursors (view);
+			}
 		case .LEFT;
 			if !flagged (msg.mods, .SHIFT)
-				reset_selection (view);
+				clear_selection (view);
 			move_cursor_backward (view, flagged (msg.mods, .SHIFT));
 			merge_overlapping_cursors (view);
 		case .RIGHT;
 			if !flagged (msg.mods, .SHIFT)
-				reset_selection (view);
+				clear_selection (view);
 			move_cursor_forward (view, flagged (msg.mods, .SHIFT));
 			merge_overlapping_cursors (view);
 		}
