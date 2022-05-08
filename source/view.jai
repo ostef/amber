@@ -83,7 +83,7 @@ insert :: (using view : *View, codepoint : u32, cursor_index := view.ALL_CURSORS
 	insert (buffer, codepoint);
 	for other_view, view_id : g_views
 	{
-		if other_view.buffer_id == buffer_id
+		if other_view.buffer_id != buffer_id
 			continue;
 		for * other, other_index : cursors
 		{
@@ -117,19 +117,24 @@ delete :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 		return false;
 	if cursor.selection < 0
 		cursor.char_index += cursor.selection;
-	cursor.selection = 0;
 	for other_view, view_id : g_views
 	{
-		if other_view.buffer_id == buffer_id
+		if other_view.buffer_id != buffer_id
 			continue;
 		for * other, other_index : cursors
 		{
 			if view_id == global_id && cursor_index == other_index
 				continue;
 			if other.char_index > cursor.char_index
-				other.char_index -= 1;
+			{
+				if cursor.selection != 0
+					other.char_index += cursor.selection;
+				else
+					other.char_index -= 1;
+			}
 		}
 	}
+	cursor.selection = 0;
 
 	return true;
 }
@@ -155,7 +160,7 @@ backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 		return false;
 	for other_view, view_id : g_views
 	{
-		if other_view.buffer_id == buffer_id
+		if other_view.buffer_id != buffer_id
 			continue;
 		for * other, other_index : cursors
 		{
