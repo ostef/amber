@@ -37,6 +37,7 @@ init :: (
 	view.buffer_id = buffer_id;
 	view.read_only = read_only;
 	array.init (*view.cursors, 20, mem.HEAP_ALLOC);
+	array.push (*view.cursors, .{ char_index = 0, selection = 0 });
 	view.is_dirty = true;
 }
 
