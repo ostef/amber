@@ -61,7 +61,7 @@ draw_character_range :: (
 			imdraw.draw_line (
 				`line_start + vec2f (0, 0.5),
 				`line_end   + vec2f (0, 0.5),
-				`char_color,
+				`color,
 				1
 			);
 		}
@@ -71,7 +71,7 @@ draw_character_range :: (
 			imdraw.draw_line (
 				`line_start - vec2f (0, `page.ascent * (2.0 / 5.0) + 0.5),
 				`line_end   - vec2f (0, `page.ascent * (2.0 / 5.0) + 0.5),
-				`char_color,
+				`color,
 				1
 			);
 		}
@@ -81,7 +81,6 @@ draw_character_range :: (
 	new_line := true;
 	line_start : Vec2f;
 	line_end   : Vec2f;
-	char_color := color;
 	for i : first_char..last_char
 	{
 		draw_cursor := false;
@@ -97,13 +96,6 @@ draw_character_range :: (
 				is_selected = true;
 		}
 		rect := get_rect (view, i);
-		char_color = color;
-		if draw_cursor
-		{
-			imdraw.set_texture (null);
-			imdraw.draw_rect (rect, char_color);
-			char_color = math.rgba (0.1, 0.1, 0.1);
-		}
 		if new_line || line_end.y != rect.y1 + page.ascent
 		{
 			draw_effects ();
@@ -111,6 +103,13 @@ draw_character_range :: (
 		}
 		line_end = vec2f (rect.x2, rect.y1 + page.ascent);
 		new_line = false;
+		char_color := color;
+		if draw_cursor
+		{
+			imdraw.set_texture (null);
+			imdraw.draw_rect (rect, char_color);
+			char_color = math.rgba (0.1, 0.1, 0.1);
+		}
 		if i >= get_count (buffer)
 			break;
 		codepoint := char_at (buffer, i);
