@@ -291,12 +291,14 @@ layout_text :: (using view : *Screen_View)
 		extents = linalg.max (extents, pen);
 		array.push (*glyph_rects, rect);
 	}
+	page = font.load_page (g_buffer_font, font_height);
 	array.push (*glyph_rects,
 		math.xywhf (
 			pen.x, pen.y,
 			xx page.space_advance, xx (page.ascent - page.descent)
 		)
 	);
+	array.push (*wrapped_lines, line);
 	pen.x += xx page.space_advance;
 	pen.y += xx (page.ascent - page.descent);
 	extents = linalg.max (extents, pen);
