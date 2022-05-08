@@ -162,11 +162,10 @@ draw_character_range :: (using view : Screen_View, first : s64, last : s64, $dra
 	show_whitespace := get_enum (g_config, "buffer_show_whitespace", fallback = Show_Whitespace.NEVER);
 	page : *font.Page;
 	i := first;
-	while i <= last
+	info, info_index := get_info_for_character (text_info, i);
+	while i <= last && info_index >= 0 && info_index < text_info.infos.count
 	{
-		info, info_index := get_info_for_character (text_info, i);
-		if info_index < 0
-			break;
+		info = text_info.infos[info_index];
 		if !page || info.weight != page.font.weight || info.effects != xx page.font.effects
 		{
 			fnt := font.find_font (g_buffer_font, info.weight, xx info.effects, fallback = g_buffer_font);
@@ -183,6 +182,7 @@ draw_character_range :: (using view : Screen_View, first : s64, last : s64, $dra
 			draw_cursors
 		);
 		i = info.range.y + 1;
+		info_index += 1;
 	}
 	if i <= last
 		draw_character_range (
