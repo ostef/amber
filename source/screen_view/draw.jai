@@ -9,6 +9,8 @@ draw_selection :: (using view : Screen_View, color : math.RGBA)
 	visible_lines := get_visible_line_range (view);
 	for cur : cursors
 	{
+		if cur.selection == 0
+			continue;
 		for li : visible_lines.x..visible_lines.y
 		{
 			line_range := get_line_range (view, li);
@@ -17,24 +19,23 @@ draw_selection :: (using view : Screen_View, color : math.RGBA)
 			for i : line_range.x..line_range.y
 			{
 				rect := get_rect (view, i);
-				is_selected := cursor_overlaps (cur, i);
+				is_selected := cursor_selects (cur, i);
 				defer was_selected = is_selected;
 
+				// If we are the start of the selection, set the
+				// left, top and bottom coords of the selection rect
 				if !was_selected && is_selected
 				{
 					selection_rect.x1 = rect.x1;
 					selection_rect.y1 = rect.y1;
 					selection_rect.y2 = rect.y2;
 				}
-				if i == line_range.y && is_selected
+				if is_selected
 					selection_rect.x2 = rect.x2;
-				else if was_selected && !is_selected
-				{
-					selection_rect.x2 = rect.x1;
+				if was_selected && !is_selected
 					break;
-				}
 			}
-			imdraw.draw_rect (selection_rect, color);
+			imdraw.draw_rect (selection_rect, color, corner_radius = 4);
 		}
 	}
 }
@@ -184,6 +185,8 @@ draw_character_range :: (using view : Screen_View, first : s64, last : s64, $dra
 		i = info.range.y + 1;
 		info_index += 1;
 	}
+	if !page
+		page = font.load_page (g_buffer_font, font_height);
 	if i <= last
 		draw_character_range (
 			view,
