@@ -79,7 +79,7 @@ insert :: (using view : *View, codepoint : u32, cursor_index := view.ALL_CURSORS
 	cursor := *cursors[cursor_index];
 	move_cursor (buffer, cursor.char_index);
 	if cursor.selection != 0
-		delete (buffer, cursor.selection);
+		delete (view, cursor_index);
 	insert (buffer, codepoint);
 	for other_view, view_id : g_views
 	{
@@ -115,6 +115,9 @@ delete :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 	move_cursor (buffer, cursor.char_index);
 	if !delete (buffer, cursor.selection)
 		return false;
+	if cursor.selection < 0
+		cursor.char_index += cursor.selection;
+	cursor.selection = 0;
 	for other_view, view_id : g_views
 	{
 		if other_view.buffer_id == buffer_id
@@ -167,13 +170,30 @@ backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 	return true;
 }
 
-move_cursor_forward :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+reset_selection :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 {
 	if cursor_index == ALL_CURSORS
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok |= move_cursor_forward (view, i);
+			ok |= reset_selection (view, i);
+		return ok;
+	}
+
+	cursor := *cursors[cursor_index];
+	if cursor.selection == 0
+		return false;
+	cursor.selection = 0;
+	return true;
+}
+
+move_cursor_forward :: (using view : *View, select : bool, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok |= move_cursor_forward (view, select, i);
 		return ok;
 	}
 
@@ -182,17 +202,18 @@ move_cursor_forward :: (using view : *View, cursor_index := view.ALL_CURSORS) ->
 	if cursor.char_index == get_count (buffer)
 		return false;
 	cursor.char_index += 1;
+	if select then cursor.selection -= 1;
 
 	return true;
 }
 
-move_cursor_backward :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+move_cursor_backward :: (using view : *View, select : bool, cursor_index := view.ALL_CURSORS) -> bool
 {
 	if cursor_index == ALL_CURSORS
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok |= move_cursor_backward (view, i);
+			ok |= move_cursor_backward (view, select, i);
 		return ok;
 	}
 
@@ -201,56 +222,58 @@ move_cursor_backward :: (using view : *View, cursor_index := view.ALL_CURSORS) -
 	if cursor.char_index == 0
 		return false;
 	cursor.char_index -= 1;
+	if select then cursor.selection += 1;
 
 	return true;
 }
 
-move_cursor_to_previous_line :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+move_cursor_to_previous_line :: (using view : *View, select : bool, cursor_index := view.ALL_CURSORS) -> bool
 {
 	if cursor_index == ALL_CURSORS
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok |= move_cursor_to_previous_line (view, i);
+			ok |= move_cursor_to_previous_line (view, select, i);
 		return ok;
 	}
 
 	buffer := get (buffer_id);
 	ci := get_column_index (view, cursor_index);
-	moved := move_cursor_to_bol (view, cursor_index);
+	moved := move_cursor_to_bol (view, select, cursor_index);
 	// @Note (stefan): ||= short-circuits! We use |= instead
-	moved |= move_cursor_backward (view, cursor_index);
-	moved |= move_cursor_to_column (view, ci, cursor_index);
+	// otherwise the calls below might not be done.
+	moved |= move_cursor_backward (view, select, cursor_index);
+	moved |= move_cursor_to_column (view, ci, select, cursor_index);
 
 	return moved;
 }
 
-move_cursor_to_next_line :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+move_cursor_to_next_line :: (using view : *View, select : bool, cursor_index := view.ALL_CURSORS) -> bool
 {
 	if cursor_index == ALL_CURSORS
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok |= move_cursor_to_next_line (view, i);
+			ok |= move_cursor_to_next_line (view, select, i);
 		return ok;
 	}
 
 	buffer := get (buffer_id);
 	ci := get_column_index (view, cursor_index);
-	moved := move_cursor_to_eol (view, cursor_index);
-	moved |= move_cursor_forward (view, cursor_index);
-	moved |= move_cursor_to_column (view, ci, cursor_index);
+	moved := move_cursor_to_eol (view, select, cursor_index);
+	moved |= move_cursor_forward (view, select, cursor_index);
+	moved |= move_cursor_to_column (view, ci, select, cursor_index);
 
 	return moved;
 }
 
-move_cursor_to_bol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+move_cursor_to_bol :: (using view : *View, select : bool, cursor_index := view.ALL_CURSORS) -> bool
 {
 	if cursor_index == ALL_CURSORS
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok |= move_cursor_to_bol (view, i);
+			ok |= move_cursor_to_bol (view, select, i);
 		return ok;
 	}
 
@@ -259,17 +282,20 @@ move_cursor_to_bol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> 
 		return false;
 	buffer := get (buffer_id);
 	while cursor.char_index > 0 && char_at (buffer, cursor.char_index - 1) != #char "\n"
+	{
 		cursor.char_index -= 1;
+		if select then cursor.selection += 1;
+	}
 	return true;
 }
 
-move_cursor_to_eol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
+move_cursor_to_eol :: (using view : *View, select : bool, cursor_index := view.ALL_CURSORS) -> bool
 {
 	if cursor_index == ALL_CURSORS
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok |= move_cursor_to_eol (view, i);
+			ok |= move_cursor_to_eol (view, select, i);
 		return ok;
 	}
 
@@ -278,28 +304,32 @@ move_cursor_to_eol :: (using view : *View, cursor_index := view.ALL_CURSORS) -> 
 	if cursor.char_index == get_count (buffer)
 		return false;
 	while cursor.char_index < get_count (buffer) && char_at (buffer, cursor.char_index) != #char "\n"
+	{
 		cursor.char_index += 1;
+		if select then cursor.selection -= 1;
+	}
 	return true;
 }
 
-move_cursor_to_column :: (using view : *View, target : s64, cursor_index := view.ALL_CURSORS) -> bool
+move_cursor_to_column :: (using view : *View, target : s64, select : bool, cursor_index := view.ALL_CURSORS) -> bool
 {
 	if cursor_index == ALL_CURSORS
 	{
 		ok : bool;
 		for i : 0..cursors.count - 1
-			ok |= move_cursor_to_column (view, i);
+			ok |= move_cursor_to_column (view, target, select, i);
 		return ok;
 	}
 
 	cursor := *cursors[cursor_index];
 	buffer := get (buffer_id);
-	move_cursor_to_bol (view, cursor_index);
+	move_cursor_to_bol (view, select, cursor_index);
 	prev_char_index := cursor.char_index;
 	i := 0;
 	while i < target && cursor.char_index < get_count (buffer) && char_at (buffer, cursor.char_index) != #char "\n"
 	{
 		cursor.char_index += 1;
+		if select then cursor.selection -= 1;
 		i += 1;
 	}
 
@@ -313,11 +343,15 @@ cursors_overlap :: inline (a : View.Cursor, b : View.Cursor) -> bool #must
 		|| a.char_index == b.char_index;
 }
 
-cursor_overlaps :: inline (cursor : View.Cursor, char_index : s64) -> bool #must
+cursor_selects :: inline (cursor : View.Cursor, char_index : s64) -> bool #must
 {
 	return cursor.selection > 0 && char_index >= cursor.char_index && char_index < cursor.char_index + cursor.selection
-		|| cursor.selection < 0 && char_index >= cursor.char_index + cursor.selection && char_index < cursor.char_index
-		|| cursor.char_index == char_index;
+		|| cursor.selection < 0 && char_index >= cursor.char_index + cursor.selection && char_index < cursor.char_index;
+}
+
+cursor_overlaps :: inline (cursor : View.Cursor, char_index : s64) -> bool #must
+{
+	return cursor_selects (cursor, char_index) || cursor.char_index == char_index;
 }
 
 merge_overlapping_cursors :: (using view : *View)
@@ -388,16 +422,24 @@ handle_window_message :: (using view : *View, msg : window.Message)
 		if msg.key_code ==
 		{
 		case .UP;
-			move_cursor_to_previous_line (view);
+			if !flagged (msg.mods, .SHIFT)
+				reset_selection (view);
+			move_cursor_to_previous_line (view, flagged (msg.mods, .SHIFT));
 			merge_overlapping_cursors (view);
 		case .DOWN;
-			move_cursor_to_next_line (view);
+			if !flagged (msg.mods, .SHIFT)
+				reset_selection (view);
+			move_cursor_to_next_line (view, flagged (msg.mods, .SHIFT));
 			merge_overlapping_cursors (view);
 		case .LEFT;
-			move_cursor_backward (view);
+			if !flagged (msg.mods, .SHIFT)
+				reset_selection (view);
+			move_cursor_backward (view, flagged (msg.mods, .SHIFT));
 			merge_overlapping_cursors (view);
 		case .RIGHT;
-			move_cursor_forward (view);
+			if !flagged (msg.mods, .SHIFT)
+				reset_selection (view);
+			move_cursor_forward (view, flagged (msg.mods, .SHIFT));
 			merge_overlapping_cursors (view);
 		}
 	}
