@@ -275,6 +275,7 @@ main :: ()
 		msg : window.Message;
 		while window.get_next_message (g_window, *msg)
 			handle_window_message (msg);
+		input.update ();
 
 		for * g_screen_views
 			update (it);
