@@ -6,6 +6,7 @@ draw_selection :: (using view : Screen_View, color : math.RGBA)
 	prev_shader := imdraw.set_shader (null);
 	defer imdraw.set_shader (prev_shader);
 
+	cursor_rounding := math.clamp (get_float (g_config, "cursor_rounding", fallback = 0), 0, 10);
 	visible_lines := get_visible_line_range (view);
 	for cur : cursors
 	{
@@ -35,7 +36,7 @@ draw_selection :: (using view : Screen_View, color : math.RGBA)
 				if was_selected && !is_selected
 					break;
 			}
-			imdraw.draw_rect (selection_rect, color, corner_radius = 4);
+			imdraw.draw_rect (selection_rect, color, corner_radius = cursor_rounding);
 		}
 	}
 }
@@ -77,6 +78,7 @@ draw_character_range :: (
 		}
 	}
 
+	cursor_rounding := math.clamp (get_float (g_config, "cursor_rounding", fallback = 0), 0, 10);
 	buffer := get (buffer_id);
 	new_line := true;
 	line_start : Vec2f;
@@ -109,13 +111,14 @@ draw_character_range :: (
 			imdraw.set_texture (null);
 			if g_active_screen_view.id == view.id
 			{
-				imdraw.draw_rect (rect, char_color);
+				imdraw.draw_rect (rect, char_color, corner_radius = cursor_rounding);
 				char_color = math.rgba (0.1, 0.1, 0.1);
 			}
 			else
 				imdraw.draw_rect_outline (
 					math.truncate_all_sides (rect, 0.5),
 					char_color,
+					corner_radius = cursor_rounding,
 					thickness = 1
 				);
 		}
