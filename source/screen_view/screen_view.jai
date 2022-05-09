@@ -115,6 +115,11 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 {
 	if msg.kind ==
 	{
+	case .MOUSE_BUTTON_PRESSED;
+		if math.contains (area, vec2f (xx msg.mouse_x, xx msg.mouse_y))
+		{
+			g_active_screen_view = view;
+		}
 	case .WINDOW_MAXIMIZED; #through;
 	case .WINDOW_RESIZED;
 		// @Todo (stefan): Handle resizing to (0, 0)
