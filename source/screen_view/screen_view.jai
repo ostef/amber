@@ -125,6 +125,15 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 			move_cursor (view, get_closest_character (view, mouse_pos), false);
 		}
 
+	case .MOUSE_MOVED;
+		mouse_pos := vec2f (xx msg.mouse_x, xx msg.mouse_y);
+		if g_active_screen_view == view
+		&& input.is_mouse_button_down (.LEFT) && !input.is_mouse_button_pressed (.LEFT)
+		{
+			clear_cursors (view);
+			move_cursor (view, get_closest_character (view, mouse_pos), true);
+		}
+
 	case .WINDOW_MAXIMIZED; #through;
 	case .WINDOW_RESIZED;
 		// @Todo (stefan): Handle resizing to (0, 0)
