@@ -116,9 +116,13 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 	if msg.kind ==
 	{
 	case .MOUSE_BUTTON_PRESSED;
-		if math.contains (area, vec2f (xx msg.mouse_x, xx msg.mouse_y))
+		mouse_pos := vec2f (xx msg.mouse_x, xx msg.mouse_y);
+		if math.contains (area, mouse_pos)
 		{
 			g_active_screen_view = view;
+			clear_cursors (view);
+			clear_selection (view);
+			move_cursor (view, get_closest_character (view, mouse_pos), false);
 		}
 	case .WINDOW_MAXIMIZED; #through;
 	case .WINDOW_RESIZED;
@@ -146,6 +150,28 @@ get_rect :: inline (using view : Screen_View, index : s64) -> math.Rectf #must
 		math.round (area.x1),
 		math.round (area.y1)
 	);
+}
+
+
+get_closest_character :: (using view : Screen_View, position : Vec2f) -> s64 #must
+{
+	font_height := math.max (get_int (g_config, "buffer_font_height"), 5);
+	page := font.load_page (g_buffer_font, xx font_height);
+	line_height := cast (f32) (page.ascent - page.descent);
+	line_index := cast (s64) ((position.y - area.y1) / line_height);
+	line_index = math.clamp (line_index, 0, wrapped_lines.count - 1);
+	range := get_line_range (view, line_index);
+	if position.x <= get_rect (view, range.x).x1
+		return range.x;
+	else if position.x >= get_rect (view, range.y).x2
+		return range.y;
+	for i : range.x..range.y
+	{
+		if math.contains (get_rect (view, i), position)
+			return i;
+	}
+
+	return range.y;
 }
 
 get_base_line :: inline (using view : Screen_View) -> s64 #must
