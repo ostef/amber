@@ -100,6 +100,7 @@ insert :: (using view : *View, codepoint : u32, cursor_index := view.ALL_CURSORS
 				continue;
 			if other.char_index >= cursor.char_index
 				other.char_index += 1;
+			clamp_cursor (other_view, other_index, 0, get_count (buffer));
 		}
 	}
 	cursor.char_index += 1;
@@ -137,9 +138,10 @@ delete :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 			if other.char_index > cursor.char_index
 			{
 				if cursor.selection != 0
-					other.char_index += cursor.selection;
+					other.char_index -= math.abs (cursor.selection);
 				else
 					other.char_index -= 1;
+				clamp_cursor (other_view, other_index, 0, get_count (buffer));
 			}
 		}
 	}
@@ -177,11 +179,22 @@ backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 				continue;
 			if other.char_index >= cursor.char_index
 				other.char_index -= 1;
+			clamp_cursor (other_view, other_index, 0, get_count (buffer));
 		}
 	}
 	cursor.char_index -= 1;
 
 	return true;
+}
+
+clamp_cursor :: (using view : *View, cursor_index : s64, x : s64, y : s64)
+{
+	cursor := *cursors[cursor_index];
+	cursor.char_index = math.clamp (cursor.char_index, x, y);
+	if cursor.char_index + cursor.selection < x
+		cursor.selection = x - cursor.char_index;
+	if cursor.char_index + cursor.selection > y
+		cursor.selection = y - cursor.char_index;
 }
 
 clear_selection :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
