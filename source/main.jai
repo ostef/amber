@@ -257,6 +257,15 @@ main :: ()
 	move_cursor_forward (view, false, 0);
 	move_cursor_forward (view, false, 0);
 	move_cursor_forward (view, false, 0);
+	move_cursor_forward (view, false, 0);
+	move_cursor_forward (view, false, 0);
+	move_cursor_forward (view, false, 0);
+	move_cursor_forward (view, false, 0);
+	move_cursor_backward (view, true, 0);
+	move_cursor_backward (view, true, 0);
+	move_cursor_backward (view, true, 0);
+	move_cursor_backward (view, true, 0);
+	move_cursor_backward (view, true, 0);
 
 	g_is_running = true;
 	while g_is_running
