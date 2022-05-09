@@ -86,8 +86,10 @@ get_int :: inline (config : Config, name_fmt : string, args : ..Any, fallback :=
 get_float :: inline (config : Config, name : string, fallback := 0.0) -> float, ok : bool
 {
 	val, ok := get (config, name);
-	if !ok || val.kind != .FLOAT
+	if !ok || val.kind != .FLOAT || val.kind != .INT
 		return fallback, false;
+	if val.kind == .INT
+		return xx val.as_int, true;
 	return val.as_float, true;
 }
 
