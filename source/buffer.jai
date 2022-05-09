@@ -55,6 +55,7 @@ Buffer :: struct
 	line_lengths : [..]s64;
 	history : History;
 	eol_sequence := EOL_Sequence.PLATFORM;
+	is_dirty : bool;
 }
 
 init :: (using buffer : *Buffer, capacity : s64)
@@ -67,6 +68,7 @@ init :: (using buffer : *Buffer, capacity : s64)
 	array.push (*line_lengths, 0);
 	array.init (*history.edits, 1000, mem.HEAP_ALLOC);
 	array.init (*history.edit_buffer, capacity, mem.HEAP_ALLOC);
+	is_dirty = true;
 }
 
 reset :: (using buffer : *Buffer)
@@ -268,6 +270,7 @@ insert :: (using buffer : *Buffer, codepoint : u32)
 		line_index += 1;
 		column_index = 0;
 	}
+	is_dirty = true;
 }
 
 #scope_file
@@ -291,6 +294,7 @@ delete :: (using buffer : *Buffer) -> bool
 	line_lengths[line_index] -= 1;
 	if codepoint == #char "\n"
 		merge_current_line_with_next_one (buffer);
+	is_dirty = true;
 	return true;
 }
 
@@ -309,6 +313,7 @@ delete :: (using buffer : *Buffer, selection : s64) -> bool
 		delete (buffer);
 		selection -= 1;
 	}
+	is_dirty = true;
 	return true;
 }
 
@@ -327,6 +332,7 @@ backspace :: (using buffer : *Buffer) -> bool
 		column_index = line_lengths[line_index] - 1;
 		merge_current_line_with_next_one (buffer);
 	}
+	is_dirty = true;
 	return true;
 }
 
