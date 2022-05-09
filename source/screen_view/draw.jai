@@ -107,8 +107,17 @@ draw_character_range :: (
 		if draw_cursor
 		{
 			imdraw.set_texture (null);
-			imdraw.draw_rect (rect, char_color);
-			char_color = math.rgba (0.1, 0.1, 0.1);
+			if g_active_screen_view.id == view.id
+			{
+				imdraw.draw_rect (rect, char_color);
+				char_color = math.rgba (0.1, 0.1, 0.1);
+			}
+			else
+				imdraw.draw_rect_outline (
+					math.truncate_all_sides (rect, 0.5),
+					char_color,
+					thickness = 1
+				);
 		}
 		if i >= get_count (buffer)
 			break;
