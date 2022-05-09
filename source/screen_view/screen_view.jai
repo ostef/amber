@@ -117,13 +117,14 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 	{
 	case .MOUSE_BUTTON_PRESSED;
 		mouse_pos := vec2f (xx msg.mouse_x, xx msg.mouse_y);
-		if math.contains (area, mouse_pos)
+		if msg.mouse_button == .LEFT && math.contains (area, mouse_pos)
 		{
 			g_active_screen_view = view;
 			clear_cursors (view);
 			clear_selection (view);
 			move_cursor (view, get_closest_character (view, mouse_pos), false);
 		}
+
 	case .WINDOW_MAXIMIZED; #through;
 	case .WINDOW_RESIZED;
 		// @Todo (stefan): Handle resizing to (0, 0)
@@ -151,7 +152,6 @@ get_rect :: inline (using view : Screen_View, index : s64) -> math.Rectf #must
 		math.round (area.y1)
 	);
 }
-
 
 get_closest_character :: (using view : Screen_View, position : Vec2f) -> s64 #must
 {
