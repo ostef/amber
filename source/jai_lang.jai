@@ -404,7 +404,7 @@ read_next_token :: (using lexer : *Jai_Lexer) -> Jai_Token
 
 peek_codepoint :: inline (using lexer : *Jai_Lexer, peek_offset := 0) -> u32 #must
 {
-	assert (offset + peek_offset < count, "Bounds check failure (got % + %, max is %).", offset, peek_offset, count);
+	assert (offset + peek_offset < count, "Bounds check failure (got % + %, max is %).", offset, peek_offset, count - 1);
 	
 	return char_at (buffer, offset + peek_offset);
 }
@@ -423,6 +423,8 @@ skip_spaces :: inline (using lexer : *Jai_Lexer) -> s64
 
 skip_identifier :: inline (using lexer : *Jai_Lexer) -> s64
 {
+	if offset >= count
+		return 0;
 	if !str.is_alpha (xx peek_codepoint (lexer)) && peek_codepoint (lexer) != #char "_"
 		return 0;
 	i := 0;
@@ -485,14 +487,15 @@ advance_if_matches_range :: inline (using lexer : *Jai_Lexer, range : Vec2l) -> 
 
 matches_identifier :: inline (using lexer : *Jai_Lexer, ident : string) -> bool #must
 {
-	if offset + ident.count > count then return false;
+	if offset + ident.count > count
+		return false;
 	for i : 0..ident.count - 1
 	{
 		if peek_codepoint (lexer, i) != ident[i]
 			return false;
 	}
 	
-	return offset + ident.count == count - 1 || !str.is_alpha_num (xx peek_codepoint (lexer, ident.count));
+	return offset + ident.count == count || !str.is_alpha_num (xx peek_codepoint (lexer, ident.count));
 }
 
 advance_if_matches_identifier :: inline (using lexer : *Jai_Lexer, ident : string) -> bool
