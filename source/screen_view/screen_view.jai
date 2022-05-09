@@ -130,7 +130,8 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 		area.y2 = area.y1 + height_ratio * cast (f32) new_available.y;
 		is_dirty = true;
 	}
-	handle_window_message (*view.base, msg);
+	if g_active_screen_view == view
+		handle_window_message (*view.base, msg);
 }
 
 get_rect :: inline (using view : Screen_View, index : s64) -> math.Rectf #must
