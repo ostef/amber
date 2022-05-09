@@ -65,6 +65,7 @@ g_buffers : storage.Storage (Buffer, 20);
 g_views : storage.Storage (*View, 20);
 g_screen_views : storage.Storage (Screen_View, 20);
 g_text_infos   : storage.Storage (Text_Info, 20);
+g_active_screen_view : *Screen_View;
 
 create_buffer :: () -> *Buffer #must
 {
@@ -249,7 +250,10 @@ main :: ()
 	if !load_file (buffer, "example.jai")
 		log.error ("Could not load file 'example.jai' into buffer.");
 	text_info := create_text_info (buffer.id);
-	view := create_screen_view (buffer.id, text_info.id, false, math.xywhf (0, xx WINDOW_CAPTION_HEIGHT, xx g_viewport_size.x, xx (g_viewport_size.y - WINDOW_CAPTION_HEIGHT)));
+	g_active_screen_view = create_screen_view (buffer.id, text_info.id, false, math.xywhf (0, xx WINDOW_CAPTION_HEIGHT, g_viewport_size.x * 0.5, xx (g_viewport_size.y - WINDOW_CAPTION_HEIGHT)));
+	view := create_screen_view (buffer.id, text_info.id, false, math.xywhf (g_viewport_size.x * 0.5, xx WINDOW_CAPTION_HEIGHT, g_viewport_size.x * 0.5, xx (g_viewport_size.y - WINDOW_CAPTION_HEIGHT)));
+	move_cursor_forward (view, false, 0);
+	move_cursor_forward (view, false, 0);
 
 	g_is_running = true;
 	while g_is_running
@@ -259,7 +263,7 @@ main :: ()
 		msg : window.Message;
 		while window.get_next_message (g_window, *msg)
 			handle_window_message (msg);
-		
+
 		for * g_screen_views
 			update (it);
 
