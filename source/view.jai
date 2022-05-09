@@ -214,6 +214,35 @@ clear_selection :: (using view : *View, cursor_index := view.ALL_CURSORS) -> boo
 	return true;
 }
 
+move_cursor :: (using view : *View, char_index : s64, select : bool, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok |= move_cursor (view, char_index, select, i);
+		return ok;
+	}
+
+	buffer := get (buffer_id);
+	char_index = math.clamp (char_index, 0, get_count (buffer));
+	cursor := *cursors[cursor_index];
+	if cursor.char_index == char_index
+		return false;
+	while cursor.char_index < char_index
+	{
+		cursor.char_index += 1;
+		if select then cursor.selection -= 1;
+	}
+	while cursor.char_index > char_index
+	{
+		cursor.char_index -= 1;
+		if select then cursor.selection += 1;
+	}
+	clamp_cursor (view, cursor_index, 0, get_count (buffer));
+	return true;
+}
+
 move_cursor_forward :: (using view : *View, select : bool, cursor_index := view.ALL_CURSORS) -> bool
 {
 	if cursor_index == ALL_CURSORS
