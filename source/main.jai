@@ -254,6 +254,9 @@ main :: ()
 	view := create_screen_view (buffer.id, text_info.id, false, math.xywhf (g_viewport_size.x * 0.5, xx WINDOW_CAPTION_HEIGHT, g_viewport_size.x * 0.5, xx (g_viewport_size.y - WINDOW_CAPTION_HEIGHT)));
 	move_cursor_forward (view, false, 0);
 	move_cursor_forward (view, false, 0);
+	move_cursor_forward (view, false, 0);
+	move_cursor_forward (view, false, 0);
+	move_cursor_forward (view, false, 0);
 
 	g_is_running = true;
 	while g_is_running
