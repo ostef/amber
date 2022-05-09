@@ -60,6 +60,13 @@ get_next_info :: (using info : Text_Info, info_index : s64, char_index : s64) ->
 	return .{}, -1;
 }
 
+update :: (using info : *Text_Info)
+{
+	buffer := get (buffer_id);
+	if buffer.is_dirty
+		process_jai_buffer (info);
+}
+
 Show_Whitespace :: enum
 {
 	NEVER :: 0;
@@ -349,7 +356,6 @@ update :: (using view : *Screen_View)
 {
 	if is_dirty
 	{
-		process_jai_buffer (get (text_info_id));
 		layout_text (view);
 		is_dirty = false;
 	}

@@ -252,20 +252,6 @@ main :: ()
 	text_info := create_text_info (buffer.id);
 	g_active_screen_view = create_screen_view (buffer.id, text_info.id, false, math.xywhf (0, xx WINDOW_CAPTION_HEIGHT, g_viewport_size.x * 0.5, xx (g_viewport_size.y - WINDOW_CAPTION_HEIGHT)));
 	view := create_screen_view (buffer.id, text_info.id, false, math.xywhf (g_viewport_size.x * 0.5, xx WINDOW_CAPTION_HEIGHT, g_viewport_size.x * 0.5, xx (g_viewport_size.y - WINDOW_CAPTION_HEIGHT)));
-	move_cursor_forward (view, false, 0);
-	move_cursor_forward (view, false, 0);
-	move_cursor_forward (view, false, 0);
-	move_cursor_forward (view, false, 0);
-	move_cursor_forward (view, false, 0);
-	move_cursor_forward (view, false, 0);
-	move_cursor_forward (view, false, 0);
-	move_cursor_forward (view, false, 0);
-	move_cursor_forward (view, false, 0);
-	move_cursor_backward (view, true, 0);
-	move_cursor_backward (view, true, 0);
-	move_cursor_backward (view, true, 0);
-	move_cursor_backward (view, true, 0);
-	move_cursor_backward (view, true, 0);
 
 	g_is_running = true;
 	while g_is_running
@@ -277,8 +263,12 @@ main :: ()
 			handle_window_message (msg);
 		input.update ();
 
+		for * g_text_infos
+			update (it);
 		for * g_screen_views
 			update (it);
+		for * g_buffers
+			it.is_dirty = false;
 
 		gl.ClearColor (0.1, 0.1, 0.1, 1);
 		gl.Clear (gl.COLOR_BUFFER_BIT);
