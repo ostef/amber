@@ -46,6 +46,15 @@ reset :: (using view : *View)
 	array.reset (*cursors);
 }
 
+set_views_dirty :: (buffer_id : Buffer.Id)
+{
+	for g_views
+	{
+		if it.buffer_id == buffer_id
+			it.is_dirty = true;
+	}
+}
+
 get_cursor_line_and_column :: (using view : View, cursor_index : s64) -> line_index : s64, column_index : s64
 {
 	cursor := cursors[cursor_index];
@@ -85,7 +94,7 @@ insert :: (using view : *View, codepoint : u32, cursor_index := view.ALL_CURSORS
 	{
 		if other_view.buffer_id != buffer_id
 			continue;
-		for * other, other_index : cursors
+		for * other, other_index : other_view.cursors
 		{
 			if view_id == global_id && cursor_index == other_index
 				continue;
@@ -121,7 +130,7 @@ delete :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 	{
 		if other_view.buffer_id != buffer_id
 			continue;
-		for * other, other_index : cursors
+		for * other, other_index : other_view.cursors
 		{
 			if view_id == global_id && cursor_index == other_index
 				continue;
@@ -162,7 +171,7 @@ backspace :: (using view : *View, cursor_index := view.ALL_CURSORS) -> bool
 	{
 		if other_view.buffer_id != buffer_id
 			continue;
-		for * other, other_index : cursors
+		for * other, other_index : other_view.cursors
 		{
 			if view_id == global_id && cursor_index == other_index
 				continue;
@@ -359,6 +368,15 @@ cursor_overlaps :: inline (cursor : View.Cursor, char_index : s64) -> bool #must
 	return cursor_selects (cursor, char_index) || cursor.char_index == char_index;
 }
 
+merge_overlapping_cursors :: (buffer_id : Buffer.Id)
+{
+	for g_views
+	{
+		if it.buffer_id == buffer_id
+			merge_overlapping_cursors (it);
+	}
+}
+
 merge_overlapping_cursors :: (using view : *View)
 {
 	buffer := get (buffer_id);
@@ -469,23 +487,38 @@ handle_window_message :: (using view : *View, msg : window.Message)
 		{
 		case .TEXT_INPUT;
 			if insert (view, msg.codepoint)
-				is_dirty = true;
+			{
+				set_views_dirty (buffer_id);
+				merge_overlapping_cursors (buffer_id);
+			}
 		case .KEY_PRESSED; #through;
 		case .KEY_REPEATED;
 			if msg.key_code ==
 			{
 			case .TAB;
 				if insert (view, #char "\t")
-					is_dirty = true;
+				{
+					set_views_dirty (buffer_id);
+					merge_overlapping_cursors (buffer_id);
+				}
 			case .RETURN;
 				if insert (view, #char "\n")
-					is_dirty = true;
+				{
+					set_views_dirty (buffer_id);
+					merge_overlapping_cursors (buffer_id);
+				}
 			case .BACKSPACE;
 				if backspace (view)
-					is_dirty = true;
+				{
+					set_views_dirty (buffer_id);
+					merge_overlapping_cursors (buffer_id);
+				}
 			case .DELETE;
 				if delete (view)
-					is_dirty = true;
+				{
+					set_views_dirty (buffer_id);
+					merge_overlapping_cursors (buffer_id);
+				}
 			}
 		}
 	}
@@ -506,7 +539,7 @@ handle_window_message :: (using view : *View, msg : window.Message)
 				if !flagged (msg.mods, .SHIFT)
 					clear_selection (view);
 				move_cursor_to_previous_line (view, flagged (msg.mods, .SHIFT));
-				merge_overlapping_cursors (view);
+				merge_overlapping_cursors (buffer_id);
 			}
 		case .DOWN;
 			if msg.mods == (input.Mods.ALT | .SHIFT)
@@ -516,18 +549,18 @@ handle_window_message :: (using view : *View, msg : window.Message)
 				if !flagged (msg.mods, .SHIFT)
 					clear_selection (view);
 				move_cursor_to_next_line (view, flagged (msg.mods, .SHIFT));
-				merge_overlapping_cursors (view);
+				merge_overlapping_cursors (buffer_id);
 			}
 		case .LEFT;
 			if !flagged (msg.mods, .SHIFT)
 				clear_selection (view);
 			move_cursor_backward (view, flagged (msg.mods, .SHIFT));
-			merge_overlapping_cursors (view);
+			merge_overlapping_cursors (buffer_id);
 		case .RIGHT;
 			if !flagged (msg.mods, .SHIFT)
 				clear_selection (view);
 			move_cursor_forward (view, flagged (msg.mods, .SHIFT));
-			merge_overlapping_cursors (view);
+			merge_overlapping_cursors (buffer_id);
 		}
 	}
 }
