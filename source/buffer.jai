@@ -167,20 +167,17 @@ get_count :: inline (using buffer : Buffer) -> s64 #must
 	return allocated - gap;
 }
 
-bounds_check :: (buffer : Buffer, char_index : s64) #expand
-{
-	assert (char_index >= 0 && char_index < get_count (buffer), "Buffer bounds check failure (got %, expected [0;%) ).", char_index, get_count (buffer));
-}
-
 char_at :: inline (using buffer : Buffer, index : s64) -> u32 #must
 {
-	bounds_check (buffer, index);
+	assert (index >= 0 && index < get_count (buffer), "Buffer bounds check failure (got %, expected [0;%) ).", index, get_count (buffer));
 	return data[cast (s64) (index >= cursor) * gap + index];
 }
 
 get_line_and_column :: (using buffer : Buffer, char_index : s64) -> line_index : s64, column_index : s64
 {
-	bounds_check (buffer, char_index);
+	assert (char_index >= 0 && char_index <= get_count (buffer), "Buffer bounds check failure (got %, expected [0;%]).", char_index, get_count (buffer));
+	if char_index == get_count (buffer)
+		return line_lengths.count - 1, line_lengths[line_lengths.count - 1];
 	li := 0;
 	while li < line_lengths.count
 	{
