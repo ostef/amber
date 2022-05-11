@@ -206,7 +206,7 @@ draw :: (using view : Screen_View)
 	if g_active_screen_view.id == view.id
 		draw_selection (view, math.rgba (50, 100, 200));
 	else
-		draw_selection (view, math.rgba (50, 100, 200));
+		draw_selection (view, math.rgba (60, 60, 60));
 	draw_cursors (view);
 	range := get_visible_range (view);
 	draw_character_range (view, range.x, range.y);
