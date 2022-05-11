@@ -173,6 +173,18 @@ char_at :: inline (using buffer : Buffer, index : s64) -> u32 #must
 	return data[cast (s64) (index >= cursor) * gap + index];
 }
 
+is_at_bol :: inline (using buffer : Buffer, char_index : s64) -> bool #must
+{
+	assert (char_index >= 0 && char_index <= get_count (buffer), "Buffer bounds check failure (got %, expected [0;%]).", char_index, get_count (buffer));
+	return char_index == 0 || char_at (buffer, char_index - 1) == #char "\n";
+}
+
+is_at_eol :: inline (using buffer : Buffer, char_index : s64) -> bool #must
+{
+	assert (char_index >= 0 && char_index <= get_count (buffer), "Buffer bounds check failure (got %, expected [0;%]).", char_index, get_count (buffer));
+	return char_index == get_count (buffer) || char_at (buffer, char_index) == #char "\n";
+}
+
 get_line_and_column :: (using buffer : Buffer, char_index : s64) -> line_index : s64, column_index : s64
 {
 	assert (char_index >= 0 && char_index <= get_count (buffer), "Buffer bounds check failure (got %, expected [0;%]).", char_index, get_count (buffer));
