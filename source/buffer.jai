@@ -169,7 +169,7 @@ get_count :: inline (using buffer : Buffer) -> s64 #must
 
 bounds_check :: (buffer : Buffer, char_index : s64) #expand
 {
-	assert (char_index >= 0 && char_index < get_count (buffer), "Bounds check failure (got %, expected [0;%) ).", char_index, get_count (buffer));
+	assert (char_index >= 0 && char_index < get_count (buffer), "Buffer bounds check failure (got %, expected [0;%) ).", char_index, get_count (buffer));
 }
 
 char_at :: inline (using buffer : Buffer, index : s64) -> u32 #must
