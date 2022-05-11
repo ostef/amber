@@ -201,6 +201,18 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 		handle_window_message (*view.base, msg);
 }
 
+get_text_area :: inline (using view : Screen_View) -> math.Rectf #must
+{
+	use_buffer_font := get_bool (g_config, "use_buffer_font_for_buffer_info", fallback = true);
+	font_height := cast (u32) math.max (get_int (g_config, "buffer_info_font_height", fallback = 16), MIN_FONT_HEIGHT);
+	page : *font.Page;
+	if use_buffer_font
+		page = font.load_page (g_buffer_font, font_height);
+	else
+		page = font.load_page (g_main_font, font_height);
+	return math.truncate_bottom (view.area, cast (f32) (page.ascent - page.descent));
+}
+
 get_rect :: inline (using view : Screen_View, index : s64, page : *font.Page = null) -> math.Rectf #must
 {
 	if !page
@@ -237,8 +249,8 @@ get_max_scroll :: (using view : Screen_View, page : *font.Page = null) -> Vec2f 
 		page = font.load_page (g_buffer_font, font_height);
 	}
 	return vec2f (
-		math.max (math.ceil ((extents.x - math.rect_width (area)) / cast (f32) page.space_advance), 0),
-		math.max (math.ceil ((extents.y - math.rect_height (area)) / cast (f32) (page.ascent - page.descent)), 0)
+		math.max (math.ceil ((extents.x - math.rect_width (get_text_area (view))) / cast (f32) page.space_advance), 0),
+		math.max (math.ceil ((extents.y - math.rect_height (get_text_area (view))) / cast (f32) (page.ascent - page.descent)), 0)
 	);
 }
 
@@ -283,7 +295,7 @@ get_visible_range :: (using view : Screen_View) -> Vec2l #must
 	result.y = glyph_rects.count - 1;
 	for i : get_base_line (view)..wrapped_lines.count - 1
 	{
-		if i * line_height - visual_scroll.y * line_height >= math.rect_height (area)
+		if i * line_height - visual_scroll.y * line_height >= math.rect_height (get_text_area (view))
 		{
 			result.y = wrapped_lines[i].first_char_index - 1;
 			break;
@@ -308,7 +320,7 @@ get_visible_line_range :: (using view : Screen_View) -> Vec2l #must
 	result.y = wrapped_lines.count - 1;
 	for i : get_base_line (view)..wrapped_lines.count - 1
 	{
-		if i * line_height - visual_scroll.y * line_height >= math.rect_height (area)
+		if i * line_height - visual_scroll.y * line_height >= math.rect_height (get_text_area (view))
 		{
 			result.y = i;
 			break;
@@ -370,7 +382,7 @@ layout_text :: (using view : *Screen_View)
 		if codepoint ==
 		{
 		case #char "\n";
-			if pen.x + page.space_advance > math.rect_width (area)
+			if pen.x + page.space_advance > math.rect_width (get_text_area (view))
 				wrap_line ();
 			rect = math.xywhf (pen.x, pen.y, xx page.space_advance, xx (page.ascent - page.descent));
 			pen.x = 0;
@@ -390,7 +402,7 @@ layout_text :: (using view : *Screen_View)
 				glyph_advance = glyph.advance;
 			}
 			advance := math.snap_up (pen.x + glyph_advance, page.space_advance * cast (f32) tab_width) - pen.x;
-			if pen.x + advance > math.rect_width (area)
+			if pen.x + advance > math.rect_width (get_text_area (view))
 				wrap_line ();
 			rect = math.xywhf (pen.x, pen.y, advance, xx (page.ascent - page.descent));
 			pen.x += advance;
@@ -403,7 +415,7 @@ layout_text :: (using view : *Screen_View)
 		case;
 			start_of_line = false;
 			glyph := font.load_glyph (page, codepoint);
-			if pen.x + glyph.advance > math.rect_width (area)
+			if pen.x + glyph.advance > math.rect_width (get_text_area (view))
 				wrap_line ();
 			rect = math.xywhf (pen.x, pen.y, xx glyph.advance, xx (page.ascent - page.descent));
 			pen.x += glyph.advance;

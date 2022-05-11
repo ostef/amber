@@ -1,6 +1,6 @@
 draw_selection :: (using view : Screen_View, color : math.RGBA)
 {
-	imdraw.scope_clip_rect (math.recti (area));
+	imdraw.scope_clip_rect (math.recti (get_text_area (view)));
 	prev_texture := imdraw.set_texture (null);
 	defer imdraw.set_texture (prev_texture);
 	prev_shader := imdraw.set_shader (null);
@@ -145,7 +145,7 @@ draw_character_range :: (
 
 draw_character_range :: (using view : Screen_View, first : s64, last : s64)
 {
-	imdraw.scope_clip_rect (math.recti (area));
+	imdraw.scope_clip_rect (math.recti (get_text_area (view)));
 	prev_texture := imdraw.get_texture ();
 	defer imdraw.set_texture (prev_texture);
 	prev_shader := imdraw.set_shader (*font.g_glyph_shader);
