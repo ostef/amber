@@ -215,4 +215,28 @@ draw :: (using view : Screen_View)
 	draw_cursors (view);
 	range := get_visible_range (view);
 	draw_character_range (view, range.x, range.y);
+	// Draw buffer info
+	buffer := get (buffer_id);
+	use_buffer_font := get_bool (g_config, "use_buffer_font_for_buffer_info", fallback = true);
+	font_height := cast (u32) math.max (get_int (g_config, "buffer_info_font_height", fallback = 16), MIN_FONT_HEIGHT);
+	info_font := ifx use_buffer_font then g_buffer_font else g_main_font;
+	page := font.load_page (info_font, font_height);
+	info_bar_area := math.truncate_top (view.area, math.rect_height (area) - cast (f32) (page.ascent - page.descent));
+	imdraw.draw_rect (info_bar_area, math.RGBA_WHITE);
+	imdraw.draw_text (
+		info_font,
+		font_height,
+		math.rect_position (info_bar_area),
+		path.get_basename (buffer.filename),
+		math.RGBA_BLACK
+	);
+	li, ci := get_cursor_line_and_column (view, 0);
+	imdraw.draw_text (
+		info_font,
+		font_height,
+		math.rect_top_right (info_bar_area),
+		fmt.format (mem.TEMP_ALLOC, "Ln %, Col % ~ %", li + 1, ci + 1, buffer.eol_sequence),
+		math.RGBA_BLACK,
+		anchor = .TOP_RIGHT
+	);
 }
