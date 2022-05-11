@@ -109,8 +109,9 @@ to_screen_view :: inline (view : *View) -> *Screen_View #must
 screen_view_on_cursor_added :: (base_view : *View, index : s64)
 {
 	using view := to_screen_view (base_view);
-	if cursor_rects.count
-		array.ordered_insert_at (*cursor_rects, index, cursor_rects[0]);
+	char_index := cursors[index].char_index;
+	if char_index < glyph_rects.count
+		array.ordered_insert_at (*cursor_rects, index, glyph_rects[char_index]);
 	else
 		array.ordered_insert_at (*cursor_rects, index, math.rectf (0, 0, 0, 0));
 }
