@@ -90,6 +90,7 @@ Screen_View :: struct
 	area    : math.Rectf;
 	extents : Vec2f;
 	scroll  : Vec2f;
+	visual_scroll : Vec2f;
 	glyph_rects   : [..]math.Rectf;
 	wrapped_lines : [..]Line;
 }
@@ -141,6 +142,12 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 			move_cursor (view, get_closest_character (view, mouse_pos), true);
 		}
 
+	case .MOUSE_WHEEL;
+		mouse_pos := vec2f (xx msg.mouse_x, xx msg.mouse_y);
+		if math.contains (area, mouse_pos)
+			scroll -= vec2f (msg.mouse_wheel_x, msg.mouse_wheel_y);
+		scroll = linalg.clamp (scroll, vec2f (0, 0), get_max_scroll (view));
+
 	case .WINDOW_MAXIMIZED; #through;
 	case .WINDOW_RESIZED;
 		// @Todo (stefan): Handle resizing to (0, 0)
@@ -160,12 +167,30 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 		handle_window_message (*view.base, msg);
 }
 
-get_rect :: inline (using view : Screen_View, index : s64) -> math.Rectf #must
+get_rect :: inline (using view : Screen_View, index : s64, page : *font.Page = null) -> math.Rectf #must
 {
+	if !page
+	{
+		font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
+		page = font.load_page (g_buffer_font, font_height);
+	}
 	return math.move (
 		glyph_rects[index],
-		math.round (area.x1),
-		math.round (area.y1)
+		math.round (area.x1) - visual_scroll.x * page.space_advance,
+		math.round (area.y1) - visual_scroll.y * (page.ascent - page.descent)
+	);
+}
+
+get_max_scroll :: (using view : Screen_View, page : *font.Page = null) -> Vec2f #must
+{
+	if !page
+	{
+		font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
+		page = font.load_page (g_buffer_font, font_height);
+	}
+	return vec2f (
+		math.max (math.ceil ((extents.x - math.rect_width (area)) / cast (f32) page.space_advance), 0),
+		math.max (math.ceil ((extents.y - math.rect_height (area)) / cast (f32) (page.ascent - page.descent)), 0)
 	);
 }
 
@@ -174,7 +199,7 @@ get_closest_character :: (using view : Screen_View, position : Vec2f) -> s64 #mu
 	font_height := math.max (get_int (g_config, "buffer_font_height"), 5);
 	page := font.load_page (g_buffer_font, xx font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
-	line_index := cast (s64) ((position.y - area.y1) / line_height);
+	line_index := cast (s64) (math.round (visual_scroll.y) + (position.y - area.y1) / line_height);
 	line_index = math.clamp (line_index, 0, wrapped_lines.count - 1);
 	range := get_line_range (view, line_index);
 	if position.x <= get_rect (view, range.x).x1
@@ -192,8 +217,7 @@ get_closest_character :: (using view : Screen_View, position : Vec2f) -> s64 #mu
 
 get_base_line :: inline (using view : Screen_View) -> s64 #must
 {
-	// @Todo (stefan): Handle scroll
-	return 0;
+	return math.clamp (cast (s64) visual_scroll.y, 0, wrapped_lines.count - 1);
 }
 
 get_visible_range :: (using view : Screen_View) -> Vec2l #must
@@ -211,7 +235,7 @@ get_visible_range :: (using view : Screen_View) -> Vec2l #must
 	result.y = glyph_rects.count - 1;
 	for i : get_base_line (view)..wrapped_lines.count - 1
 	{
-		if i * line_height >= math.rect_height (area)	// @Incomplete: scrolling
+		if i * line_height - visual_scroll.y * line_height >= math.rect_height (area)
 		{
 			result.y = wrapped_lines[i].first_char_index - 1;
 			break;
@@ -236,7 +260,7 @@ get_visible_line_range :: (using view : Screen_View) -> Vec2l #must
 	result.y = wrapped_lines.count - 1;
 	for i : get_base_line (view)..wrapped_lines.count - 1
 	{
-		if i * line_height >= math.rect_height (area)	// @Incomplete: scrolling
+		if i * line_height - visual_scroll.y * line_height >= math.rect_height (area)
 		{
 			result.y = i;
 			break;
@@ -354,6 +378,8 @@ layout_text :: (using view : *Screen_View)
 
 update :: (using view : *Screen_View)
 {
+	scroll_smoothing := math.clamp (get_float (g_config, "scroll_smoothing"), 0.01, 1);
+	visual_scroll = linalg.lerp (visual_scroll, linalg.round (scroll), scroll_smoothing);
 	if is_dirty
 	{
 		layout_text (view);
