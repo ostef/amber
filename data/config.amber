@@ -1,8 +1,8 @@
 buffer_font = "JetBrainsMono";
 buffer_font_height = 16;
 buffer_show_whitespace = "ALWAYS";
-cursor_rounding = 3;
-scroll_smoothing = 1;
+cursor_rounding = 3.0;
+scroll_smoothing = 0.6;
 treat_underscore_as_alpha_numeric_boundary = true;
 color_theme = "dark";
 command_shortcuts = {

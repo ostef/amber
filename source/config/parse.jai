@@ -296,11 +296,11 @@ parse_rvalue :: (parser : *Config_Parser) -> *Config_RValue #must
 		if ok
 			return add_value_rvalue (val);
 	}
-	/* @Todo {
+	{
 		val, ok := parse_float (parser);
 		if ok
 			return add_value_rvalue (val);
-	}*/
+	}
 	{
 		val, ok := parse_int (parser);
 		if ok
@@ -389,8 +389,24 @@ parse_int :: inline (using parser : *Config_Parser) -> val : int, ok : bool
 
 parse_float :: inline (using parser : *Config_Parser) -> val : float, ok : bool
 {
-	// @Todo (stefan): differentiate between floats and integers
 	skip_spaces (parser);
+	// Differentiate between floats and integers
+	// If there is a . or an e/E, it's a float
+	has_dot_or_exp := false;
+	i := 0;
+	while curr + i < end
+	{
+		defer i += 1;
+		if curr[i] == #char "." || curr[i] == #char "e" || curr[i] == #char "E"
+		{
+			has_dot_or_exp = true;
+			break;
+		}
+		if !str.is_digit (curr[i])
+			break;
+	}
+	if !has_dot_or_exp
+		return 0, false;
 	s := str.make (curr, end - curr);
 	val, read := strconv.parse_f64 (s);
 	if read == 0
