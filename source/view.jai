@@ -528,7 +528,9 @@ merge_overlapping_cursors :: (using view : *View)
 			if cursors_overlap (cursor, it)
 			{
 				cursor.char_index = it.char_index;
-				array.ordered_remove_at (*cursors, it_index);
+				removed := array.ordered_remove_at (*cursors, it_index);
+				if on_cursor_removed
+					on_cursor_removed (view, it_index, removed);
 				merged = true;
 				break;
 			}
