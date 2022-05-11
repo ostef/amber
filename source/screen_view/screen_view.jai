@@ -157,8 +157,8 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 		y_ratio := (area.y1 - WINDOW_CAPTION_HEIGHT) / cast (f32) current_available.y;
 		width_ratio := math.rect_width (area) / cast (f32) current_available.x;
 		height_ratio := math.rect_height (area) / cast (f32) current_available.y;
-		area.x1 = math.round (x_ratio * cast (f32) new_available.x);
-		area.y1 = WINDOW_CAPTION_HEIGHT + math.round (y_ratio * cast (f32) new_available.y);
+		area.x1 = x_ratio * cast (f32) new_available.x;
+		area.y1 = WINDOW_CAPTION_HEIGHT + y_ratio * cast (f32) new_available.y;
 		area.x2 = area.x1 + width_ratio * cast (f32) new_available.x;
 		area.y2 = area.y1 + height_ratio * cast (f32) new_available.y;
 		is_dirty = true;
