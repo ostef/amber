@@ -286,6 +286,13 @@ main :: ()
 		imdraw.begin (imdraw_ctx);
 			for * g_screen_views
 				draw (it);
+			if g_active_screen_view
+				imdraw.draw_rect_outline (
+					math.truncate_all_sides (g_active_screen_view.area, 1.5),
+					math.rgba (50, 100, 200, 128),
+					thickness = 3,
+					corner_radius = 5
+				);
 			draw_window_caption ();
 		imdraw.end ();
 		window.swap_buffers (g_window);

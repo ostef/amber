@@ -214,8 +214,10 @@ draw_character_range :: (using view : Screen_View, first : s64, last : s64, $dra
 
 draw :: (using view : Screen_View)
 {
-	imdraw.draw_rect_outline (area, math.rgba (255, 255, 255, 100), 2);
-	draw_selection (view, math.rgba (50, 100, 200));
+	if g_active_screen_view.id == view.id
+		draw_selection (view, math.rgba (50, 100, 200));
+	else
+		draw_selection (view, math.rgba (50, 100, 200));
 	range := get_visible_range (view);
 	draw_character_range (view, range.x, range.y);
 }
