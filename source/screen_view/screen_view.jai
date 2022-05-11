@@ -96,8 +96,8 @@ Screen_View :: struct
 	wrapped_lines : [..]Line;
 	cursor_rects : [..]math.Rectf;
 
-	base.procs.on_cursor_added   = screen_view_on_cursor_added;
-	base.procs.on_cursor_removed = screen_view_on_cursor_removed;
+	base.procs.on_cursor_added   = on_cursor_added_to_screen_view;
+	base.procs.on_cursor_removed = on_cursor_removed_from_screen_view;
 }
 
 to_screen_view :: inline (view : *View) -> *Screen_View #must
@@ -106,7 +106,7 @@ to_screen_view :: inline (view : *View) -> *Screen_View #must
 	return cast (*Screen_View) (cast (*void) view - offset_of (Screen_View, "base"));
 }
 
-screen_view_on_cursor_added :: (base_view : *View, index : s64)
+on_cursor_added_to_screen_view :: (base_view : *View, index : s64)
 {
 	using view := to_screen_view (base_view);
 	char_index := cursors[index].char_index;
@@ -116,7 +116,7 @@ screen_view_on_cursor_added :: (base_view : *View, index : s64)
 		array.ordered_insert_at (*cursor_rects, index, math.rectf (0, 0, 0, 0));
 }
 
-screen_view_on_cursor_removed :: (base_view : *View, index : s64, cursor : View.Cursor)
+on_cursor_removed_from_screen_view :: (base_view : *View, index : s64, cursor : View.Cursor)
 {
 	using view := to_screen_view (base_view);
 	array.ordered_remove_at (*cursor_rects, index);
