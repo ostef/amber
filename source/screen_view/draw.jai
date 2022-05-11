@@ -181,13 +181,18 @@ draw_character_range :: (using view : Screen_View, first : s64, last : s64)
 
 draw_cursors :: (using view : Screen_View)
 {
+	imdraw.scope_clip_rect (math.recti (get_text_area (view)));
+	prev_texture := imdraw.set_texture (null);
+	defer imdraw.set_texture (prev_texture);
+	prev_shader := imdraw.set_shader (*font.g_glyph_shader);
+	defer imdraw.set_shader (prev_shader);
+
 	text_info := get (text_info_id);
 	cursor_rounding := math.clamp (get_float (g_config, "cursor_rounding", fallback = 0), 0, 10);
 	for i : 0..cursor_rects.count - 1
 	{
 		info, info_index := get_info_for_character (text_info, cursors[i].char_index);
 		color := ifx info_index == -1 then math.RGBA_WHITE else info.color;
-		imdraw.set_texture (null);
 		rect := get_cursor_rect (view, i);
 		if g_active_screen_view.id == view.id
 			imdraw.draw_rect (rect, color, corner_radius = cursor_rounding);
