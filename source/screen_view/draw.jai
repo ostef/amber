@@ -218,10 +218,15 @@ draw :: (using view : Screen_View)
 	// Draw buffer info
 	buffer := get (buffer_id);
 	use_buffer_font := get_bool (g_config, "use_buffer_font_for_buffer_info", fallback = true);
+	put_bar_on_top := get_bool (g_config, "put_buffer_info_bar_on_top");
 	font_height := cast (u32) math.max (get_int (g_config, "buffer_info_font_height", fallback = 16), MIN_FONT_HEIGHT);
 	info_font := ifx use_buffer_font then g_buffer_font else g_main_font;
 	page := font.load_page (info_font, font_height);
-	info_bar_area := math.truncate_top (view.area, math.rect_height (area) - cast (f32) (page.ascent - page.descent));
+	info_bar_area : math.Rectf;
+	if put_bar_on_top
+		info_bar_area = math.truncate_bottom (view.area, math.rect_height (area) - cast (f32) (page.ascent - page.descent));
+	else
+		info_bar_area = math.truncate_top (view.area, math.rect_height (area) - cast (f32) (page.ascent - page.descent));
 	imdraw.draw_rect (info_bar_area, math.RGBA_WHITE);
 	imdraw.draw_text (
 		info_font,

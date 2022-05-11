@@ -204,12 +204,15 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 get_text_area :: inline (using view : Screen_View) -> math.Rectf #must
 {
 	use_buffer_font := get_bool (g_config, "use_buffer_font_for_buffer_info", fallback = true);
+	put_bar_on_top := get_bool (g_config, "put_buffer_info_bar_on_top");
 	font_height := cast (u32) math.max (get_int (g_config, "buffer_info_font_height", fallback = 16), MIN_FONT_HEIGHT);
 	page : *font.Page;
 	if use_buffer_font
 		page = font.load_page (g_buffer_font, font_height);
 	else
 		page = font.load_page (g_main_font, font_height);
+	if put_bar_on_top
+		return math.truncate_top (view.area, cast (f32) (page.ascent - page.descent));
 	return math.truncate_bottom (view.area, cast (f32) (page.ascent - page.descent));
 }
 
