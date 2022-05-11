@@ -50,8 +50,7 @@ draw_character_range :: (
 	page : *font.Page,
 	effects : imdraw.Text_Effects,
 	color : math.RGBA,
-	show_whitespace : Show_Whitespace,
-	$draw_cursors := true
+	show_whitespace : Show_Whitespace
 )
 {
 	draw_effects :: () #expand
@@ -78,22 +77,18 @@ draw_character_range :: (
 		}
 	}
 
-	cursor_rounding := math.clamp (get_float (g_config, "cursor_rounding", fallback = 0), 0, 10);
 	buffer := get (buffer_id);
 	new_line := true;
 	line_start : Vec2f;
 	line_end   : Vec2f;
 	for i : first_char..last_char
 	{
-		draw_cursor := false;
+		overlapped_by_cursor := false;
 		is_selected := false;
 		for cursors
 		{
-			#if draw_cursors
-			{
-				if it.char_index == i
-					draw_cursor = true;
-			}
+			if it.char_index == i
+				overlapped_by_cursor = true;
 			if cursor_overlaps (it, i)
 				is_selected = true;
 		}
@@ -106,22 +101,8 @@ draw_character_range :: (
 		line_end = vec2f (rect.x2, rect.y1 + page.ascent);
 		new_line = false;
 		char_color := color;
-		if draw_cursor
-		{
-			imdraw.set_texture (null);
-			if g_active_screen_view.id == view.id
-			{
-				imdraw.draw_rect (rect, char_color, corner_radius = cursor_rounding);
-				char_color = math.rgba (0.1, 0.1, 0.1);
-			}
-			else
-				imdraw.draw_rect_outline (
-					math.truncate_all_sides (rect, 0.5),
-					char_color,
-					corner_radius = cursor_rounding,
-					thickness = 1
-				);
-		}
+		if overlapped_by_cursor && g_active_screen_view.id == view.id
+			char_color = math.rgba (0.1, 0.1, 0.1);
 		if i >= get_count (buffer)
 			break;
 		codepoint := char_at (buffer, i);
@@ -162,7 +143,7 @@ draw_character_range :: (
 
 #scope_export
 
-draw_character_range :: (using view : Screen_View, first : s64, last : s64, $draw_cursors := true)
+draw_character_range :: (using view : Screen_View, first : s64, last : s64)
 {
 	imdraw.scope_clip_rect (math.recti (area));
 	prev_texture := imdraw.get_texture ();
@@ -191,25 +172,33 @@ draw_character_range :: (using view : Screen_View, first : s64, last : s64, $dra
 			page,
 			info.effects,
 			info.color,
-			show_whitespace,
-			draw_cursors
+			show_whitespace
 		);
 		i = info.range.y + 1;
 		info_index += 1;
 	}
-	if !page
-		page = font.load_page (g_buffer_font, font_height);
-	if i <= last
-		draw_character_range (
-			view,
-			i,
-			last,
-			page,
-			.NONE,
-			math.RGBA_WHITE,
-			show_whitespace,
-			draw_cursors
-		);
+}
+
+draw_cursors :: (using view : Screen_View)
+{
+	text_info := get (text_info_id);
+	cursor_rounding := math.clamp (get_float (g_config, "cursor_rounding", fallback = 0), 0, 10);
+	for i : 0..cursor_rects.count - 1
+	{
+		info, info_index := get_info_for_character (text_info, cursors[i].char_index);
+		color := ifx info_index == -1 then math.RGBA_WHITE else info.color;
+		imdraw.set_texture (null);
+		rect := get_cursor_rect (view, i);
+		if g_active_screen_view.id == view.id
+			imdraw.draw_rect (rect, color, corner_radius = cursor_rounding);
+		else
+			imdraw.draw_rect_outline (
+				math.truncate_all_sides (rect, 0.5),
+				color,
+				corner_radius = cursor_rounding,
+				thickness = 1
+			);
+	}
 }
 
 draw :: (using view : Screen_View)
@@ -218,6 +207,7 @@ draw :: (using view : Screen_View)
 		draw_selection (view, math.rgba (50, 100, 200));
 	else
 		draw_selection (view, math.rgba (50, 100, 200));
+	draw_cursors (view);
 	range := get_visible_range (view);
 	draw_character_range (view, range.x, range.y);
 }

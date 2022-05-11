@@ -86,6 +86,7 @@ Screen_View :: struct
 
 	id : Id;
 	#as using base : View;
+	base.type = Screen_View;
 	text_info_id : Text_Info.Id;
 	area    : math.Rectf;
 	extents : Vec2f;
@@ -93,6 +94,31 @@ Screen_View :: struct
 	visual_scroll : Vec2f;
 	glyph_rects   : [..]math.Rectf;
 	wrapped_lines : [..]Line;
+	cursor_rects : [..]math.Rectf;
+
+	base.procs.on_cursor_added   = screen_view_on_cursor_added;
+	base.procs.on_cursor_removed = screen_view_on_cursor_removed;
+}
+
+to_screen_view :: inline (view : *View) -> *Screen_View #must
+{
+	assert (view.type == Screen_View, "View is not a Screen_View.");
+	return cast (*Screen_View) (cast (*void) view - offset_of (Screen_View, "base"));
+}
+
+screen_view_on_cursor_added :: (base_view : *View, index : s64)
+{
+	using view := to_screen_view (base_view);
+	if cursor_rects.count
+		array.ordered_insert_at (*cursor_rects, index, cursor_rects[0]);
+	else
+		array.ordered_insert_at (*cursor_rects, index, math.rectf (0, 0, 0, 0));
+}
+
+screen_view_on_cursor_removed :: (base_view : *View, index : s64, cursor : View.Cursor)
+{
+	using view := to_screen_view (base_view);
+	array.ordered_remove_at (*cursor_rects, index);
 }
 
 init :: (
@@ -105,11 +131,12 @@ init :: (
 {
 	assert (storage.is_valid (g_text_infos, text_info_id), "Invalid text info id.");
 	//assert (get (text_info_id).buffer_id == buffer_id, "Text info does not reference the same buffer.");	Cannot find operator == for some reason
-	init (*view.base, Screen_View, buffer_id, read_only);
 	view.text_info_id = text_info_id;
 	view.area = area;
 	array.init (*view.glyph_rects, get_count (get (buffer_id)) + 1000, mem.HEAP_ALLOC);
 	array.init (*view.wrapped_lines, get (buffer_id).line_count + 100, mem.HEAP_ALLOC);
+	array.init (*view.cursor_rects, 10, mem.HEAP_ALLOC);
+	init (*view.base, Screen_View, buffer_id, read_only);
 }
 
 reset :: (using view : *Screen_View)
@@ -117,6 +144,7 @@ reset :: (using view : *Screen_View)
 	reset (*view.base);
 	array.reset (*glyph_rects);
 	array.reset (*wrapped_lines);
+	array.reset (*cursor_rects);
 }
 
 handle_window_message :: (using view : *Screen_View, msg : window.Message)
@@ -176,6 +204,20 @@ get_rect :: inline (using view : Screen_View, index : s64, page : *font.Page = n
 	}
 	return math.move (
 		glyph_rects[index],
+		math.round (area.x1) - visual_scroll.x * page.space_advance,
+		math.round (area.y1) - visual_scroll.y * (page.ascent - page.descent)
+	);
+}
+
+get_cursor_rect :: inline (using view : Screen_View, index : s64, page : *font.Page = null) -> math.Rectf #must
+{
+	if !page
+	{
+		font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
+		page = font.load_page (g_buffer_font, font_height);
+	}
+	return math.move (
+		cursor_rects[index],
 		math.round (area.x1) - visual_scroll.x * page.space_advance,
 		math.round (area.y1) - visual_scroll.y * (page.ascent - page.descent)
 	);
@@ -378,11 +420,20 @@ layout_text :: (using view : *Screen_View)
 
 update :: (using view : *Screen_View)
 {
-	scroll_smoothing := math.clamp (get_float (g_config, "scroll_smoothing"), 0.01, 1);
-	visual_scroll = linalg.lerp (visual_scroll, linalg.round (scroll), scroll_smoothing);
+	scroll_smoothing := math.clamp (get_float (g_config, "scroll_smoothing"), 0, 0.9);
+	visual_scroll = linalg.lerp (visual_scroll, linalg.round (scroll), 1 - scroll_smoothing);
 	if is_dirty
 	{
 		layout_text (view);
 		is_dirty = false;
+	}
+	cursor_smoothing := math.clamp (get_float (g_config, "cursor_smoothing"), 0, 0.9);
+	for * cursor_rects
+	{
+		glyph_rect := glyph_rects[cursors[it_index].char_index];
+		it.x1 = math.lerp (it.x1, glyph_rect.x1, 1 - cursor_smoothing);
+		it.x2 = math.lerp (it.x2, glyph_rect.x2, 1 - cursor_smoothing);
+		it.y1 = math.lerp (it.y1, glyph_rect.y1, 1 - cursor_smoothing);
+		it.y2 = math.lerp (it.y2, glyph_rect.y2, 1 - cursor_smoothing);
 	}
 }
