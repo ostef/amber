@@ -372,7 +372,8 @@ read_next_token :: (using lexer : *Jai_Lexer) -> Jai_Token
 	else if peek_codepoint (lexer) == #char "@"
 	{
 		advance (lexer);
-		if str.is_space (xx peek_codepoint (lexer))
+		// @Todo (stefan): string literal notes
+		if offset >= count || str.is_space (xx peek_codepoint (lexer))
 			token.kind = .INVALID;
 		else
 		{
