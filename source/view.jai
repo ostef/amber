@@ -283,6 +283,92 @@ move_cursor_backward :: (using view : *View, select : bool, cursor_index := view
 	return true;
 }
 
+move_cursor_to_next_alphanum_boundary :: (using view : *View, select : bool, treat_underscores_as_boundary : bool, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok |= move_cursor_to_next_alphanum_boundary (view, select, treat_underscores_as_boundary, i);
+		return ok;
+	}
+
+	moved : bool;
+	cursor := *cursors[cursor_index];
+	buffer := get (buffer_id);
+	if cursor.char_index == get_count (buffer)
+		return false;
+	while unicode.is_space (char_at (buffer, cursor.char_index))
+	{
+		moved |= move_cursor_forward (view, select, cursor_index);
+		if is_at_eol (buffer, cursor.char_index)
+			return moved;
+	}
+	first := char_at (buffer, cursor.char_index);
+	moved |= move_cursor_forward (view, select, cursor_index);
+	if cursor.char_index == get_count (buffer)
+		return moved;
+	char := char_at (buffer, cursor.char_index);
+	while !unicode.is_space (char)
+	{
+		if unicode.is_alnum (first) != unicode.is_alnum (char)
+			break;
+		if char == #char "_" && treat_underscores_as_boundary
+			break;
+		if is_at_eol (buffer, cursor.char_index)
+			break;
+		moved |= move_cursor_forward (view, select, cursor_index);
+		if cursor.char_index == get_count (buffer)
+			break;
+		char = char_at (buffer, cursor.char_index);
+	}
+
+	return moved;
+}
+
+move_cursor_to_previous_alphanum_boundary :: (using view : *View, select : bool, treat_underscores_as_boundary : bool, cursor_index := view.ALL_CURSORS) -> bool
+{
+	if cursor_index == ALL_CURSORS
+	{
+		ok : bool;
+		for i : 0..cursors.count - 1
+			ok |= move_cursor_to_previous_alphanum_boundary (view, select, treat_underscores_as_boundary, i);
+		return ok;
+	}
+
+	moved : bool;
+	cursor := *cursors[cursor_index];
+	buffer := get (buffer_id);
+	if cursor.char_index == 0
+		return false;
+	while unicode.is_space (char_at (buffer, cursor.char_index - 1))
+	{
+		moved |= move_cursor_backward (view, select, cursor_index);
+		if is_at_bol (buffer, cursor.char_index)
+			return moved;
+	}
+	if cursor.char_index == 0
+		return moved;
+	first := char_at (buffer, cursor.char_index - 1);
+	moved |= move_cursor_backward (view, select, cursor_index);
+	if cursor.char_index == 0
+		return moved;
+	char := char_at (buffer, cursor.char_index - 1);
+	while cursor.char_index > 0 && !unicode.is_space (char)
+	{
+		if unicode.is_alnum (first) != unicode.is_alnum (char)
+			break;
+		if char_at (buffer, cursor.char_index) == #char "_" && treat_underscores_as_boundary
+			break;
+		moved |= move_cursor_backward (view, select, cursor_index);
+		if is_at_bol (buffer, cursor.char_index)
+			break;
+		char = char_at (buffer, cursor.char_index - 1);
+	}
+
+	return moved;
+}
+
 move_cursor_to_previous_line :: (using view : *View, select : bool, cursor_index := view.ALL_CURSORS) -> bool
 {
 	if cursor_index == ALL_CURSORS
@@ -598,12 +684,20 @@ handle_window_message :: (using view : *View, msg : window.Message)
 		case .LEFT;
 			if !flagged (msg.mods, .SHIFT)
 				clear_selection (view);
-			move_cursor_backward (view, flagged (msg.mods, .SHIFT));
+			treat_underscore_as_boundary := get_bool (g_config, "treat_underscore_as_alpha_numeric_boundary");
+			if flagged (msg.mods, .CTRL)
+				move_cursor_to_previous_alphanum_boundary (view, flagged (msg.mods, .SHIFT), treat_underscore_as_boundary);
+			else
+				move_cursor_backward (view, flagged (msg.mods, .SHIFT));
 			merge_overlapping_cursors (buffer_id);
 		case .RIGHT;
 			if !flagged (msg.mods, .SHIFT)
 				clear_selection (view);
-			move_cursor_forward (view, flagged (msg.mods, .SHIFT));
+			treat_underscore_as_boundary := get_bool (g_config, "treat_underscore_as_alpha_numeric_boundary");
+			if flagged (msg.mods, .CTRL)
+				move_cursor_to_next_alphanum_boundary (view, flagged (msg.mods, .SHIFT), treat_underscore_as_boundary);
+			else
+				move_cursor_forward (view, flagged (msg.mods, .SHIFT));
 			merge_overlapping_cursors (buffer_id);
 		}
 	}
