@@ -294,12 +294,13 @@ move_cursor_to_previous_line :: (using view : *View, select : bool, cursor_index
 	}
 
 	buffer := get (buffer_id);
-	ci := get_column_index (view, cursor_index);
+	li, ci := get_cursor_line_and_column (view, cursor_index);
 	moved := move_cursor_to_bol (view, select, cursor_index);
 	// @Note (stefan): ||= short-circuits! We use |= instead
 	// otherwise the calls below might not be done.
 	moved |= move_cursor_backward (view, select, cursor_index);
-	moved |= move_cursor_to_column (view, ci, select, cursor_index);
+	if li != 0
+		moved |= move_cursor_to_column (view, ci, select, cursor_index);
 
 	return moved;
 }
@@ -315,10 +316,11 @@ move_cursor_to_next_line :: (using view : *View, select : bool, cursor_index := 
 	}
 
 	buffer := get (buffer_id);
-	ci := get_column_index (view, cursor_index);
+	li, ci := get_cursor_line_and_column (view, cursor_index);
 	moved := move_cursor_to_eol (view, select, cursor_index);
 	moved |= move_cursor_forward (view, select, cursor_index);
-	moved |= move_cursor_to_column (view, ci, select, cursor_index);
+	if li != buffer.line_lengths.count - 1
+		move_cursor_to_column (view, ci, select, cursor_index);
 
 	return moved;
 }
