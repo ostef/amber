@@ -95,6 +95,7 @@ Screen_View :: struct
 	glyph_rects   : [..]math.Rectf;
 	wrapped_lines : [..]Line;
 	cursor_rects : [..]math.Rectf;
+	is_mouse_selecting : bool;
 
 	base.procs.on_cursor_added   = on_cursor_added_to_screen_view;
 	base.procs.on_cursor_removed = on_cursor_removed_from_screen_view;
@@ -160,12 +161,16 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 			clear_cursors (view);
 			clear_selection (view);
 			move_cursor (view, get_closest_character (view, mouse_pos), false);
+			is_mouse_selecting = true;
 		}
+
+	case .MOUSE_BUTTON_RELEASED;
+		is_mouse_selecting = false;
 
 	case .MOUSE_MOVED;
 		mouse_pos := vec2f (xx msg.mouse_x, xx msg.mouse_y);
 		if g_active_screen_view == view
-		&& input.is_mouse_button_down (.LEFT) && !input.is_mouse_button_pressed (.LEFT)
+		&& is_mouse_selecting && input.is_mouse_button_down (.LEFT) && !input.is_mouse_button_pressed (.LEFT)
 		{
 			clear_cursors (view);
 			move_cursor (view, get_closest_character (view, mouse_pos), true);
