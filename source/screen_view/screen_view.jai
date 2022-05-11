@@ -156,8 +156,10 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 	case .MOUSE_BUTTON_PRESSED;
 		mouse_pos := vec2f (xx msg.mouse_x, xx msg.mouse_y);
 		if msg.mouse_button == .LEFT && math.contains (area, mouse_pos)
-		{
 			g_active_screen_view = view;
+
+		if msg.mouse_button == .LEFT && math.contains (get_text_area (view), mouse_pos)
+		{
 			clear_cursors (view);
 			clear_selection (view);
 			move_cursor (view, get_closest_character (view, mouse_pos), false);
@@ -223,10 +225,11 @@ get_rect :: inline (using view : Screen_View, index : s64, page : *font.Page = n
 		font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
 		page = font.load_page (g_buffer_font, font_height);
 	}
+	text_area := get_text_area (view);
 	return math.move (
 		glyph_rects[index],
-		math.round (area.x1) - visual_scroll.x * page.space_advance,
-		math.round (area.y1) - visual_scroll.y * (page.ascent - page.descent)
+		math.round (text_area.x1) - visual_scroll.x * page.space_advance,
+		math.round (text_area.y1) - visual_scroll.y * (page.ascent - page.descent)
 	);
 }
 
@@ -237,10 +240,11 @@ get_cursor_rect :: inline (using view : Screen_View, index : s64, page : *font.P
 		font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
 		page = font.load_page (g_buffer_font, font_height);
 	}
+	text_area := get_text_area (view);
 	return math.move (
 		cursor_rects[index],
-		math.round (area.x1) - visual_scroll.x * page.space_advance,
-		math.round (area.y1) - visual_scroll.y * (page.ascent - page.descent)
+		math.round (text_area.x1) - visual_scroll.x * page.space_advance,
+		math.round (text_area.y1) - visual_scroll.y * (page.ascent - page.descent)
 	);
 }
 
@@ -262,7 +266,7 @@ get_closest_character :: (using view : Screen_View, position : Vec2f) -> s64 #mu
 	font_height := math.max (get_int (g_config, "buffer_font_height"), 5);
 	page := font.load_page (g_buffer_font, xx font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
-	line_index := cast (s64) (math.round (visual_scroll.y) + (position.y - area.y1) / line_height);
+	line_index := cast (s64) (math.round (visual_scroll.y) + (position.y - get_text_area (view).y1) / line_height);
 	line_index = math.clamp (line_index, 0, wrapped_lines.count - 1);
 	range := get_line_range (view, line_index);
 	if position.x <= get_rect (view, range.x).x1
