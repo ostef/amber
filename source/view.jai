@@ -629,38 +629,23 @@ handle_window_message :: (using view : *View, msg : window.Message)
 		{
 		case .TEXT_INPUT;
 			if insert (view, msg.codepoint)
-			{
-				set_views_dirty (buffer_id);
 				merge_overlapping_cursors (buffer_id);
-			}
 		case .KEY_PRESSED; #through;
 		case .KEY_REPEATED;
 			if msg.key_code ==
 			{
 			case .TAB;
 				if insert (view, #char "\t")
-				{
-					set_views_dirty (buffer_id);
 					merge_overlapping_cursors (buffer_id);
-				}
 			case .RETURN;
 				if insert (view, #char "\n")
-				{
-					set_views_dirty (buffer_id);
 					merge_overlapping_cursors (buffer_id);
-				}
 			case .BACKSPACE;
 				if backspace (view)
-				{
-					set_views_dirty (buffer_id);
 					merge_overlapping_cursors (buffer_id);
-				}
 			case .DELETE;
 				if delete (view)
-				{
-					set_views_dirty (buffer_id);
 					merge_overlapping_cursors (buffer_id);
-				}
 			}
 		}
 	}

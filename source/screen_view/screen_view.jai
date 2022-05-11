@@ -421,13 +421,11 @@ layout_text :: (using view : *Screen_View)
 
 update :: (using view : *Screen_View)
 {
+	buffer := get (buffer_id);
 	scroll_smoothing := math.clamp (get_float (g_config, "scroll_smoothing"), 0, 0.9);
 	visual_scroll = linalg.lerp (visual_scroll, linalg.round (scroll), 1 - scroll_smoothing);
-	if is_dirty
-	{
+	if is_dirty || buffer.is_dirty
 		layout_text (view);
-		is_dirty = false;
-	}
 	cursor_smoothing := math.clamp (get_float (g_config, "cursor_smoothing"), 0, 0.9);
 	for * cursor_rects
 	{
