@@ -9,6 +9,12 @@ View :: struct
 {
 	Global_Id :: type_of (g_views).Slot_Info;	// Global view Id, across all view types
 
+	Procs :: struct
+	{
+		on_cursor_added   : (*View, index : s64);
+		on_cursor_removed : (*View, index : s64, Cursor);
+	}
+
 	Cursor :: struct
 	{
 		char_index : s64;
@@ -23,6 +29,7 @@ View :: struct
 	read_only : bool;
 	cursors : [..]Cursor;
 	is_dirty : bool;
+	using procs : Procs;
 }
 
 init :: (
@@ -33,11 +40,10 @@ init :: (
 )
 {
 	assert (storage.is_valid (g_buffers, buffer_id), "Invalid buffer id.");
-	view.type = Screen_View;
 	view.buffer_id = buffer_id;
 	view.read_only = read_only;
 	array.init (*view.cursors, 20, mem.HEAP_ALLOC);
-	array.push (*view.cursors, .{ char_index = 0, selection = 0 });
+	add_cursor (view, 0);
 	view.is_dirty = true;
 }
 
@@ -556,6 +562,8 @@ add_cursor :: (using view : *View, char_index : s64) -> bool
 	}
 	ptr := array.push (*cursors);
 	ptr.char_index = char_index;
+	if on_cursor_added
+		on_cursor_added (view, cursors.count - 1);
 	return true;
 }
 
@@ -605,7 +613,9 @@ remove_cursor :: (using view : *View, cursor_index : s64)
 {
 	if cursors.count == 1
 		return;
-	array.ordered_remove_at (*cursors, cursor_index);
+	cursor := array.ordered_remove_at (*cursors, cursor_index);
+	if on_cursor_removed
+		on_cursor_removed (view, cursor_index, cursor);
 }
 
 handle_window_message :: (using view : *View, msg : window.Message)
