@@ -278,7 +278,10 @@ main :: ()
 			update (it);
 		for * g_screen_views
 			update (it);
+		// Reset dirty flags
 		for * g_buffers
+			it.is_dirty = false;
+		for g_views
 			it.is_dirty = false;
 
 		gl.ClearColor (0.1, 0.1, 0.1, 1);
