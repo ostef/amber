@@ -1,3 +1,4 @@
+editor_font = "Roboto";
 buffer_font = "JetBrainsMono";
 buffer_font_height = 16;
 buffer_show_whitespace = "ALWAYS";

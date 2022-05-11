@@ -40,7 +40,6 @@ types :: #import "Types";
 #load "jai_lang.jai";
 
 FONT_DIR :: "fonts/";
-DEFAULT_FONT_NAME :: "Roboto";
 WINDOW_CAPTION_HEIGHT :: 32;
 WINDOW_CAPTION_BUTTON_ICON_SIZE :: 10;
 WINDOW_CAPTION_BUTTON_MARGIN :: 4;
@@ -216,10 +215,6 @@ main :: ()
 	if !imdraw_ctx
 		error ("Could not create ImDraw context.");
 	defer imdraw.destroy_context (imdraw_ctx);
-	g_main_font = font.load_family (FONT_DIR, DEFAULT_FONT_NAME, mem.HEAP_ALLOC);
-	if !g_main_font
-		error ("Could not load font %.", DEFAULT_FONT_NAME);
-	defer font.destroy_family (*g_main_font, mem.HEAP_ALLOC);
 	for * g_logo_textures.all
 	{
 		if !render.load_texture_from_file (it, g_logo_textures.FILES[it_index])
@@ -241,9 +236,25 @@ main :: ()
 		error ("Could not read file 'config.amber'.");
 	parse (*parser);
 	fill_variables (*g_config, parser);
-	g_buffer_font = font.load_family (FONT_DIR, get_string (g_config, "buffer_font"), mem.HEAP_ALLOC);
-	if !g_buffer_font
-		error ("Could not load font %.", get_string (g_config, "buffer_font"));
+
+	{
+		name, ok := get_string (g_config, "editor_font");
+		if !ok
+			error ("Could not get editor_font config variable.");
+		g_main_font = font.load_family (FONT_DIR, name, mem.HEAP_ALLOC);
+		if !g_main_font
+			error ("Could not load editor font %.", name);
+	}
+	defer font.destroy_family (*g_main_font, mem.HEAP_ALLOC);
+	
+	{
+		name, ok := get_string (g_config, "buffer_font");
+		if !ok
+			error ("Could not get buffer_font config variable.");
+		g_buffer_font = font.load_family (FONT_DIR, name, mem.HEAP_ALLOC);
+		if !g_buffer_font
+			error ("Could not load buffer font %.", name);
+	}
 	defer font.destroy_family (*g_buffer_font, mem.HEAP_ALLOC);
 
 	buffer := create_buffer ();
