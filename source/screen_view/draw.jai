@@ -83,12 +83,14 @@ draw_character_range :: (
 	line_end   : Vec2f;
 	for i : first_char..last_char
 	{
-		overlapped_by_cursor := false;
 		is_selected := false;
 		for cursors
 		{
-			if it.char_index == i
-				overlapped_by_cursor = true;
+			// If this character is on the cursor, don't draw it unless the cursor
+			// is an outline (we are not the active screen view). The character is
+			// drawn on top of the cursor, in draw_cursors in that case.
+			if it.char_index == i && g_active_screen_view.id == id
+				continue i;
 			if cursor_overlaps (it, i)
 				is_selected = true;
 		}
@@ -101,8 +103,6 @@ draw_character_range :: (
 		line_end = vec2f (rect.x2, rect.y1 + page.ascent);
 		new_line = false;
 		char_color := color;
-		if overlapped_by_cursor && g_active_screen_view.id == view.id
-			char_color = math.rgba (0.1, 0.1, 0.1);
 		if i >= get_count (buffer)
 			break;
 		codepoint := char_at (buffer, i);
@@ -187,7 +187,11 @@ draw_cursors :: (using view : Screen_View)
 	prev_shader := imdraw.set_shader (*font.g_glyph_shader);
 	defer imdraw.set_shader (prev_shader);
 
+	buffer := get (buffer_id);
 	text_info := get (text_info_id);
+	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
+	page := font.load_page (g_buffer_font, font_height);
+	show_whitespace := get_enum (g_config, "buffer_show_whitespace", fallback = Show_Whitespace.NEVER);
 	cursor_rounding := math.clamp (get_float (g_config, "cursor_rounding", fallback = 0), 0, 10);
 	for i : 0..cursor_rects.count - 1
 	{
@@ -203,6 +207,38 @@ draw_cursors :: (using view : Screen_View)
 				corner_radius = cursor_rounding,
 				thickness = 1
 			);
+		if g_active_screen_view.id != id || cursors[i].char_index == get_count (buffer)
+			continue;
+		color = math.rgba (0.1, 0.1, 0.1);
+		codepoint := char_at (buffer, cursors[i].char_index);
+		if codepoint ==
+		{
+		case #char "\n";
+			continue;
+		case #char "\t";
+			if show_whitespace != .NEVER
+			{
+				codepoint = #char "→";
+				color.a /= 3;
+			}
+			else
+				continue;
+		case #char " ";
+			if show_whitespace != .NEVER
+			{
+				codepoint = #char "·";
+				color.a /= 3;
+			}
+		}
+		glyph := font.render_glyph (page, codepoint);
+		glyph_rect := math.xywhf (
+			rect.x1 + glyph.bitmap_bearing_x,
+			rect.y1 - glyph.bitmap_bearing_y + page.ascent,
+			cast (f32) glyph.bitmap_width,
+			cast (f32) glyph.bitmap_height
+		);
+		imdraw.set_texture (glyph.atlas_texture);
+		imdraw.draw_rect (glyph_rect, color, glyph.uv_rect);
 	}
 }
 
@@ -212,9 +248,9 @@ draw :: (using view : Screen_View)
 		draw_selection (view, math.rgba (50, 100, 200));
 	else
 		draw_selection (view, math.rgba (60, 60, 60));
-	draw_cursors (view);
 	range := get_visible_range (view);
 	draw_character_range (view, range.x, range.y);
+	draw_cursors (view);
 	// Draw buffer info
 	buffer := get (buffer_id);
 	use_buffer_font := get_bool (g_config, "use_buffer_font_for_buffer_info", fallback = true);
