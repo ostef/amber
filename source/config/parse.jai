@@ -67,18 +67,87 @@ Config_Map_Literal :: struct
 	elems : [..]Key_Value;
 }
 
+preprocess_config_file :: (file_contents : string, allocator : Allocator) -> string #must
+#no_abc
+{
+	preprocess :: (result : *builder.Builder, file_contents : string)
+	#no_abc
+	{
+		i := 0;
+		while i < file_contents.count
+		{
+			if str.starts_with (str.advance (file_contents, i), "@include")
+			{
+				i += "@include".count;
+				while i < file_contents.count && str.is_space (file_contents[i])
+					i += 1;
+				if i == file_contents.count || file_contents[i] != #char "\""
+				{
+					log.error ("Config: expected a string literal after @include directive.");
+					recover (file_contents, i);
+					continue;
+				}
+				i += 1;
+				filename : string;
+				filename.data = file_contents.data + i;
+				while i < file_contents.count && file_contents[i] != #char "\"" && file_contents[i] != #char "\n"
+					i += 1;
+				filename.count = file_contents.data + i - filename.data;
+				if i == file_contents.count || file_contents[i] != #char "\""
+				{
+					log.error ("Config: unclosed string literal for @include directive.");
+					recover (file_contents, i);
+					continue;
+				}
+				i += 1;
+				contents, err := fs.read_entire_file (filename, mem.HEAP_ALLOC);
+				if err != .OK
+				{
+					log.error ("Config: could not open file {:'} for @include directive.", filename);
+					continue;
+				}
+				defer mem.free (contents, mem.HEAP_ALLOC);
+				preprocess (result, contents);
+			}
+			else
+			{
+				builder.append_byte (result, file_contents[i]);
+				i += 1;
+			}
+		}
+	}
+
+	recover :: inline (file_contents : string, i : s64) -> s64
+	{
+		while i < file_contents.count && file_contents[i] != #char "\n"
+			i += 1;
+		if i < file_contents.count
+			i += 1;
+		return i;
+	}
+
+	result : builder.Builder;
+	builder.init (*result, mem.HEAP_ALLOC);
+	defer builder.reset (*result);
+	preprocess (*result, file_contents);
+
+	return builder.build (result, allocator);
+}
+
 init_from_file :: (parser : *Config_Parser, filename : string, allocator : Allocator) -> bool
 {
 	file_contents, ok := fs.read_entire_file (filename, allocator);
 	if ok != .OK
 		return false;
+	preprocessed_contents := preprocess_config_file (file_contents, allocator);
+	mem.free (file_contents, allocator);
 	parser.allocator = allocator;
 	parser.filename = filename;
 	parser.line = 1;
 	parser.column = 1;
-	parser.start = file_contents.data;
-	parser.curr  = file_contents.data;
-	parser.end   = file_contents.data + file_contents.count;
+	parser.start = preprocessed_contents.data;
+	parser.curr  = preprocessed_contents.data;
+	parser.end   = preprocessed_contents.data + preprocessed_contents.count;
 	array.init (*parser.root_assignments, 50, allocator);
 	storage.init (*parser.assignments, allocator);
 	storage.init (*parser.lvalues, allocator);
