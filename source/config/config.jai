@@ -8,9 +8,10 @@ Config :: struct
 	variables : map.Hash_Map (string, Variable.Value);
 }
 
-set :: inline (config : *Config, name : string, value : Variable.Value)
+set :: inline (config : *Config, name : string, value : Variable.Value) -> overwritten : bool
 {
 	ptr := map.get_ptr (config.variables, name);
+	overwritten := ptr != null;
 	if !ptr
 		ptr = map.insert (*config.variables, str.clone (name, mem.HEAP_ALLOC), value);
 	else
@@ -21,38 +22,40 @@ set :: inline (config : *Config, name : string, value : Variable.Value)
 	}
 	if ptr.kind == .STRING
 		ptr.as_string = str.clone (ptr.as_string, mem.HEAP_ALLOC);
+
+	return overwritten;
 }
 
-set :: inline (config : *Config, name : string, value : bool)
+set :: inline (config : *Config, name : string, value : bool) -> overwritten : bool
 {
 	val : Variable.Value;
 	val.kind = .BOOL;
 	val.as_bool = value;
-	set (config, name, val);
+	return set (config, name, val);
 }
 
-set :: inline (config : *Config, name : string, value : int)
+set :: inline (config : *Config, name : string, value : int) -> overwritten : bool
 {
 	val : Variable.Value;
 	val.kind = .INT;
 	val.as_int = value;
-	set (config, name, val);
+	return set (config, name, val);
 }
 
-set :: inline (config : *Config, name : string, value : float)
+set :: inline (config : *Config, name : string, value : float) -> overwritten : bool
 {
 	val : Variable.Value;
 	val.kind = .FLOAT;
 	val.as_float = value;
-	set (config, name, val);
+	return set (config, name, val);
 }
 
-set :: inline (config : *Config, name : string, value : string)
+set :: inline (config : *Config, name : string, value : string) -> overwritten : bool
 {
 	val : Variable.Value;
 	val.kind = .STRING;
 	val.as_string = value;
-	set (config, name, val);
+	return set (config, name, val);
 }
 
 get :: inline (config : Config, name : string) -> Variable.Value, ok : bool
