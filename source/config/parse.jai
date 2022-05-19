@@ -207,35 +207,74 @@ print_error :: (using err : Config_Parser.Error)
 
 fill_variables :: inline (config : *Config, using parser : Config_Parser)
 {
-	fill_value :: (config : *Config, name : string, rvalue : *Config_RValue)
+	find_map_key_index :: inline (config : Config, name : string, map_key : string) -> s64, bool
+	{
+		for val, key : config.variables
+		{
+			if equals (val, map_key)
+			&& key.count > name.count + 2
+			&& str.starts_with (key, name)
+			&& key[name.count] == #char "["
+			&& str.is_digit (key[name.count + 1])
+			{
+				index, read, err := strconv.parse_s64 (str.advance (key, name.count + 1));
+				assert (err == .OK, "Could not parse key index for % in %.", name, key);
+				remaining := str.advance (key, name.count + 1 + read + 1);
+				if remaining != ".key"
+					continue;
+				return index, true;
+			}
+		}
+		return -1, false;
+	}
+
+	fill_value :: (config : *Config, name : string, rvalue : *Config_RValue) -> overwritten : bool
 	{
 		if #complete rvalue.kind ==
 		{
 		case .VALUE;
-			set (config, name, rvalue.value);
+			return set (config, name, rvalue.value);
 		case .LVALUE;
 			val, ok := get (config, rvalue.lvalue.identifier);
 			if ok
-				set (config, name, val);
+				return set (config, name, val);
+			return false;
 		case .ARRAY;
-			set (config, str.join (mem.TEMP_ALLOC, name, ".count"), rvalue.array_literal.elems.count);
+			count_varname := str.join (mem.TEMP_ALLOC, name, ".count");
+			count := get_int (config, count_varname);
+			set (config, count_varname, count + rvalue.array_literal.elems.count);
 			for elem, i : rvalue.array_literal.elems
-				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%]", name, i), elem);
+				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%]", name, count + i), elem);
+			return false;
 		case .MAP;
-			set (config, str.join (mem.TEMP_ALLOC, name, ".count"), rvalue.map_literal.elems.count);
+			count_varname := str.join (mem.TEMP_ALLOC, name, ".count");
+			count := get_int (config, count_varname);
+			added := 0;
 			for elem, i : rvalue.map_literal.elems
 			{
-				fill_value (config, str.format (mem.TEMP_ALLOC, "%['%']", name, elem.key), elem.value);
+				index : s64;
+				if !fill_value (config, str.format (mem.TEMP_ALLOC, "%['%']", name, elem.key), elem.value)
+				{
+					index = count + added;
+					added += 1;
+				}
+				else
+				{
+					index, exists := find_map_key_index (config, name, elem.key);
+					assert (exists, "Filled pre-existing map name[key] variable, but could not find the name[index] form.");
+				}
 				// @Note (stefan): I can see these being useful for iteration, for example:
 				// for i : 0..get_int (config, "map.count") - 1
 				// {
 				//     key   := get_string (config, "map[%].key");
 				//     value := get (config, "map[%].value");
 				// }
-				set (config, str.format (mem.TEMP_ALLOC, "%[%].key", name, i), elem.key);
-				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%].value", name, i), elem.value);
+				set (config, str.format (mem.TEMP_ALLOC, "%[%].key", name, index), elem.key);
+				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%].value", name, index), elem.value);
 			}
+			set (config, count_varname, count + added);
 		}
+		return false;
 	}
 
 	mem.temporary_block ();
