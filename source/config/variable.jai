@@ -26,6 +26,46 @@ Variable :: struct
 	value : Value;
 }
 
+equals :: inline (a : Variable.Value, b : Variable.Value) -> bool #must
+{
+	if a.kind != b.kind
+		return false;
+	if #complete a.kind ==
+	{
+	case .INT;
+		return a.as_int == b.as_int;
+	case .FLOAT;
+		return a.as_float == b.as_float;
+	case .BOOL;
+		return a.as_bool == b.as_bool;
+	case .RGBA;
+		return mem.equals (a.as_rgba, b.as_rgba);
+	case .STRING;
+		return a.as_string == b.as_string;
+	}
+}
+
+equals :: inline (a : Variable.Value, b : $T) -> bool #must
+{
+	#if T == int
+		return a.kind == .INT && a.as_int == b;
+	else #if T == float
+		return a.kind == .FLOAT && a.as_float == b;
+	else #if T == bool
+		return a.kind == .BOOL && a.as_bool == b;
+	else #if T == math.RGBA
+		return a.kind == .RGBA && mem.equals (a.as_rgba, b);
+	else #if T == string
+		return a.kind == .STRING && a.as_string == b;
+	else
+		#assert false "Invalid type, must be int, float, bool, string or RGBA.";
+}
+
+operator == :: inline (a : Variable.Value, b : Variable.Value) -> bool #must
+{
+	return equals (a, b);
+}
+
 set :: inline (value : *Variable.Value, val : $T)
 {
 	#if T == int
@@ -54,7 +94,7 @@ set :: inline (value : *Variable.Value, val : $T)
 		value.as_rgba = val;
 	}
 	else
-		#assert false, "Invalid type, must be int, float, bool, string or RGBA.";
+		#assert false "Invalid type, must be int, float, bool, string or RGBA.";
 }
 
 value_cast :: inline ($Target : Type, value : Variable.Value, $check_panic := true) -> Target #must, bool
@@ -110,5 +150,5 @@ value_cast :: inline ($Target : Type, value : Variable.Value, $check_panic := tr
 		return value.as_rgba, true;
 	}
 	else
-		#assert false, "Invalid type, must be int, float, bool, string or RGBA.";
+		#assert false "Invalid type, must be int, float, bool, string or RGBA.";
 }
