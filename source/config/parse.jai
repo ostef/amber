@@ -242,10 +242,10 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 		case .ARRAY;
 			count_varname := str.join (mem.TEMP_ALLOC, name, ".count");
 			count := get_int (config, count_varname);
-			set (config, count_varname, count + rvalue.array_literal.elems.count);
+			overwritten := set (config, count_varname, count + rvalue.array_literal.elems.count);
 			for elem, i : rvalue.array_literal.elems
 				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%]", name, count + i), elem);
-			return false;
+			return overwritten;
 		case .MAP;
 			count_varname := str.join (mem.TEMP_ALLOC, name, ".count");
 			count := get_int (config, count_varname);
