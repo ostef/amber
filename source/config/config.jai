@@ -174,20 +174,3 @@ get_enum :: inline (config : Config, name_fmt : string, args : ..Any, fallback :
 	val, ok := get_enum (config, T, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback);
 	return val, ok;
 }
-
-get_color_id :: inline (config : Config, name : string) -> Color_Id #must
-{
-	return map.get (config.color_ids, name, fallback = 0);
-}
-
-get_color_id :: inline (config : Config, name_fmt : string, args : ..Any) -> Color_Id #must
-{
-	return map.get (config.color_ids, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback = 0);
-}
-
-get_color :: inline (config : Config, id : Color_Id, fallback := math.RGBA_WHITE) -> math.RGBA, ok : bool
-{
-	if id == 0 || id > xx config.colors.count
-		return fallback, false;
-	return config.colors[cast (s64) id - 1], true;
-}
