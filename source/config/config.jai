@@ -8,12 +8,20 @@ Config :: struct
 	variables : map.Hash_Map (string, Variable.Value);
 }
 
+init_config :: (config : *Config)
+{
+	map.init (*config.variables, 100, mem.HEAP_ALLOC);
+}
+
 set :: inline (config : *Config, name : string, value : Variable.Value) -> overwritten : bool
 {
+	name_in_map := name;
 	ptr := map.get_ptr (config.variables, name);
 	overwritten := ptr != null;
 	if !ptr
-		ptr = map.insert (*config.variables, str.clone (name, mem.HEAP_ALLOC), value);
+	{
+		ptr = map.insert (*config.variables, str.clone (name, mem.HEAP_ALLOC);, value);
+	}
 	else
 	{
 		if ptr.kind == .STRING
@@ -160,9 +168,26 @@ get_enum :: inline (config : Config, name : string, fallback : $T) -> T, ok : bo
 	return fallback, false;
 }
 
-get_enum :: inline (config : Config, name_fmt : string, args : ..Any, fallback : $T) -> math.RGBA, ok : bool
+get_enum :: inline (config : Config, name_fmt : string, args : ..Any, fallback : $T) -> T, ok : bool
 #modify { return types.is_enum (T); }
 {
 	val, ok := get_enum (config, T, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback);
 	return val, ok;
+}
+
+get_color_id :: inline (config : Config, name : string) -> Color_Id #must
+{
+	return map.get (config.color_ids, name, fallback = 0);
+}
+
+get_color_id :: inline (config : Config, name_fmt : string, args : ..Any) -> Color_Id #must
+{
+	return map.get (config.color_ids, fmt.format (mem.TEMP_ALLOC, name_fmt, ..args), fallback = 0);
+}
+
+get_color :: inline (config : Config, id : Color_Id, fallback := math.RGBA_WHITE) -> math.RGBA, ok : bool
+{
+	if id == 0 || id > xx config.colors.count
+		return fallback, false;
+	return config.colors[cast (s64) id - 1], true;
 }

@@ -230,7 +230,7 @@ main :: ()
 	storage.init (*g_screen_views, mem.HEAP_ALLOC);
 	storage.init (*g_text_infos, mem.HEAP_ALLOC);
 
-	map.init (*g_config.variables, 100, mem.HEAP_ALLOC);
+	init_config (*g_config);
 	parser : Config_Parser;
 	if !init_from_file (*parser, "config.amber", mem.HEAP_ALLOC)
 		error ("Could not read file 'config.amber'.");

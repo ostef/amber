@@ -234,35 +234,43 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 		{
 		case .VALUE;
 			return set (config, name, rvalue.value);
+
 		case .LVALUE;
 			val, ok := get (config, rvalue.lvalue.identifier);
 			if ok
 				return set (config, name, val);
 			return false;
+
 		case .ARRAY;
 			count_varname := str.join (mem.TEMP_ALLOC, name, ".count");
 			count := get_int (config, count_varname);
 			overwritten := set (config, count_varname, count + rvalue.array_literal.elems.count);
 			for elem, i : rvalue.array_literal.elems
 				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%]", name, count + i), elem);
+
 			return overwritten;
+
 		case .MAP;
 			count_varname := str.join (mem.TEMP_ALLOC, name, ".count");
 			count := get_int (config, count_varname);
 			added := 0;
 			for elem, i : rvalue.map_literal.elems
 			{
+				varname := str.format (mem.TEMP_ALLOC, "%['%']", name, elem.key);
+
 				index : s64;
-				if !fill_value (config, str.format (mem.TEMP_ALLOC, "%['%']", name, elem.key), elem.value)
+				if !fill_value (config, varname, elem.value)
 				{
 					index = count + added;
 					added += 1;
 				}
 				else
 				{
-					index, exists := find_map_key_index (config, name, elem.key);
+					exists : bool;
+					index, exists = find_map_key_index (config, name, elem.key);
 					assert (exists, "Filled pre-existing map name[key] variable, but could not find the name[index] form.");
 				}
+
 				// @Note (stefan): I can see these being useful for iteration, for example:
 				// for i : 0..get_int (config, "map.count") - 1
 				// {
@@ -272,7 +280,9 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 				set (config, str.format (mem.TEMP_ALLOC, "%[%].key", name, index), elem.key);
 				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%].value", name, index), elem.value);
 			}
-			set (config, count_varname, count + added);
+
+			// We consider the map was overwritten if the name.count variable already exists
+			return set (config, count_varname, count + added);
 		}
 		return false;
 	}
