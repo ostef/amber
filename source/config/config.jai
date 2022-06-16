@@ -20,7 +20,7 @@ set :: inline (config : *Config, name : string, value : Variable.Value) -> overw
 	overwritten := ptr != null;
 	if !ptr
 	{
-		ptr = map.insert (*config.variables, str.clone (name, mem.HEAP_ALLOC);, value);
+		ptr = map.insert (*config.variables, str.clone (name, mem.HEAP_ALLOC), value);
 	}
 	else
 	{

@@ -38,6 +38,7 @@ types :: #import "Types";
 #load "screen_view/screen_view.jai";
 #load "config/config.jai";
 #load "jai_lang.jai";
+#load "default_colors.jai";
 
 FONT_DIR :: "fonts/";
 WINDOW_CAPTION_HEIGHT :: 32;
@@ -236,6 +237,7 @@ main :: ()
 		error ("Could not read file 'config.amber'.");
 	parse (*parser);
 	fill_variables (*g_config, parser);
+	fmt.println (get_rgba (g_config, "editor_colors['view.info.background']"));
 
 	{
 		name, ok := get_string (g_config, "editor_font");
@@ -284,7 +286,7 @@ main :: ()
 		for g_views
 			it.is_dirty = false;
 
-		gl.ClearColor (0.1, 0.1, 0.1, 1);
+		gl.ClearColor (0, 0, 0, 1);
 		gl.Clear (gl.COLOR_BUFFER_BIT);
 		imdraw.begin (imdraw_ctx);
 			for * g_screen_views
@@ -292,7 +294,7 @@ main :: ()
 			if g_active_screen_view
 				imdraw.draw_rect_outline (
 					math.truncate_all_sides (g_active_screen_view.area, 1.5),
-					math.rgba (50, 100, 200, 128),
+					get_rgba (g_config, "editor_colors['view.active_outline']", VIEW_ACTIVE_OUTLINE),
 					thickness = 3,
 					corner_radius = 5
 				);
@@ -319,7 +321,14 @@ Caption_Button :: enum
 	MINIMIZE :: 2;
 }
 
-get_caption_button_rect :: inline (button : Caption_Button) -> math.Rectf
+Caption_Button_State :: enum
+{
+	NORMAL  :: 0;
+	HOVERED :: 1;
+	PRESSED :: 2;
+}
+
+get_caption_button_rect :: inline (button : Caption_Button) -> math.Rectf #must
 {
 	margin := 0.0;
 	if !window.is_maximized (g_window)
@@ -331,75 +340,122 @@ get_caption_button_rect :: inline (button : Caption_Button) -> math.Rectf
 		cast (f32) (vw - (i + 1) * (button_size + margin)), margin,
 		button_size, button_size
 	);
-	}
+}
 
-is_caption_button_hovered :: inline (button : Caption_Button) -> bool
+is_caption_button_hovered :: inline (button : Caption_Button) -> bool #must
 {
 	mx, my := window.get_mouse_position (g_window);
 	return math.contains (get_caption_button_rect (button), vec2f (xx mx, xx my));
 }
 
+get_caption_button_state :: inline (button : Caption_Button) -> Caption_Button_State #must
+{
+	if !is_caption_button_hovered (button)
+		return .NORMAL;
+	if input.is_mouse_button_down (.LEFT)
+		return .PRESSED;
+	return .HOVERED;
+}
+
 draw_window_caption :: ()
 {
 	vw, vh := window.get_viewport_size (g_window);
-	imdraw.draw_rect (math.xywhf (0, 0, xx vw, xx WINDOW_CAPTION_HEIGHT), math.rgba (40, 40, 40));
+	imdraw.draw_rect (
+		math.xywhf (0, 0, xx vw, xx WINDOW_CAPTION_HEIGHT),
+		get_rgba (g_config, "editor_colors['caption.background']", CAPTION_BACKGROUND)
+	);
 	// Draw title
 	text_rect := imdraw.draw_text (
 		g_main_font,
 		14,
 		vec2f (vw * 0.5, WINDOW_CAPTION_HEIGHT * 0.5),
 		"Amber",
-		math.rgba (170, 170, 170),
+		get_rgba (g_config, "editor_colors['caption.title']", CAPTION_TITLE),
 		anchor = .CENTER
 	);
+
 	// Draw logo
 	imdraw.set_texture (*g_logo_textures.x48);
-	imdraw.draw_rect (math.xywhf ((WINDOW_CAPTION_HEIGHT - 24) * 0.5, (WINDOW_CAPTION_HEIGHT - 24) * 0.5, 24, 24), math.RGBA_WHITE);
-	//math.xywhf (text_rect.x1 - 30, (WINDOW_CAPTION_HEIGHT - 24) * 0.5, 24, 24), math.RGBA_WHITE);
+	imdraw.draw_rect (
+		math.xywhf ((WINDOW_CAPTION_HEIGHT - 24) * 0.5, (WINDOW_CAPTION_HEIGHT - 24) * 0.5, 24, 24),
+		get_rgba (g_config, "editor_colors['caption.logo']", CAPTION_LOGO)
+	);
 	imdraw.set_texture (null);
-	// Draw buttons when hovered
-	for i : 0..2
+
+	// Draw buttons
+	r : math.Rectf;
+	bg_c, ic_c : math.RGBA;
+
 	{
-		if is_caption_button_hovered (cast (Caption_Button) i)
+		r = get_caption_button_rect (.CLOSE);
+		if #complete get_caption_button_state (.CLOSE) ==
 		{
-			c := math.rgba (60, 60, 60);
-			if input.is_mouse_button_down (.LEFT)
-			{
-				if i == 0
-					c = math.rgba (170, 30, 30);
-				else
-					c = math.rgba (80, 80, 80);
-			}
-			else if i == 0
-				c = math.rgba (200, 60, 60);
-			imdraw.draw_rect (get_caption_button_rect (cast (Caption_Button) i), c, 4);
+		case .NORMAL;
+			bg_c = get_rgba (g_config, "editor_colors['caption.close_button.normal.background']", CAPTION_CLOSE_BUTTON_NORMAL_BACKGROUND);
+			ic_c = get_rgba (g_config, "editor_colors['caption.close_button.normal.icon']", CAPTION_CLOSE_BUTTON_NORMAL_ICON);
+		case .HOVERED;
+			bg_c = get_rgba (g_config, "editor_colors['caption.close_button.hovered.background']", CAPTION_CLOSE_BUTTON_HOVERED_BACKGROUND);
+			ic_c = get_rgba (g_config, "editor_colors['caption.close_button.hovered.icon']", CAPTION_CLOSE_BUTTON_HOVERED_ICON);
+		case .PRESSED;
+			bg_c = get_rgba (g_config, "editor_colors['caption.close_button.pressed.background']", CAPTION_CLOSE_BUTTON_PRESSED_BACKGROUND);
+			ic_c = get_rgba (g_config, "editor_colors['caption.close_button.pressed.icon']", CAPTION_CLOSE_BUTTON_PRESSED_ICON);
 		}
+		imdraw.draw_rect (r, bg_c, corner_radius = 4);
+		r = math.xywhf (
+			(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+			(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+			xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
+			xx WINDOW_CAPTION_BUTTON_ICON_SIZE
+		);
+		imdraw.draw_line (vec2f (r.x1, r.y1), vec2f (r.x2, r.y2), ic_c, 1);
+		imdraw.draw_line (vec2f (r.x1, r.y2), vec2f (r.x2, r.y1), ic_c, 1);
 	}
-	// Draw button symbols
-	r := get_caption_button_rect (.CLOSE);
-	r = math.xywhf (
-		(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
-		(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
-		xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
-		xx WINDOW_CAPTION_BUTTON_ICON_SIZE
-	);
-	c := math.rgba (170, 170, 170);
-	imdraw.draw_line (vec2f (r.x1, r.y1), vec2f (r.x2, r.y2), c, 1);
-	imdraw.draw_line (vec2f (r.x1, r.y2), vec2f (r.x2, r.y1), c, 1);
-	r = get_caption_button_rect (.MAXIMIZE);
-	r = math.xywhf (
-		(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5 + 0.5,
-		(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5 + 0.5,
-		xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
-		xx WINDOW_CAPTION_BUTTON_ICON_SIZE
-	);
-	imdraw.draw_rect_outline (r, c, 1);
-	r = get_caption_button_rect (.MINIMIZE);
-	r = math.xywhf (
-		(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
-		(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
-		xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
-		xx WINDOW_CAPTION_BUTTON_ICON_SIZE
-	);
-	imdraw.draw_line (vec2f (r.x1, (r.y1 + r.y2) * 0.5 + 0.5), vec2f (r.x2, (r.y1 + r.y2) * 0.5 + 0.5), c, 1);
+
+	{
+		r = get_caption_button_rect (.MAXIMIZE);
+		if #complete get_caption_button_state (.MAXIMIZE) ==
+		{
+		case .NORMAL;
+			bg_c = get_rgba (g_config, "editor_colors['caption.maximize_button.normal.background']", CAPTION_MAXIMIZE_BUTTON_NORMAL_BACKGROUND);
+			ic_c = get_rgba (g_config, "editor_colors['caption.maximize_button.normal.icon']", CAPTION_MAXIMIZE_BUTTON_NORMAL_ICON);
+		case .HOVERED;
+			bg_c = get_rgba (g_config, "editor_colors['caption.maximize_button.hovered.background']", CAPTION_MAXIMIZE_BUTTON_HOVERED_BACKGROUND);
+			ic_c = get_rgba (g_config, "editor_colors['caption.maximize_button.hovered.icon']", CAPTION_MAXIMIZE_BUTTON_HOVERED_ICON);
+		case .PRESSED;
+			bg_c = get_rgba (g_config, "editor_colors['caption.maximize_button.pressed.background']", CAPTION_MAXIMIZE_BUTTON_PRESSED_BACKGROUND);
+			ic_c = get_rgba (g_config, "editor_colors['caption.maximize_button.pressed.icon']", CAPTION_MAXIMIZE_BUTTON_PRESSED_ICON);
+		}
+		imdraw.draw_rect (get_caption_button_rect (.MAXIMIZE), bg_c, corner_radius = 4);
+		r = math.xywhf (
+			(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5 + 0.5,
+			(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5 + 0.5,
+			xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
+			xx WINDOW_CAPTION_BUTTON_ICON_SIZE
+		);
+		imdraw.draw_rect_outline (r, ic_c, 1);
+	}
+
+	{
+		r = get_caption_button_rect (.MINIMIZE);
+		if #complete get_caption_button_state (.MINIMIZE) ==
+		{
+		case .NORMAL;
+			bg_c = get_rgba (g_config, "editor_colors['caption.minimize_button.normal.background']", CAPTION_MINIMIZE_BUTTON_NORMAL_BACKGROUND);
+			ic_c = get_rgba (g_config, "editor_colors['caption.minimize_button.normal.icon']", CAPTION_MINIMIZE_BUTTON_NORMAL_ICON);
+		case .HOVERED;
+			bg_c = get_rgba (g_config, "editor_colors['caption.minimize_button.hovered.background']", CAPTION_MINIMIZE_BUTTON_HOVERED_BACKGROUND);
+			ic_c = get_rgba (g_config, "editor_colors['caption.minimize_button.hovered.icon']", CAPTION_MINIMIZE_BUTTON_HOVERED_ICON);
+		case .PRESSED;
+			bg_c = get_rgba (g_config, "editor_colors['caption.minimize_button.pressed.background']", CAPTION_MINIMIZE_BUTTON_PRESSED_BACKGROUND);
+			ic_c = get_rgba (g_config, "editor_colors['caption.minimize_button.pressed.icon']", CAPTION_MINIMIZE_BUTTON_PRESSED_ICON);
+		}
+		imdraw.draw_rect (get_caption_button_rect (.MINIMIZE), bg_c, corner_radius = 4);
+		r = math.xywhf (
+			(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+			(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+			xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
+			xx WINDOW_CAPTION_BUTTON_ICON_SIZE
+		);
+		imdraw.draw_line (vec2f (r.x1, (r.y1 + r.y2) * 0.5 + 0.5), vec2f (r.x2, (r.y1 + r.y2) * 0.5 + 0.5), ic_c, 1);
+	}
 }

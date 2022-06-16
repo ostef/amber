@@ -577,26 +577,31 @@ parse_rgba :: inline (using parser : *Config_Parser) -> val : math.RGBA, ok : bo
 		return .{}, false, false;
 	if end - curr < 6
 		return .{}, false, true;
+
 	rs := str.make (curr, 2);
 	r, rok := strconv.parse_u8 (rs, strconv.HEXADECIMAL_BASE);
 	if rok != 2
 		return .{}, false, true;
 	advance (parser, rok);
+
 	gs := str.make (curr, 2);
 	g, gok := strconv.parse_u8 (gs, strconv.HEXADECIMAL_BASE);
 	if gok != 2
 		return .{}, false, true;
 	advance (parser, gok);
+
 	bs := str.make (curr, 2);
 	b, bok := strconv.parse_u8 (bs, strconv.HEXADECIMAL_BASE);
 	if bok != 2
 		return .{}, false, true;
 	advance (parser, bok);
+
 	as := str.make (curr, end - curr);
 	a, aok := strconv.parse_u8 (as, strconv.HEXADECIMAL_BASE);
 	if aok != 0 && aok != 2
 		return .{}, false, true;
 	advance (parser, aok);
+
 	return math.rgba (r, g, b, ifx aok then a else 255), true, false;
 }
 

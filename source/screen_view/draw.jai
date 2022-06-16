@@ -244,10 +244,14 @@ draw_cursors :: (using view : Screen_View)
 
 draw :: (using view : Screen_View)
 {
+	imdraw.draw_rect (
+		view.area,
+		get_rgba (g_config, "editor_colors['view.background']", VIEW_BACKGROUND)
+	);
 	if g_active_screen_view.id == view.id
-		draw_selection (view, math.rgba (50, 100, 200));
+		draw_selection (view, get_rgba (g_config, "editor_colors['view.selection']", VIEW_BACKGROUND));
 	else
-		draw_selection (view, math.rgba (60, 60, 60));
+		draw_selection (view, get_rgba (g_config, "editor_colors['view.inactive_selection']", VIEW_BACKGROUND));
 	range := get_visible_range (view);
 	draw_character_range (view, range.x, range.y);
 	draw_cursors (view);
@@ -263,13 +267,17 @@ draw :: (using view : Screen_View)
 		info_bar_area = math.truncate_bottom (view.area, math.rect_height (area) - cast (f32) (page.ascent - page.descent));
 	else
 		info_bar_area = math.truncate_top (view.area, math.rect_height (area) - cast (f32) (page.ascent - page.descent));
-	imdraw.draw_rect (info_bar_area, math.RGBA_WHITE);
+	imdraw.draw_rect (
+		info_bar_area,
+		get_rgba (g_config, "editor_colors['view.info.background']", VIEW_INFO_BACKGROUND)
+	);
+	info_text_col := get_rgba (g_config, "editor_colors['view.info.text']", VIEW_INFO_TEXT);
 	imdraw.draw_text (
 		info_font,
 		font_height,
 		math.rect_position (info_bar_area),
 		path.get_basename (buffer.filename),
-		math.RGBA_BLACK
+		info_text_col
 	);
 	li, ci := get_cursor_line_and_column (view, 0);
 	imdraw.draw_text (
@@ -277,7 +285,7 @@ draw :: (using view : Screen_View)
 		font_height,
 		math.rect_top_right (info_bar_area),
 		fmt.format (mem.TEMP_ALLOC, "Ln %, Col % ~ %", li + 1, ci + 1, buffer.eol_sequence),
-		math.RGBA_BLACK,
+		info_text_col,
 		anchor = .TOP_RIGHT
 	);
 }
