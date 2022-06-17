@@ -100,8 +100,54 @@ JAI_COMPILER_DIRECTIVES :: string.[
 	return builder.build (code, mem.HEAP_ALLOC);
 }
 
+#scope_file
+
+g_colors : struct
+{
+	initialized : bool;
+	invalid : math.RGBA;
+	symbol : math.RGBA;
+	comment : math.RGBA;
+	string_literal : math.RGBA;
+	number_literal : math.RGBA;
+	identifier : math.RGBA;
+	keyword : math.RGBA;
+	control_keyword : math.RGBA;
+	storage_type_keyword : math.RGBA;
+	type_keyword : math.RGBA;
+	function_keyword : math.RGBA;
+	compiler_directive : math.RGBA;
+	note : math.RGBA;
+	polymorphic : math.RGBA;
+};
+
+initialize_colors :: ()
+{
+	using g_colors;
+	invalid = get_rgba (g_config, "syntax_colors['invalid']");
+	symbol = get_rgba (g_config, "syntax_colors['symbol']");
+	comment = get_rgba (g_config, "syntax_colors['comment']");
+	string_literal = get_rgba (g_config, "syntax_colors['string']");
+	number_literal = get_rgba (g_config, "syntax_colors['number']");
+	identifier = get_rgba (g_config, "syntax_colors['identifier']");
+	keyword = get_rgba (g_config, "syntax_colors['keyword']");
+	control_keyword = get_rgba (g_config, "syntax_colors['keyword.control']");
+	storage_type_keyword = get_rgba (g_config, "syntax_colors['keyword.storage_type']");
+	type_keyword = get_rgba (g_config, "syntax_colors['keyword.type']");
+	function_keyword = get_rgba (g_config, "syntax_colors['keyword.function']");
+	compiler_directive = get_rgba (g_config, "syntax_colors['directive.compiler']");
+	note = get_rgba (g_config, "syntax_colors['jai.note']");
+	polymorphic = get_rgba (g_config, "syntax_colors['jai.polymorphic']");
+	initialized = true;
+}
+
+#scope_export
+
 process_jai_buffer :: (text_info : *Text_Info)
 {
+	if !g_colors.initialized
+		initialize_colors ();
+
 	lexer : Jai_Lexer;
 	lexer.buffer = get (text_info.buffer_id);
 	lexer.line = 1;
@@ -118,17 +164,18 @@ process_jai_buffer :: (text_info : *Text_Info)
 		if token.kind ==
 		{
 		case .INVALID;
-			info.color = math.rgba (255, 0, 0);
+			info.color = g_colors.invalid;
 			info.weight = .BOLD;
 		case .COMMENT;
-			info.color = math.rgba (0x52, 0xb0, 0x41);
+			info.color = g_colors.comment;
 			info.effects |= .ITALIC;
 		case .STRING_LITERAL;
-			info.color = math.rgba (0xe0, 0x83, 0x69);
+			info.color = g_colors.string_literal;
 			lexer.is_in_herestring = false;
-		case .NUMBER_LITERAL; info.color = math.rgba (0xae, 0xdb, 0x9a);
+		case .NUMBER_LITERAL;
+			info.color = g_colors.number_literal;
 		case .IDENTIFIER;
-			info.color = math.rgba (255, 255, 255);
+			info.color = g_colors.identifier;
 			if next_token_is_herestring_end_ident
 			{
 				lexer.herestring_end_ident = token.range;
@@ -136,27 +183,27 @@ process_jai_buffer :: (text_info : *Text_Info)
 				next_token_is_herestring_end_ident = false;
 			}
 		case .KEYWORD_CONTROL;
-			info.color = math.rgba (0xe8, 0x79, 0xb2);
+			info.color = g_colors.control_keyword;
 			info.weight = .BOLD;
 		case .KEYWORD;
-			info.color = math.rgba (0x4a, 0xa1, 0xff);
+			info.color = g_colors.keyword;
 		case .KEYWORD_STORAGE_TYPE;
-			info.color = math.rgba (0x4a, 0xa1, 0xff);
+			info.color = g_colors.storage_type_keyword;
 		case .KEYWORD_TYPE;
-			info.color = math.rgba (0x4a, 0xa1, 0xff);
+			info.color = g_colors.type_keyword;
 		case .KEYWORD_FUNCTION;
-			info.color = math.rgba (0x4a, 0xa1, 0xff);
+			info.color = g_colors.function_keyword;
 		case .COMPILER_DIRECTIVE;
-			info.color = math.rgba (0x4a, 0xa1, 0xff);
+			info.color = g_colors.compiler_directive;
 			if token.compiler_directive == .STRING
 				next_token_is_herestring_end_ident = true;
 		case .POLYMORPHIC_ARGUMENT;
-			info.color = math.rgba (0x4a, 0xa1, 0xff);
+			info.color = g_colors.polymorphic;
 		case .NOTE;
-			info.color = math.rgba (0x4a, 0xa1, 0xff);
+			info.color = g_colors.note;
 			info.effects |= .UNDERLINE;
 		case .SYMBOL;
-			info.color = math.rgba (0xe5, 0xe5, 0xe5);
+			info.color = g_colors.symbol;
 		}
 		ptr := array.push (*text_info.infos);
 		ptr.range = token.range;
