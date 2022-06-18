@@ -187,6 +187,8 @@ draw_cursors :: (using view : Screen_View)
 	prev_shader := imdraw.set_shader (*font.g_glyph_shader);
 	defer imdraw.set_shader (prev_shader);
 
+	if cursor_rects.count != cursors.count
+		fmt.println ("We have % cursors, but % cursor rects.", cursors.count, cursor_rects.count);
 	buffer := get (buffer_id);
 	text_info := get (text_info_id);
 	font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
@@ -209,7 +211,7 @@ draw_cursors :: (using view : Screen_View)
 			);
 		if g_active_screen_view.id != id || cursors[i].char_index == get_count (buffer)
 			continue;
-		color = math.rgba (0.1, 0.1, 0.1);
+		color = get_rgba (g_config, "editor_colors['view.background']", VIEW_BACKGROUND);
 		codepoint := char_at (buffer, cursors[i].char_index);
 		if codepoint ==
 		{
@@ -239,6 +241,7 @@ draw_cursors :: (using view : Screen_View)
 		);
 		imdraw.set_texture (glyph.atlas_texture);
 		imdraw.draw_rect (glyph_rect, color, glyph.uv_rect);
+		imdraw.set_texture (null);
 	}
 }
 
