@@ -1,3 +1,5 @@
+// Beta 0.1.038
+
 Jai_Lexer :: struct
 {
 	buffer : *Buffer;
@@ -53,14 +55,15 @@ JAI_STORAGE_TYPE_KEYWORDS :: string.[ "struct", "union", "enum", "enum_flags" ];
 JAI_TYPE_KEYWORDS :: string.[ "void", "u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "int", "float32", "float64", "f32", "f64", "float", "bool", "string", "__reg", "reg" ];
 JAI_FUNCTION_KEYWORDS :: string.[ "cast", "xx", "type_of", "type_info", "size_of", "align_of", "initializer_of", "is_constant", "code_of" ];
 JAI_OTHER_KEYWORDS :: string.[ "push_context", "context", "null", "true", "false", "it", "it_index", "no_check", "truncate", "no_dll", "stallable",
-	"operator", "interface", "distinct", "isa", "inline", "typed" ];
+	"operator", "interface", "distinct", "isa", "inline", "typed", "except", "only", "map", "scope",
+	"file", "dir",];
 JAI_COMPILER_DIRECTIVES :: string.[
 	"import", "load", "foreign", "foreign_library", "foreign_system_library", "must", "no_abc", "insert", "insert_internal",
 	"run", "char", "place", "through", "expand", "if", "scope_file", "scope_module", "scope_export", "assert", "bake_arguments", "bake_constants",
 	"complete", "string", "no_reset", "dump", "code", "caller_location", "c_call", "c_callback", "module_parameters", "elsewhere", "placeholder", "intrinsic",
 	"compiler", "symmetric", "modify", "cpp_return_type_is_non_pod", "cpp_method", "add_context", "dynamic_specialize", "specified", "filepath", "file", "line",
 	"poke_name", "program_export", "procedure_of_call", "location", "type_info_none", "type_info_procedures_are_void_pointers", "type_info_no_size_complaint",
-	"no_alias", "type", "deprecated", "align", "no_context", "runtime_support", "asm", "caller_code", "this", "no_padding", "ifx", "as", "bytes",
+	"no_alias", "type", "deprecated", "align", "no_context", "runtime_support", "asm", "caller_code", "this", "no_padding", "ifx", "as", "bytes", "procedure_name", "compile_time"
 ];
 
 #insert -> string
