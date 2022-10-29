@@ -12,7 +12,7 @@ EOL_Sequence :: enum
 // @Todo (stefan): Page buffer
 Buffer :: struct
 {
-	Id :: type_of (g_buffers).Slot_Info;
+	Id :: #type, isa storage.Slot_Info;
 
 	History :: struct
 	{

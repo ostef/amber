@@ -7,7 +7,7 @@
 // else, or more simply a view that is not currently visible.
 View :: struct
 {
-	Global_Id :: type_of (g_views).Slot_Info;	// Global view Id, across all view types
+	Global_Id :: #type, isa storage.Slot_Info;	// Global view Id, across all view types
 
 	Procs :: struct
 	{

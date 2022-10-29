@@ -27,12 +27,12 @@ draw_selection :: (using view : Screen_View, color : math.RGBA)
 				// left, top and bottom coords of the selection rect
 				if !was_selected && is_selected
 				{
-					selection_rect.x1 = rect.x1;
-					selection_rect.y1 = rect.y1;
-					selection_rect.y2 = rect.y2;
+					selection_rect.x = rect.x;
+					selection_rect.y = rect.y;
+					selection_rect.h = rect.h;
 				}
 				if is_selected
-					selection_rect.x2 = rect.x2;
+					math.set_right (*selection_rect, rect.x + rect.w);
 				if was_selected && !is_selected
 					break;
 			}
@@ -59,8 +59,8 @@ draw_character_range :: (
 		{
 			imdraw.set_texture (null);
 			imdraw.draw_line (
-				`line_start + vec2f (0, 0.5),
-				`line_end   + vec2f (0, 0.5),
+				`line_start + linalg.vec2f (0, 0.5),
+				`line_end   + linalg.vec2f (0, 0.5),
 				`color,
 				1
 			);
@@ -69,8 +69,8 @@ draw_character_range :: (
 		{
 			imdraw.set_texture (null);
 			imdraw.draw_line (
-				`line_start - vec2f (0, `page.ascent * (2.0 / 5.0) + 0.5),
-				`line_end   - vec2f (0, `page.ascent * (2.0 / 5.0) + 0.5),
+				`line_start - linalg.vec2f (0, `page.ascent * (2.0 / 5.0) + 0.5),
+				`line_end   - linalg.vec2f (0, `page.ascent * (2.0 / 5.0) + 0.5),
 				`color,
 				1
 			);
@@ -79,8 +79,8 @@ draw_character_range :: (
 
 	buffer := get (buffer_id);
 	new_line := true;
-	line_start : Vec2f;
-	line_end   : Vec2f;
+	line_start : linalg.Vec2f;
+	line_end   : linalg.Vec2f;
 	for i : first_char..last_char
 	{
 		is_selected := false;
@@ -95,12 +95,12 @@ draw_character_range :: (
 				is_selected = true;
 		}
 		rect := get_rect (view, i);
-		if new_line || line_end.y != rect.y1 + page.ascent
+		if new_line || line_end.y != rect.y + page.ascent
 		{
 			draw_effects ();
-			line_start = vec2f (rect.x1, rect.y1 + page.ascent);
+			line_start = linalg.vec2f (rect.x, rect.y + page.ascent);
 		}
-		line_end = vec2f (rect.x2, rect.y1 + page.ascent);
+		line_end = linalg.vec2f (rect.x + rect.w, rect.y + page.ascent);
 		new_line = false;
 		char_color := color;
 		if i >= get_count (buffer)
@@ -130,8 +130,8 @@ draw_character_range :: (
 		}
 		glyph := font.render_glyph (page, codepoint);
 		glyph_rect := math.xywhf (
-			rect.x1 + glyph.bitmap_bearing_x,
-			rect.y1 - glyph.bitmap_bearing_y + page.ascent,
+			rect.x + glyph.bitmap_bearing_x,
+			rect.y - glyph.bitmap_bearing_y + page.ascent,
 			cast (f32) glyph.bitmap_width,
 			cast (f32) glyph.bitmap_height
 		);
@@ -234,8 +234,8 @@ draw_cursors :: (using view : Screen_View)
 		}
 		glyph := font.render_glyph (page, codepoint);
 		glyph_rect := math.xywhf (
-			rect.x1 + glyph.bitmap_bearing_x,
-			rect.y1 - glyph.bitmap_bearing_y + page.ascent,
+			rect.x + glyph.bitmap_bearing_x,
+			rect.y - glyph.bitmap_bearing_y + page.ascent,
 			cast (f32) glyph.bitmap_width,
 			cast (f32) glyph.bitmap_height
 		);
@@ -267,9 +267,9 @@ draw :: (using view : Screen_View)
 	page := font.load_page (info_font, font_height);
 	info_bar_area : math.Rectf;
 	if put_bar_on_top
-		info_bar_area = math.truncate_bottom (view.area, math.rect_height (area) - cast (f32) (page.ascent - page.descent));
+		info_bar_area = math.truncate_bottom (view.area, area.h - cast (f32) (page.ascent - page.descent));
 	else
-		info_bar_area = math.truncate_top (view.area, math.rect_height (area) - cast (f32) (page.ascent - page.descent));
+		info_bar_area = math.truncate_top (view.area, area.h - cast (f32) (page.ascent - page.descent));
 	imdraw.draw_rect (
 		info_bar_area,
 		get_rgba (g_config, "editor_colors['view.info.background']", VIEW_INFO_BACKGROUND)
@@ -278,7 +278,7 @@ draw :: (using view : Screen_View)
 	imdraw.draw_text (
 		info_font,
 		font_height,
-		math.rect_position (info_bar_area),
+		info_bar_area.position,
 		path.get_basename (buffer.filename),
 		info_text_col
 	);
@@ -286,7 +286,7 @@ draw :: (using view : Screen_View)
 	imdraw.draw_text (
 		info_font,
 		font_height,
-		math.rect_top_right (info_bar_area),
+		math.top_right (info_bar_area),
 		fmt.format (mem.TEMP_ALLOC, "Ln %, Col % ~ %", li + 1, ci + 1, buffer.eol_sequence),
 		info_text_col,
 		anchor = .TOP_RIGHT

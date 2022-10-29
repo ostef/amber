@@ -6,7 +6,7 @@ Jai_Lexer :: struct
 	offset, count, line, column : s64;
 	is_in_asm_block : bool;
 	is_in_herestring : bool;
-	herestring_end_ident : Vec2l;
+	herestring_end_ident : linalg.Vec2l;
 	tokens : [..]Jai_Token;
 }
 
@@ -37,7 +37,7 @@ Jai_Token :: struct
 	}
 	
 	kind : Kind;
-	range : Vec2l;
+	range : linalg.Vec2l;
 	l0, c0, l1, c1 : s64;
 	union
 	{
@@ -512,7 +512,7 @@ advance_if_matches_string :: inline (using lexer : *Jai_Lexer, str : string) -> 
 	return false;
 }
 
-matches_range :: inline (using lexer : *Jai_Lexer, range : Vec2l) -> bool #must
+matches_range :: inline (using lexer : *Jai_Lexer, range : linalg.Vec2l) -> bool #must
 {
 	if offset + range.y - range.x > count then return false;
 	for i : 0..range.y - range.x - 1
@@ -524,7 +524,7 @@ matches_range :: inline (using lexer : *Jai_Lexer, range : Vec2l) -> bool #must
 	return true;
 }
 
-advance_if_matches_range :: inline (using lexer : *Jai_Lexer, range : Vec2l) -> bool
+advance_if_matches_range :: inline (using lexer : *Jai_Lexer, range : linalg.Vec2l) -> bool
 {
 	if matches_range (lexer, range)
 	{

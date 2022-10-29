@@ -170,7 +170,7 @@ error :: (using parser : *Config_Parser, fmt_str : string, args : ..Any)
 	err.filename = filename;
 	err.line = line;
 	err.column = column;
-	err.error_string = str.format (allocator, fmt_str, ..args);
+	err.error_string = fmt.format (allocator, fmt_str, ..args);
 	line_start := curr - start;
 	while line_start > 0 && start[line_start - 1] != #char "\n"
 		line_start -= 1;
@@ -246,7 +246,7 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 			count := get_int (config, count_varname);
 			overwritten := set (config, count_varname, count + rvalue.array_literal.elems.count);
 			for elem, i : rvalue.array_literal.elems
-				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%]", name, count + i), elem);
+				fill_value (config, fmt.format (mem.TEMP_ALLOC, "%[%]", name, count + i), elem);
 
 			return overwritten;
 
@@ -256,7 +256,7 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 			added := 0;
 			for elem, i : rvalue.map_literal.elems
 			{
-				varname := str.format (mem.TEMP_ALLOC, "%['%']", name, elem.key);
+				varname := fmt.format (mem.TEMP_ALLOC, "%['%']", name, elem.key);
 
 				index : s64;
 				if !fill_value (config, varname, elem.value)
@@ -277,8 +277,8 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 				//     key   := get_string (config, "map[%].key");
 				//     value := get (config, "map[%].value");
 				// }
-				set (config, str.format (mem.TEMP_ALLOC, "%[%].key", name, index), elem.key);
-				fill_value (config, str.format (mem.TEMP_ALLOC, "%[%].value", name, index), elem.value);
+				set (config, fmt.format (mem.TEMP_ALLOC, "%[%].key", name, index), elem.key);
+				fill_value (config, fmt.format (mem.TEMP_ALLOC, "%[%].value", name, index), elem.value);
 			}
 
 			// We consider the map was overwritten if the name.count variable already exists
@@ -287,7 +287,7 @@ fill_variables :: inline (config : *Config, using parser : Config_Parser)
 		return false;
 	}
 
-	mem.temporary_block ();
+	mem.temporary_storage_block ();
 	for root_assignments
 		fill_value (config, it.lvalue.identifier, it.rvalue);
 }
@@ -535,7 +535,7 @@ parse_float :: inline (using parser : *Config_Parser) -> val : float, ok : bool
 
 parse_string :: inline (using parser : *Config_Parser) -> val : string, ok : bool, unclosed : bool
 {
-	mem.temporary_block ();
+	mem.temporary_storage_block ();
 	skip_spaces (parser);
 	result : builder.Builder;
 	builder.init (*result, mem.TEMP_ALLOC);

@@ -6,7 +6,7 @@ str  :: #import "String";
 builder :: #import "String/Builder";
 strconv :: #import "String/Convert";
 path :: #import "Path";
-using linalg :: #import "Linalg";
+linalg :: #import "Linalg";
 math :: #import "Math";
 algo :: #import "Algorithm";
 unicode :: #import "Unicode";
@@ -20,6 +20,9 @@ list    :: #import "Containers/List";
 for_expansion :: list.for_expansion;
 storage :: #import "Containers/Storage";
 for_expansion :: storage.for_expansion;
+
+using, only (.["==","+","-","*","/"]) linalg;
+using, only (.["=="]) storage;
 
 ps     :: #import "Process";
 fs     :: #import "File_System";
@@ -58,7 +61,7 @@ g_logo_textures : struct
 	#place all;
 	x16, x32, x48, x256  : render.Texture;
 };
-g_viewport_size : Vec2i;
+g_viewport_size : linalg.Vec2i;
 
 g_config : Config;
 g_buffers : storage.Storage (Buffer, 20);
@@ -70,7 +73,7 @@ g_active_screen_view : *Screen_View;
 create_buffer :: () -> *Buffer #must
 {
 	result, id := storage.find_free_slot (*g_buffers);
-	result.id = id;
+	result.id = xx id;
 	init (result, 1000);
 	return result;
 }
@@ -87,19 +90,9 @@ get :: inline (id : Buffer.Id) -> *Buffer #must
 	return storage.get_item (g_buffers, id);
 }
 
-operator == :: inline (a : Buffer.Id, b : Buffer.Id) -> bool #must
-{
-	return storage.equals (g_buffers, a, b);
-}
-
 get :: inline (id : View.Global_Id) -> *View #must
 {
 	return <<storage.get_item (g_views, id);
-}
-
-operator == :: inline (a : View.Global_Id, b : View.Global_Id) -> bool #must
-{
-	return storage.equals (g_views, a, b);
 }
 
 create_screen_view :: (
@@ -111,8 +104,8 @@ create_screen_view :: (
 {
 	result, id := storage.find_free_slot (*g_screen_views);
 	view_id := storage.insert (*g_views, result);
-	result.id = id;
-	result.global_id = view_id;
+	result.id = xx id;
+	result.global_id = xx view_id;
 	init (result, buffer_id, text_info_id, read_only, area);
 	return result;
 }
@@ -130,16 +123,11 @@ get :: inline (id : Screen_View.Id) -> *Screen_View #must
 	return storage.get_item (g_screen_views, id);
 }
 
-operator == :: inline (a : Screen_View.Id, b : Screen_View.Id) -> bool #must
-{
-	return storage.equals (g_screen_views, a, b);
-}
-
 create_text_info :: (buffer_id : Buffer.Id) -> *Text_Info #must
 {
 	assert (storage.is_valid (g_buffers, buffer_id), "Invalid buffer id.");
 	result, id := storage.find_free_slot (*g_text_infos);
-	result.id = id;
+	result.id = xx id;
 	result.buffer_id = buffer_id;
 	array.init (*result.infos, get_count (get (buffer_id)) / 10, mem.HEAP_ALLOC);
 	return result;
@@ -155,11 +143,6 @@ destroy_text_info :: (id : Text_Info.Id)
 get :: inline (id : Text_Info.Id) -> *Text_Info #must
 {
 	return storage.get_item (g_text_infos, id);
-}
-
-operator == :: inline (a : Text_Info.Id, b : Text_Info.Id) -> bool #must
-{
-	return storage.equals (g_text_infos, a, b);
 }
 
 handle_window_message :: (msg : window.Message)
@@ -301,7 +284,7 @@ main :: ()
 			draw_window_caption ();
 		imdraw.end ();
 		window.swap_buffers (g_window);
-		ps.sleep (10);
+		ps.sleep_milliseconds (10);
 	}
 }
 
@@ -345,7 +328,7 @@ get_caption_button_rect :: inline (button : Caption_Button) -> math.Rectf #must
 is_caption_button_hovered :: inline (button : Caption_Button) -> bool #must
 {
 	mx, my := window.get_mouse_position (g_window);
-	return math.contains (get_caption_button_rect (button), vec2f (xx mx, xx my));
+	return math.contains (get_caption_button_rect (button), linalg.vec2f (xx mx, xx my));
 }
 
 get_caption_button_state :: inline (button : Caption_Button) -> Caption_Button_State #must
@@ -368,7 +351,7 @@ draw_window_caption :: ()
 	text_rect := imdraw.draw_text (
 		g_main_font,
 		14,
-		vec2f (vw * 0.5, WINDOW_CAPTION_HEIGHT * 0.5),
+		linalg.vec2f (vw * 0.5, WINDOW_CAPTION_HEIGHT * 0.5),
 		"Amber",
 		get_rgba (g_config, "editor_colors['caption.title']", CAPTION_TITLE),
 		anchor = .CENTER
@@ -402,13 +385,13 @@ draw_window_caption :: ()
 		}
 		imdraw.draw_rect (r, bg_c, corner_radius = 4);
 		r = math.xywhf (
-			(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
-			(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+			(r.x + r.x + r.w - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+			(r.y + r.y + r.h - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
 			xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
 			xx WINDOW_CAPTION_BUTTON_ICON_SIZE
 		);
-		imdraw.draw_line (vec2f (r.x1, r.y1), vec2f (r.x2, r.y2), ic_c, 1);
-		imdraw.draw_line (vec2f (r.x1, r.y2), vec2f (r.x2, r.y1), ic_c, 1);
+		imdraw.draw_line (linalg.vec2f (r.x, r.y), linalg.vec2f (r.x + r.w, r.y + r.h), ic_c, 1);
+		imdraw.draw_line (linalg.vec2f (r.x, r.y + r.h), linalg.vec2f (r.x + r.w, r.y), ic_c, 1);
 	}
 
 	{
@@ -427,8 +410,8 @@ draw_window_caption :: ()
 		}
 		imdraw.draw_rect (get_caption_button_rect (.MAXIMIZE), bg_c, corner_radius = 4);
 		r = math.xywhf (
-			(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5 + 0.5,
-			(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5 + 0.5,
+			(r.x + r.x + r.w - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5 + 0.5,
+			(r.y + r.y + r.h - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5 + 0.5,
 			xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
 			xx WINDOW_CAPTION_BUTTON_ICON_SIZE
 		);
@@ -451,11 +434,11 @@ draw_window_caption :: ()
 		}
 		imdraw.draw_rect (get_caption_button_rect (.MINIMIZE), bg_c, corner_radius = 4);
 		r = math.xywhf (
-			(r.x1 + r.x2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
-			(r.y1 + r.y2 - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+			(r.x + r.x + r.w - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
+			(r.y + r.y + r.h - WINDOW_CAPTION_BUTTON_ICON_SIZE) * 0.5,
 			xx WINDOW_CAPTION_BUTTON_ICON_SIZE,
 			xx WINDOW_CAPTION_BUTTON_ICON_SIZE
 		);
-		imdraw.draw_line (vec2f (r.x1, (r.y1 + r.y2) * 0.5 + 0.5), vec2f (r.x2, (r.y1 + r.y2) * 0.5 + 0.5), ic_c, 1);
+		imdraw.draw_line (linalg.vec2f (r.x, r.y + r.h * 0.5 + 0.5), linalg.vec2f (r.x + r.w, r.y + r.h * 0.5 + 0.5), ic_c, 1);
 	}
 }

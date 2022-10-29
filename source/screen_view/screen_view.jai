@@ -6,7 +6,7 @@
 // of color-id 'keyword' for example.
 Text_Info :: struct
 {
-	Id :: type_of (g_text_infos).Slot_Info;
+	Id :: #type, isa storage.Slot_Info;
 
 	Info :: struct
 	{
@@ -21,7 +21,7 @@ Text_Info :: struct
 	// an info for a range of characters.
 	Info_Range :: struct
 	{
-		range : Vec2l;		// 16-bytes
+		range : linalg.Vec2l;		// 16-bytes
 		using info : Info;	// 4-bytes
 	}	// 20-bytes, 24-bytes with padding
 
@@ -76,7 +76,7 @@ Show_Whitespace :: enum
 
 Screen_View :: struct
 {
-	Id :: type_of (g_screen_views).Slot_Info;
+	Id :: #type, isa storage.Slot_Info;
 
 	Line :: struct
 	{
@@ -89,9 +89,9 @@ Screen_View :: struct
 	base.type = Screen_View;
 	text_info_id : Text_Info.Id;
 	area    : math.Rectf;
-	extents : Vec2f;
-	scroll  : Vec2f;
-	visual_scroll : Vec2f;
+	extents : linalg.Vec2f;
+	scroll  : linalg.Vec2f;
+	visual_scroll : linalg.Vec2f;
 	glyph_rects   : [..]math.Rectf;
 	wrapped_lines : [..]Line;
 	cursor_rects : [..]math.Rectf;
@@ -154,7 +154,7 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 	if msg.kind ==
 	{
 	case .MOUSE_BUTTON_PRESSED;
-		mouse_pos := vec2f (xx msg.mouse_x, xx msg.mouse_y);
+		mouse_pos := linalg.vec2f (xx msg.mouse_x, xx msg.mouse_y);
 		if msg.mouse_button == .LEFT && math.contains (area, mouse_pos)
 			g_active_screen_view = view;
 
@@ -170,7 +170,7 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 		is_mouse_selecting = false;
 
 	case .MOUSE_MOVED;
-		mouse_pos := vec2f (xx msg.mouse_x, xx msg.mouse_y);
+		mouse_pos := linalg.vec2f (xx msg.mouse_x, xx msg.mouse_y);
 		if g_active_screen_view == view
 		&& is_mouse_selecting && input.is_mouse_button_down (.LEFT) && !input.is_mouse_button_pressed (.LEFT)
 		{
@@ -179,24 +179,24 @@ handle_window_message :: (using view : *Screen_View, msg : window.Message)
 		}
 
 	case .MOUSE_WHEEL;
-		mouse_pos := vec2f (xx msg.mouse_x, xx msg.mouse_y);
+		mouse_pos := linalg.vec2f (xx msg.mouse_x, xx msg.mouse_y);
 		if math.contains (area, mouse_pos)
-			scroll -= vec2f (msg.mouse_wheel_x, msg.mouse_wheel_y);
-		scroll = linalg.clamp (scroll, vec2f (0, 0), get_max_scroll (view));
+			scroll -= linalg.vec2f (msg.mouse_wheel_x, msg.mouse_wheel_y);
+		scroll = linalg.clamp (scroll, linalg.vec2f (0, 0), get_max_scroll (view));
 
 	case .WINDOW_MAXIMIZED; #through;
 	case .WINDOW_RESIZED;
 		// @Todo (stefan): Handle resizing to (0, 0)
-		current_available := vec2i (g_viewport_size.x, g_viewport_size.y - WINDOW_CAPTION_HEIGHT);
-		new_available := vec2i (msg.viewport_width, msg.viewport_height - WINDOW_CAPTION_HEIGHT);
-		x_ratio := area.x1 / cast (f32) current_available.x;
-		y_ratio := (area.y1 - WINDOW_CAPTION_HEIGHT) / cast (f32) current_available.y;
-		width_ratio := math.rect_width (area) / cast (f32) current_available.x;
-		height_ratio := math.rect_height (area) / cast (f32) current_available.y;
-		area.x1 = x_ratio * cast (f32) new_available.x;
-		area.y1 = WINDOW_CAPTION_HEIGHT + y_ratio * cast (f32) new_available.y;
-		area.x2 = area.x1 + width_ratio * cast (f32) new_available.x;
-		area.y2 = area.y1 + height_ratio * cast (f32) new_available.y;
+		current_available := linalg.vec2i (g_viewport_size.x, g_viewport_size.y - WINDOW_CAPTION_HEIGHT);
+		new_available := linalg.vec2i (msg.viewport_width, msg.viewport_height - WINDOW_CAPTION_HEIGHT);
+		x_ratio := area.x / cast (f32) current_available.x;
+		y_ratio := (area.y - WINDOW_CAPTION_HEIGHT) / cast (f32) current_available.y;
+		width_ratio := area.w / cast (f32) current_available.x;
+		height_ratio := area.h / cast (f32) current_available.y;
+		area.x = x_ratio * cast (f32) new_available.x;
+		area.y = WINDOW_CAPTION_HEIGHT + y_ratio * cast (f32) new_available.y;
+		area.w = width_ratio * cast (f32) new_available.x;
+		area.h = height_ratio * cast (f32) new_available.y;
 		is_dirty = true;
 	}
 	if g_active_screen_view == view
@@ -228,8 +228,8 @@ get_rect :: inline (using view : Screen_View, index : s64, page : *font.Page = n
 	text_area := get_text_area (view);
 	return math.move (
 		glyph_rects[index],
-		math.round (text_area.x1) - visual_scroll.x * page.space_advance,
-		math.round (text_area.y1) - visual_scroll.y * (page.ascent - page.descent)
+		math.round (text_area.x) - visual_scroll.x * page.space_advance,
+		math.round (text_area.y) - visual_scroll.y * (page.ascent - page.descent)
 	);
 }
 
@@ -243,35 +243,35 @@ get_cursor_rect :: inline (using view : Screen_View, index : s64, page : *font.P
 	text_area := get_text_area (view);
 	return math.move (
 		cursor_rects[index],
-		math.round (text_area.x1) - visual_scroll.x * page.space_advance,
-		math.round (text_area.y1) - visual_scroll.y * (page.ascent - page.descent)
+		math.round (text_area.x) - visual_scroll.x * page.space_advance,
+		math.round (text_area.y) - visual_scroll.y * (page.ascent - page.descent)
 	);
 }
 
-get_max_scroll :: (using view : Screen_View, page : *font.Page = null) -> Vec2f #must
+get_max_scroll :: (using view : Screen_View, page : *font.Page = null) -> linalg.Vec2f #must
 {
 	if !page
 	{
 		font_height := cast (u32) math.max (get_int (g_config, "buffer_font_height", fallback = 16), MIN_FONT_HEIGHT);
 		page = font.load_page (g_buffer_font, font_height);
 	}
-	return vec2f (
-		math.max (math.ceil ((extents.x - math.rect_width (get_text_area (view))) / cast (f32) page.space_advance), 0),
-		math.max (math.ceil ((extents.y - math.rect_height (get_text_area (view))) / cast (f32) (page.ascent - page.descent)), 0)
+	return linalg.vec2f (
+		math.max (math.ceil ((extents.x - get_text_area (view).w) / cast (f32) page.space_advance), 0),
+		math.max (math.ceil ((extents.y - get_text_area (view).h) / cast (f32) (page.ascent - page.descent)), 0)
 	);
 }
 
-get_closest_character :: (using view : Screen_View, position : Vec2f) -> s64 #must
+get_closest_character :: (using view : Screen_View, position : linalg.Vec2f) -> s64 #must
 {
 	font_height := math.max (get_int (g_config, "buffer_font_height"), 5);
 	page := font.load_page (g_buffer_font, xx font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
-	line_index := cast (s64) (math.round (visual_scroll.y) + (position.y - get_text_area (view).y1) / line_height);
+	line_index := cast (s64) (math.round (visual_scroll.y) + (position.y - get_text_area (view).y) / line_height);
 	line_index = math.clamp (line_index, 0, wrapped_lines.count - 1);
 	range := get_line_range (view, line_index);
-	if position.x <= get_rect (view, range.x).x1
+	if position.x <= get_rect (view, range.x).x
 		return range.x;
-	else if position.x >= get_rect (view, range.y).x2
+	else if position.x >= math.left (get_rect (view, range.y))
 		return range.y;
 	for i : range.x..range.y
 	{
@@ -287,7 +287,7 @@ get_base_line :: inline (using view : Screen_View) -> s64 #must
 	return math.clamp (cast (s64) visual_scroll.y, 0, wrapped_lines.count - 1);
 }
 
-get_visible_range :: (using view : Screen_View) -> Vec2l #must
+get_visible_range :: (using view : Screen_View) -> linalg.Vec2l #must
 {
 	font_height := math.max (get_int (g_config, "buffer_font_height"), 5);
 	// @Incomplete (stefan): We pick the page for the buffer font
@@ -297,12 +297,12 @@ get_visible_range :: (using view : Screen_View) -> Vec2l #must
 	// that for all line heights in the buffer.
 	page := font.load_page (g_buffer_font, xx font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
-	result : Vec2l;
+	result : linalg.Vec2l;
 	result.x = wrapped_lines[get_base_line (view)].first_char_index;
 	result.y = glyph_rects.count - 1;
 	for i : get_base_line (view)..wrapped_lines.count - 1
 	{
-		if i * line_height - visual_scroll.y * line_height >= math.rect_height (get_text_area (view))
+		if i * line_height - visual_scroll.y * line_height >= get_text_area (view).h
 		{
 			result.y = wrapped_lines[i].first_char_index - 1;
 			break;
@@ -312,7 +312,7 @@ get_visible_range :: (using view : Screen_View) -> Vec2l #must
 	return result;
 }
 
-get_visible_line_range :: (using view : Screen_View) -> Vec2l #must
+get_visible_line_range :: (using view : Screen_View) -> linalg.Vec2l #must
 {
 	font_height := math.max (get_int (g_config, "buffer_font_height"), 5);
 	// @Incomplete (stefan): We pick the page for the buffer font
@@ -322,12 +322,12 @@ get_visible_line_range :: (using view : Screen_View) -> Vec2l #must
 	// that for all line heights in the buffer.
 	page := font.load_page (g_buffer_font, xx font_height);
 	line_height := cast (f32) (page.ascent - page.descent);
-	result : Vec2l;
+	result : linalg.Vec2l;
 	result.x = get_base_line (view);
 	result.y = wrapped_lines.count - 1;
 	for i : get_base_line (view)..wrapped_lines.count - 1
 	{
-		if i * line_height - visual_scroll.y * line_height >= math.rect_height (get_text_area (view))
+		if i * line_height - visual_scroll.y * line_height >= get_text_area (view).h
 		{
 			result.y = i;
 			break;
@@ -337,10 +337,10 @@ get_visible_line_range :: (using view : Screen_View) -> Vec2l #must
 	return result;
 }
 
-get_line_range :: inline (using view : Screen_View, line_index : s64) -> Vec2l #must
+get_line_range :: inline (using view : Screen_View, line_index : s64) -> linalg.Vec2l #must
 {
 	line := wrapped_lines[line_index];
-	range : Vec2l;
+	range : linalg.Vec2l;
 	range.x = line.first_char_index;
 	range.y = glyph_rects.count - 1;
 	if line_index < wrapped_lines.count - 1
@@ -367,13 +367,13 @@ layout_text :: (using view : *Screen_View)
 	// Reset data
 	array.clear (*wrapped_lines);
 	array.clear (*glyph_rects);
-	extents = vec2f (0, 0);
+	extents = linalg.vec2f (0, 0);
 	// @Todo (stefan):
 	// fnt = get_font (get_string (g_config, "buffer_font"))
 	show_whitespace := get_enum (g_config, "buffer_show_whitespace", fallback = Show_Whitespace.NEVER);
 	tab_width := math.max (get_int (g_config, "tab_width", fallback = 4), 1);
 	line : Line;
-	pen : Vec2f;
+	pen : linalg.Vec2f;
 	start_of_line := true;	// Used to count the indentation level
 	indentation_level := 0;
 	for codepoint, i : buffer
@@ -389,7 +389,7 @@ layout_text :: (using view : *Screen_View)
 		if codepoint ==
 		{
 		case #char "\n";
-			if pen.x + page.space_advance > math.rect_width (get_text_area (view))
+			if pen.x + page.space_advance > get_text_area (view).w
 				wrap_line ();
 			rect = math.xywhf (pen.x, pen.y, xx page.space_advance, xx (page.ascent - page.descent));
 			pen.x = 0;
@@ -409,7 +409,7 @@ layout_text :: (using view : *Screen_View)
 				glyph_advance = glyph.advance;
 			}
 			advance := math.snap_up (pen.x + glyph_advance, page.space_advance * cast (f32) tab_width) - pen.x;
-			if pen.x + advance > math.rect_width (get_text_area (view))
+			if pen.x + advance > get_text_area (view).w
 				wrap_line ();
 			rect = math.xywhf (pen.x, pen.y, advance, xx (page.ascent - page.descent));
 			pen.x += advance;
@@ -422,7 +422,7 @@ layout_text :: (using view : *Screen_View)
 		case;
 			start_of_line = false;
 			glyph := font.load_glyph (page, codepoint);
-			if pen.x + glyph.advance > math.rect_width (get_text_area (view))
+			if pen.x + glyph.advance > get_text_area (view).w
 				wrap_line ();
 			rect = math.xywhf (pen.x, pen.y, xx glyph.advance, xx (page.ascent - page.descent));
 			pen.x += glyph.advance;
@@ -454,9 +454,9 @@ update :: (using view : *Screen_View)
 	for * cursor_rects
 	{
 		glyph_rect := glyph_rects[cursors[it_index].char_index];
-		it.x1 = math.lerp (it.x1, glyph_rect.x1, 1 - cursor_smoothing);
-		it.x2 = math.lerp (it.x2, glyph_rect.x2, 1 - cursor_smoothing);
-		it.y1 = math.lerp (it.y1, glyph_rect.y1, 1 - cursor_smoothing);
-		it.y2 = math.lerp (it.y2, glyph_rect.y2, 1 - cursor_smoothing);
+		it.x = math.lerp (it.x, glyph_rect.x, 1 - cursor_smoothing);
+		it.w = math.lerp (it.w, glyph_rect.w, 1 - cursor_smoothing);
+		it.y = math.lerp (it.y, glyph_rect.y, 1 - cursor_smoothing);
+		it.h = math.lerp (it.h, glyph_rect.h, 1 - cursor_smoothing);
 	}
 }
